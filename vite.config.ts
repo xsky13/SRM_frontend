@@ -6,5 +6,8 @@ export default defineConfig({
   plugins: [tailwindcss(), reactRouter()],
   resolve: {
     tsconfigPaths: true,
-  },
+    },
+    server: {
+        port: 3000
+    }
 });

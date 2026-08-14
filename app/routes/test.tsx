@@ -1,12 +1,14 @@
 import type { Route } from "./+types/test";
 
 import { Tab, TabList, TabPanel, TabPanels, Tabs } from "~/components/ui/Tabs";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import FileInput from "~/components/ui/FileInput";
 import { Menu, MenuItem, MenuTrigger } from "~/components/ui/Menu";
 import { Button } from "~/components/ui/Button";
 import { Ellipsis } from "lucide-react";
 import { Select, SelectItem } from "~/components/ui/Select";
+import { useQuery } from "@tanstack/react-query";
+import api from "~/utils/api";
 
 export function meta({ }: Route.MetaArgs) {
 	return [
@@ -32,7 +34,16 @@ export default function Test() {
 		{ id: 7, name: 'Print…' },
 		{ id: 8, name: 'Close window' },
 		{ id: 9, name: 'Quit' }
-	];
+    ];
+
+    const query = useQuery({
+        queryKey: ["todos"],
+        queryFn: () => api.get("/info")
+    });
+
+    useEffect(() => {
+        console.log(query.data)
+    }, [query])
 
 	return (
 		<>
