@@ -166,9 +166,9 @@
       inset 0px 1px 0px white,
       inset 0px -4px 8px var(--gray-200);
 
-    @media (prefers-color-scheme: dark) {
+    /*@media (prefers-color-scheme: dark) {
       box-shadow: inset 0px 4px 8px var(--gray-200);
-    }
+    }*/
   }
 
   &:first-child .react-aria-Header {

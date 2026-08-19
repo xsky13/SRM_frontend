@@ -35,9 +35,9 @@
   }
 
   .react-aria-ProgressBar {
-    @media (prefers-color-scheme: dark) {
+    /*@media (prefers-color-scheme: dark) {
       --highlight-background: var(--gray-1600);
-    }
+    }*/
   }
 
   kbd {
