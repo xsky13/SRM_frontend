@@ -1,6 +1,6 @@
 import type { Route } from "./+types/home";
 import { Departamento } from "~/models/Departamento";
-import { TarjetaDepartamento } from "~/components/DepartamentoCard";
+import TarjetaDepartamento from "~/components/DepartamentoCard";
 
 export function meta({ }: Route.MetaArgs) {
 	return [
