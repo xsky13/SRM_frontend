@@ -12,11 +12,10 @@ import {
   QueryClient,
   QueryClientProvider,
 } from '@tanstack/react-query'
+import { toast, Toaster } from 'sonner';
 
 import type { Route } from "./+types/root";
-import "./styles/app.css";
-import { useEffect } from "react";
-import { MyToastRegion, queue } from "./components/ui/Toast";
+import "./app.css";
 import { ApiError } from "./types/ApiError";
 
 export const links: Route.LinksFunction = () => [
@@ -38,14 +37,14 @@ const queryClient = new QueryClient({
             if (query.meta?.silent) return; // si la query ya define un onError, salir
             const customMessage = query.meta?.errorMessage as string | undefined;
             const message = customMessage ?? (error instanceof ApiError ? error.message : 'Error al cargar los datos');
-            queue.add({ title: 'Error', description: message }, { timeout: 3000})
+			toast.error(message)
         },
     }),
     mutationCache: new MutationCache({
         onError: (error, _vars, _ctx, mutation) => {
             if (mutation.meta?.silent) return; // si la mutacion ya define un onError, salir
             const message = error instanceof ApiError ? error.message : 'Error al cargar los datos';
-            queue.add({ title: 'Error', description: message }, { timeout: 3000 });
+			toast.error(message)
         }
     }),
     defaultOptions: {
@@ -89,7 +88,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     {children}
     				<ScrollRestoration />
                     <Scripts />
-                    <MyToastRegion />
+					<Toaster />
 				</QueryClientProvider>
 			</body>
 		</html>
