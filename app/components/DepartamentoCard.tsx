@@ -1,4 +1,5 @@
 import { MapPin } from "lucide-react";
+import { Link } from "react-router";
 import type { Departamento } from "~/models/Departamento";
 
 interface DepartamentoCardProps {
@@ -27,9 +28,12 @@ export default function TarjetaDepartamento(props: DepartamentoCardProps) {
 						<strong className="text-lg">{departamento.formattedPrice}</strong>
 						<small className="text-[11px] text-[#68716a]"></small>
 					</p>
-					<button className="border-b border-[#e28b68] py-1 text-xs font-bold text-[#385347]" type="button">
+					<Link
+						to={`/departamento/${departamento.slug}`}
+						className="border-b border-[#e28b68] py-1 text-xs font-bold text-[#385347]"
+					>
 						Ver departamento
-					</button>
+					</Link>
 				</div>
 			</div>
 		</article>
