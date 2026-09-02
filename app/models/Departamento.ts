@@ -22,6 +22,15 @@ export class Departamento {
 		return new Departamento(data);
 	}
 
+	get slug(): string {
+		return this.name
+			.toLowerCase()
+			.normalize("NFD")
+			.replace(/[\u0300-\u036f]/g, "")
+			.replace(/[^a-z0-9]+/g, "-")
+			.replace(/(^-|-$)/g, "");
+	}
+
 	get formattedPrice(): string {
 		return `$${this.price.toLocaleString("es-AR")}`;
 	}

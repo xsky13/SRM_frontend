@@ -1,5 +1,4 @@
 import type { Route } from "./+types/home";
-import { Departamento } from "~/models/Departamento";
 import TarjetaDepartamento from "~/components/DepartamentoCard";
 import { List } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
