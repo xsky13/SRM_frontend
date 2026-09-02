@@ -13,7 +13,7 @@ export default function TarjetaDepartamento(props: DepartamentoCardProps) {
 			<div className="relative h-60 overflow-hidden bg-[#ede9dc]">
 				<img
 					className="h-full w-full object-cover transition duration-500 hover:scale-105"
-					src={departamento.image}
+					src={departamento.coverImgUrl}
 					alt={`Interior de ${departamento.name}`}
 				/>
 			</div>
