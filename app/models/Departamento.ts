@@ -2,53 +2,20 @@ export interface DepartamentoData {
 	name: string;
 	location: string;
 	price: number;
-	image: string;
-	images?: string[];
-	description?: string;
-	address?: string;
-	bedrooms?: number;
-	bathrooms?: number;
-	area?: number;
-	features?: string[];
+	coverImgUrl: string;
 }
 
 export class Departamento {
 	public readonly name: string;
 	public readonly location: string;
 	public readonly price: number;
-	public readonly image: string;
-	public readonly images: string[];
-	public readonly description: string;
-	public readonly address: string;
-	public readonly bedrooms: number;
-	public readonly bathrooms: number;
-	public readonly area: number;
-	public readonly features: string[];
+	public readonly coverImgUrl: string;
 
-	constructor({
-		name,
-		location,
-		price,
-		image,
-		images = [image],
-		description = "",
-		address = "",
-		bedrooms = 0,
-		bathrooms = 0,
-		area = 0,
-		features = [],
-	}: DepartamentoData) {
+	constructor({ name, location, price, coverImgUrl }: DepartamentoData) {
 		this.name = name;
 		this.location = location;
 		this.price = price;
-		this.image = image;
-		this.images = images.length ? images : [image];
-		this.description = description;
-		this.address = address;
-		this.bedrooms = bedrooms;
-		this.bathrooms = bathrooms;
-		this.area = area;
-		this.features = features;
+		this.coverImgUrl = coverImgUrl;
 	}
 
 	static fromDatabase(data: DepartamentoData): Departamento {
