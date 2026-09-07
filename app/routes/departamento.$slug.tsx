@@ -1,20 +1,30 @@
-import { Link, useLoaderData } from "react-router";
-import { MapPin, Bath, BedDouble, Ruler, ArrowLeft, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { Link, useParams } from "react-router";
+import { MapPin, ArrowLeft, Sparkles } from "lucide-react";
 import type { Route } from "./+types/departamento.$slug";
-import { getDepartamentoBySlug } from "~/lib/departamentos";
-
-export async function loader({ params }: Route.LoaderArgs) {
-	const departamento = getDepartamentoBySlug(params.slug);
-
-	if (!departamento) {
-		throw new Response("Departamento no encontrado", { status: 404 });
-	}
-
-	return { departamento };
-}
+import { useQuery } from "@tanstack/react-query";
+import type { Departamento } from "~/models/Departamento";
+import api from "~/utils/api";
 
 export default function DepartamentoDetallePage() {
-	const { departamento } = useLoaderData<typeof loader>();
+	const { id } = useParams<Route.ComponentProps["params"]>();
+	const [selectedImageId, setSelectedImageId] = useState<string>();
+	const query = useQuery<Departamento>({
+		queryKey: ["apartment", id],
+		queryFn: async () => (await api.get(`/api/apartment/${id}`)).data,
+		enabled: Boolean(id),
+	});
+	const departamento = query.data;
+
+	if (query.isPending) return <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">Cargando...</main>;
+	if (!departamento) return <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">Departamento no encontrado.</main>;
+
+	const formattedPrice = `$${departamento.price.toLocaleString("es-AR")}`;
+	const images = departamento.images ?? [];
+	const galleryImages = images.length > 0
+		? images
+		: [{ id: "cover", url: departamento.coverImgUrl, apartmentId: departamento.id }];
+	const selectedImage = galleryImages.find((image) => image.id === selectedImageId) ?? galleryImages[0];
 
 	return (
 		<main className="min-h-screen bg-[#f6f4ee] text-[#202722]">
@@ -39,43 +49,37 @@ export default function DepartamentoDetallePage() {
 
 				<div className="grid gap-6 lg:grid-cols-[1.7fr_0.9fr]">
 					<div className="space-y-6">
-						<div className="overflow-hidden rounded-[28px] border border-[#e0ded5] bg-white shadow-[0_18px_48px_rgba(56,83,71,0.08)]">
+						<div className="aspect-[4/3] overflow-hidden rounded-[28px] border border-[#e0ded5] bg-[#ede9dc] shadow-[0_18px_48px_rgba(56,83,71,0.08)] md:aspect-[16/10]">
 							<img
-								className="h-[420px] w-full object-cover"
-								src={departamento.image}
-								alt={departamento.name}
+								className="h-full w-full object-cover"
+								src={selectedImage.url}
+								alt={`${departamento.name}, imagen principal`}
 							/>
 						</div>
 
-						<div className="grid gap-4 md:grid-cols-3">
-							{departamento.images.map((image, index) => (
-								<div key={`${departamento.slug}-image-${index}`} className="overflow-hidden rounded-2xl border border-[#e0ded5] bg-white">
-									<img className="h-32 w-full object-cover" src={image} alt={`${departamento.name} vista ${index + 1}`} />
-								</div>
+						<div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+							{galleryImages.map((image, index) => (
+								<button
+									key={image.id}
+									type="button"
+									onClick={() => setSelectedImageId(image.id)}
+									className={`aspect-[4/3] overflow-hidden rounded-2xl border-2 bg-[#ede9dc] transition hover:-translate-y-0.5 hover:shadow-md ${
+										selectedImage.id === image.id ? "border-[#e28b68]" : "border-transparent"
+									}`}
+									aria-label={`Mostrar imagen ${index + 1} de ${departamento.name}`}
+								>
+									<img className="h-full w-full object-cover" src={image.url} alt={`${departamento.name}, vista ${index + 1}`} />
+								</button>
 							))}
 						</div>
+
 					</div>
 
 					<aside className="rounded-[28px] border border-[#e0ded5] bg-[#fffdf9] p-6 shadow-[0_18px_48px_rgba(56,83,71,0.08)]">
 						<p className="text-xs font-bold uppercase tracking-[0.14em] text-[#e28b68]">Desde</p>
 						<div className="mt-3 flex items-end gap-2">
-							<h1 className="font-serif text-4xl tracking-[-0.05em] text-[#385347]">{departamento.formattedPrice}</h1>
+							<h1 className="font-serif text-4xl tracking-[-0.05em] text-[#385347]">{formattedPrice}</h1>
 							<span className="pb-2 text-sm text-[#68716a]">/ día</span>
-						</div>
-
-						<div className="mt-6 space-y-4 border-y border-[#ece7df] py-5">
-							<div className="flex items-center gap-3 text-[#385347]">
-								<BedDouble size={18} className="text-[#e28b68]" />
-								<span>{departamento.bedrooms} dormitorios</span>
-							</div>
-							<div className="flex items-center gap-3 text-[#385347]">
-								<Bath size={18} className="text-[#e28b68]" />
-								<span>{departamento.bathrooms} baños</span>
-							</div>
-							<div className="flex items-center gap-3 text-[#385347]">
-								<Ruler size={18} className="text-[#e28b68]" />
-								<span>{departamento.area} m²</span>
-							</div>
 						</div>
 
 						<div className="mt-6">
@@ -97,29 +101,9 @@ export default function DepartamentoDetallePage() {
 						<h2 className="font-serif text-3xl tracking-[-0.05em]">{departamento.name}</h2>
 					</div>
 
-					<p className="max-w-3xl text-base leading-7 text-[#4d5b55]">{departamento.description}</p>
-
-					<div className="mt-7 grid gap-8 md:grid-cols-[1.2fr_0.8fr]">
-						<div>
-							<h3 className="mb-3 text-sm font-bold uppercase tracking-[0.14em] text-[#385347]">Ubicación</h3>
-							<p className="flex items-start gap-2 text-[#4d5b55]">
-								<MapPin size={18} className="mt-0.5 text-[#e28b68]" />
-								<span>{departamento.address}</span>
-							</p>
-						</div>
-
-						<div>
-							<h3 className="mb-3 text-sm font-bold uppercase tracking-[0.14em] text-[#385347]">Incluye</h3>
-							<ul className="space-y-2 text-[#4d5b55]">
-								{departamento.features.map((feature) => (
-									<li key={feature} className="flex items-center gap-2">
-										<span className="h-2 w-2 rounded-full bg-[#e28b68]" />
-										{feature}
-									</li>
-								))}
-							</ul>
-						</div>
-					</div>
+					<p className="max-w-3xl text-base leading-7 text-[#4d5b55]">
+						Ubicado en {departamento.location}, este departamento está disponible para tu estadía.
+					</p>
 				</div>
 			</section>
 		</main>

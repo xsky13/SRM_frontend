@@ -1,8 +1,9 @@
 import type { Route } from "./+types/home";
 import TarjetaDepartamento from "~/components/DepartamentoCard";
-import { List } from "lucide-react";
+// import { List } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import api from "~/utils/api";
+import type { Departamento } from "~/models/Departamento";
 
 export function meta({ }: Route.MetaArgs) {
 	return [
