@@ -29,7 +29,7 @@ export default function TarjetaDepartamento(props: DepartamentoCardProps) {
 						<small className="text-[11px] text-[#68716a]"></small>
 					</p>
 					<Link
-						to={`/departamento/${departamento.slug}`}
+						to={`/departamento/${departamento.id}`}
 						className="border-b border-[#e28b68] py-1 text-xs font-bold text-[#385347]"
 					>
 						Ver departamento
