@@ -123,6 +123,7 @@ export default function DepartamentoDetallePage() {
 			{showCalendar && (
 				<CalendarioDisponibilidad
 					reservas={reservationsQuery.data ?? []}
+					pricePerDay={departamento.price}
 					onClose={() => setShowCalendar(false)}
 				/>
 			)}

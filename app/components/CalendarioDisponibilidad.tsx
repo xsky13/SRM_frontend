@@ -1,9 +1,10 @@
-import { ChevronLeft, ChevronRight, CircleCheck, CircleX, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, CircleCheck, CircleX, CreditCard, X } from "lucide-react";
 import { useState } from "react";
 import type { Reserva } from "~/types/Reserva";
 
 interface CalendarioDisponibilidadProps {
 	reservas: Reserva[];
+	pricePerDay: number;
 	onClose: () => void;
 }
 
@@ -24,7 +25,7 @@ function isReserved(day: Date, reservas: Reserva[]): boolean {
 	return reservas.some((reserva) => {
 		const start = dateKey(parseDate(reserva.startDate));
 		const end = dateKey(parseDate(reserva.endDate));
-		return current >= start && current < end;
+		return current >= start && current <= end;
 	});
 }
 
@@ -45,11 +46,13 @@ function rangeHasReservation(start: Date, end: Date, reservas: Reserva[]): boole
 	return false;
 }
 
-export default function CalendarioDisponibilidad({ reservas, onClose }: CalendarioDisponibilidadProps) {
+export default function CalendarioDisponibilidad({ reservas, pricePerDay, onClose }: CalendarioDisponibilidadProps) {
 	const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
 	const [rangeStart, setRangeStart] = useState<Date>();
 	const [rangeEnd, setRangeEnd] = useState<Date>();
 	const [isDragging, setIsDragging] = useState(false);
+	const [step, setStep] = useState<"dates" | "payment">("dates");
+	const [paymentOption, setPaymentOption] = useState<"deposit" | "full">("deposit");
 	const firstDay = new Date(month.getFullYear(), month.getMonth(), 1);
 	const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
 	const offset = (firstDay.getDay() + 6) % 7;
@@ -83,18 +86,26 @@ export default function CalendarioDisponibilidad({ reservas, onClose }: Calendar
 		setIsDragging(false);
 	}
 
+	const selectedDays = rangeStart && rangeEnd
+		? Math.round(Math.abs(rangeEnd.getTime() - rangeStart.getTime()) / 86_400_000) + 1
+		: 0;
+	const total = selectedDays * pricePerDay;
+	const deposit = total * 0.1;
+	const formatPrice = (value: number) => `$${value.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
+
 	return (
 		<div className="fixed inset-0 z-50 flex items-center justify-center bg-[#202722]/35 p-4" onClick={onClose}>
 			<section className="w-full max-w-md rounded-2xl border border-[#e0ded5] bg-[#fffdf9] p-4 shadow-2xl sm:p-5" onClick={(event) => event.stopPropagation()} aria-labelledby="availability-title" role="dialog" aria-modal="true">
 			<div className="flex items-start justify-between gap-3">
 				<div>
-					<p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#e28b68]">Disponibilidad</p>
-					<h2 id="availability-title" className="mt-1 font-serif text-2xl tracking-[-0.05em] text-[#385347]">Elegí tus fechas</h2>
+					<p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#e28b68]">{step === "dates" ? "Disponibilidad" : "Forma de pago"}</p>
+					<h2 id="availability-title" className="mt-1 font-serif text-2xl tracking-[-0.05em] text-[#385347]">{step === "dates" ? "Elegí tus fechas" : "Completá tu reserva"}</h2>
 				</div>
 				<button type="button" onClick={onClose} className="rounded-full p-1.5 text-[#68716a] transition hover:bg-[#f6f4ee] hover:text-[#385347]" aria-label="Cerrar calendario">
 					<X size={18} />
 				</button>
 			</div>
+			{step === "dates" ? <>
 			<div className="mt-4 flex items-center justify-between gap-2">
 				<div className="flex items-center gap-2">
 					<button type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))} className="rounded-full border border-[#d3d0c6] p-1.5 text-[#385347] transition hover:bg-[#f6f4ee]" aria-label="Mes anterior">
@@ -145,6 +156,33 @@ export default function CalendarioDisponibilidad({ reservas, onClose }: Calendar
 				<span className="inline-flex items-center gap-1.5"><CircleX size={14} className="text-[#c7765a]" /> Reservado</span>
 				{rangeStart && rangeEnd && <span className="w-full text-[#385347]">{dateKey(rangeStart)} a {dateKey(rangeEnd)}</span>}
 			</div>
+			<button
+				type="button"
+				disabled={!rangeStart || !rangeEnd}
+				onClick={() => setStep("payment")}
+				className="mt-4 w-full rounded-full bg-[#385347] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2d453d] disabled:cursor-not-allowed disabled:bg-[#c9cec5] disabled:text-[#7b837b]"
+			>
+				{rangeStart && rangeEnd
+					? `Reservar ${selectedDays} ${selectedDays === 1 ? "día" : "días"}`
+					: "Reservar días"}
+			</button>
+			</> : (
+				<div className="mt-5">
+					<p className="text-sm text-[#4d5b55]">{selectedDays} {selectedDays === 1 ? "día" : "días"} · Total: <strong>{formatPrice(total)}</strong></p>
+					<div className="mt-4 space-y-2">
+						<button type="button" onClick={() => setPaymentOption("deposit")} className={`flex w-full items-center justify-between rounded-xl border p-3 text-left transition ${paymentOption === "deposit" ? "border-[#385347] bg-[#edf2e8]" : "border-[#e0ded5] bg-white hover:border-[#bfc5b9]"}`}>
+							<span className="flex items-center gap-3"><CreditCard size={18} className="text-[#e28b68]" /><span><strong className="block text-sm text-[#385347]">Abonar seña</strong><small className="text-xs text-[#68716a]">10% · {formatPrice(deposit)}</small></span></span>
+							<span className="h-4 w-4 rounded-full border border-[#385347] p-0.5">{paymentOption === "deposit" && <span className="block h-full w-full rounded-full bg-[#385347]" />}</span>
+						</button>
+						<button type="button" onClick={() => setPaymentOption("full")} className={`flex w-full items-center justify-between rounded-xl border p-3 text-left transition ${paymentOption === "full" ? "border-[#385347] bg-[#edf2e8]" : "border-[#e0ded5] bg-white hover:border-[#bfc5b9]"}`}>
+							<span className="flex items-center gap-3"><CreditCard size={18} className="text-[#e28b68]" /><span><strong className="block text-sm text-[#385347]">Abonar monto completo</strong><small className="text-xs text-[#68716a]">100% · {formatPrice(total)}</small></span></span>
+							<span className="h-4 w-4 rounded-full border border-[#385347] p-0.5">{paymentOption === "full" && <span className="block h-full w-full rounded-full bg-[#385347]" />}</span>
+						</button>
+					</div>
+					<button type="button" className="mt-4 w-full rounded-full bg-[#e28b68] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#c7765a]">Continuar al pago</button>
+					<button type="button" onClick={() => setStep("dates")} className="mt-2 w-full py-2 text-xs font-semibold text-[#385347]">Volver a elegir fechas</button>
+				</div>
+			)}
 			</section>
 		</div>
 	);
