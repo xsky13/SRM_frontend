@@ -4,15 +4,27 @@ import { MapPin, ArrowLeft, Sparkles } from "lucide-react";
 import type { Route } from "./+types/departamento.$slug";
 import { useQuery } from "@tanstack/react-query";
 import type { Departamento } from "~/models/Departamento";
+import CalendarioDisponibilidad from "~/components/CalendarioDisponibilidad";
+import type { Reserva } from "~/types/Reserva";
 import api from "~/utils/api";
 
 export default function DepartamentoDetallePage() {
 	const { id } = useParams<Route.ComponentProps["params"]>();
 	const [selectedImageId, setSelectedImageId] = useState<string>();
+	const [showCalendar, setShowCalendar] = useState(false);
 	const query = useQuery<Departamento>({
 		queryKey: ["apartment", id],
 		queryFn: async () => (await api.get(`/api/apartment/${id}`)).data,
 		enabled: Boolean(id),
+	});
+	const reservationsQuery = useQuery<Reserva[]>({
+		queryKey: ["reservations", id],
+		queryFn: async () => {
+			const { data } = await api.get(`/api/reservation/apartment/${id}`);
+			return Array.isArray(data) ? data : data.reservations ?? [];
+		},
+		enabled: Boolean(id),
+		meta: { errorMessage: "No pudimos cargar la disponibilidad de este departamento" },
 	});
 	const departamento = query.data;
 
@@ -85,9 +97,10 @@ export default function DepartamentoDetallePage() {
 						<div className="mt-6">
 							<button
 								type="button"
+								onClick={() => setShowCalendar(true)}
 								className="w-full rounded-full bg-[#385347] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#2d453d]"
 							>
-								Crear Reserva
+								Reservar Departamento
 							</button>
 						</div>
 					</aside>
@@ -106,6 +119,13 @@ export default function DepartamentoDetallePage() {
 					</p>
 				</div>
 			</section>
+
+			{showCalendar && (
+				<CalendarioDisponibilidad
+					reservas={reservationsQuery.data ?? []}
+					onClose={() => setShowCalendar(false)}
+				/>
+			)}
 		</main>
 	);
 }
