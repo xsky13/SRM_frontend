@@ -20,7 +20,7 @@ export default function DepartamentoDetallePage() {
 	const reservationsQuery = useQuery<Reserva[]>({
 		queryKey: ["reservations", id],
 		queryFn: async () => {
-			const { data } = await api.get(`/api/reservation/apartment/${id}`);
+			const { data } = await api.get(`/api/apartment/${id}`);
 			return Array.isArray(data) ? data : data.reservations ?? [];
 		},
 		enabled: Boolean(id),
