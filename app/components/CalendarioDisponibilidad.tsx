@@ -13,6 +13,18 @@ const monthFormatter = new Intl.DateTimeFormat("es-AR", { month: "long", year: "
 const weekdayFormatter = new Intl.DateTimeFormat("es-AR", { weekday: "short" });
 const apiBaseUrl = import.meta.env.VITE_API_URL ?? "http://localhost:5287";
 
+const today = new Date();
+const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+const firstAllowedMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+const lastAllowedMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+
+function isSelectableDay(day: Date): boolean {
+    const normalizedDay = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+    const normalizedToday = new Date(todayStart.getFullYear(), todayStart.getMonth(), todayStart.getDate());
+
+    return normalizedDay.getTime() >= normalizedToday.getTime();
+}
+
 function dateKey(date: Date): string {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
@@ -75,11 +87,13 @@ export default function CalendarioDisponibilidad({ reservas, pricePerDay, onClos
     );
 
     function updateRangeEnd(day: Date) {
-        if (!rangeStart || rangeHasReservation(rangeStart, day, reservas)) return;
+        if (!rangeStart || !isSelectableDay(day) || rangeHasReservation(rangeStart, day, reservas)) return;
         setRangeEnd(day);
     }
 
     function handleDayPointerDown(day: Date) {
+        if (!isSelectableDay(day)) return;
+
         setIsDragging(true);
         if (!rangeStart || rangeEnd) {
             setRangeStart(day);
@@ -91,7 +105,7 @@ export default function CalendarioDisponibilidad({ reservas, pricePerDay, onClos
     }
 
     function handleDayPointerUp(day: Date) {
-        if (!rangeStart) return;
+        if (!rangeStart || !isSelectableDay(day)) return;
         updateRangeEnd(day);
         setIsDragging(false);
     }
@@ -176,11 +190,27 @@ export default function CalendarioDisponibilidad({ reservas, pricePerDay, onClos
                     <>
                         <div className="mt-4 flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
-                                <button type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))} className="rounded-full border border-[#d3d0c6] p-1.5 text-[#385347] transition hover:bg-[#f6f4ee]" aria-label="Mes anterior">
+                                <button
+                                    type="button"
+                                    disabled={month.getTime() <= firstAllowedMonth.getTime()}
+                                    onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}
+                                    className="rounded-full border border-[#d3d0c6] p-1.5 text-[#385347] transition hover:bg-[#f6f4ee] disabled:cursor-not-allowed disabled:opacity-40"
+                                    aria-label="Mes anterior"
+                                >
                                     <ChevronLeft size={16} />
                                 </button>
-                                <strong className="min-w-32 text-center text-sm capitalize text-[#385347]">{monthFormatter.format(month)}</strong>
-                                <button type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} className="rounded-full border border-[#d3d0c6] p-1.5 text-[#385347] transition hover:bg-[#f6f4ee]" aria-label="Mes siguiente">
+
+                                <strong className="min-w-32 text-center text-sm capitalize text-[#385347]">
+                                    {monthFormatter.format(month)}
+                                </strong>
+
+                                <button
+                                    type="button"
+                                    disabled={month.getTime() >= lastAllowedMonth.getTime()}
+                                    onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}
+                                    className="rounded-full border border-[#d3d0c6] p-1.5 text-[#385347] transition hover:bg-[#f6f4ee] disabled:cursor-not-allowed disabled:opacity-40"
+                                    aria-label="Mes siguiente"
+                                >
                                     <ChevronRight size={16} />
                                 </button>
                             </div>
@@ -200,15 +230,18 @@ export default function CalendarioDisponibilidad({ reservas, pricePerDay, onClos
                                         <button
                                             key={dateKey(day)}
                                             type="button"
-                                            disabled={reserved}
+                                            disabled={reserved || !isSelectableDay(day)}
                                             onPointerDown={() => !reserved && handleDayPointerDown(day)}
                                             onPointerEnter={() => isDragging && updateRangeEnd(day)}
                                             onPointerUp={() => !reserved && handleDayPointerUp(day)}
-                                            className={`aspect-square rounded-lg p-0.5 transition ${reserved
-                                                ? "cursor-not-allowed bg-[#f3ddd3] text-[#a85c43]"
-                                                : selected
-                                                    ? "bg-[#385347] text-white shadow-sm"
-                                                    : "bg-[#edf2e8] text-[#385347] hover:bg-[#dce8d8]"
+                                            className={`aspect-square rounded-lg p-0.5 transition ${
+                                                reserved
+                                                    ? "cursor-not-allowed bg-[#f3ddd3] text-[#a85c43]"
+                                                    : !isSelectableDay(day)
+                                                        ? "cursor-not-allowed bg-[#f0efe9] text-[#a6a29a]"
+                                                        : selected
+                                                            ? "bg-[#385347] text-white shadow-sm"
+                                                            : "bg-[#edf2e8] text-[#385347] hover:bg-[#dce8d8]"
                                             }`}
                                             aria-label={`${day.getDate()} de ${monthFormatter.format(month)}${reserved ? ", reservado" : ", disponible"}`}
                                         >
