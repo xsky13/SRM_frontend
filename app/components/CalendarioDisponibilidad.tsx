@@ -1,4 +1,4 @@
-import { CardPayment, initMercadoPago } from "@mercadopago/sdk-react";
+import { Payment, initMercadoPago } from "@mercadopago/sdk-react";
 import { ChevronLeft, ChevronRight, CircleCheck, CircleX, CreditCard, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Reserva } from "~/types/Reserva";
@@ -60,6 +60,7 @@ export default function CalendarioDisponibilidad({ reservas, pricePerDay, apartm
     const [isDragging, setIsDragging] = useState(false);
     const [step, setStep] = useState<"dates" | "payment">("dates");
     const [paymentOption, setPaymentOption] = useState<"deposit" | "full">("deposit");
+    const [showCardForm, setShowCardForm] = useState(false);
     const [isProcessingPayment, setIsProcessingPayment] = useState(false);
     const [paymentError, setPaymentError] = useState<string | null>(null);
     const [paymentStatus, setPaymentStatus] = useState<number | null>(null);
@@ -97,24 +98,7 @@ export default function CalendarioDisponibilidad({ reservas, pricePerDay, apartm
         setIsDragging(false);
     }
 
-    async function handleCardPaymentSubmit(
-        formData: {
-            token: string;
-            payment_method_id: string;
-            installments: number;
-            transaction_amount?: number;
-            payer?: {
-                email?: string;
-                identification?: {
-                    type?: string;
-                    number?: string;
-                };
-            };
-        },
-        additionalData?: {
-            cardholderName?: string;
-        },
-    ) {
+    async function handlePaymentSubmit(formData: any) {
         if (!rangeStart || !rangeEnd || !apartmentId) {
             return;
         }
@@ -126,14 +110,14 @@ export default function CalendarioDisponibilidad({ reservas, pricePerDay, apartm
         try {
             const payload = {
                 transactionAmount: 0,
-                token: formData.token,
+                token: formData?.token ?? "",
                 description: `Reserva ${selectedDays} ${selectedDays === 1 ? "día" : "días"}`,
-                installments: formData.installments ?? 1,
-                paymentMethodId: formData.payment_method_id,
-                cardholderEmail: formData.payer?.email ?? "",
-                identificationType: formData.payer?.identification?.type ?? "DNI",
-                identificationNumber: formData.payer?.identification?.number ?? "",
-                cardholderName: additionalData?.cardholderName ?? "",
+                installments: formData?.installments ?? 1,
+                paymentMethodId: formData?.payment_method_id ?? formData?.paymentMethodId ?? "",
+                cardholderEmail: formData?.payer?.email ?? "",
+                identificationType: formData?.payer?.identification?.type ?? "DNI",
+                identificationNumber: formData?.payer?.identification?.number ?? "",
+                cardholderName: formData?.cardholderName ?? "",
                 checkInDate: new Date(rangeStart).toISOString(),
                 checkOutDate: new Date(rangeEnd).toISOString(),
             };
@@ -152,7 +136,7 @@ export default function CalendarioDisponibilidad({ reservas, pricePerDay, apartm
             const data = await response.json().catch(() => null);
 
             if (!response.ok) {
-                throw new Error(data?.error ?? "No se pudo procesar el pago con la tarjeta.");
+                throw new Error(data?.error ?? "No se pudo procesar el pago.");
             }
 
             const status = Number(data?.paymentStatus ?? data?.status ?? 0);
@@ -181,7 +165,7 @@ export default function CalendarioDisponibilidad({ reservas, pricePerDay, apartm
             setPaymentError("El pago fue procesado, pero el backend no devolvió un estado reconocible.");
         } catch (error) {
             setPaymentError(
-                error instanceof Error ? error.message : "Error al procesar el pago con la tarjeta.",
+                error instanceof Error ? error.message : "Error al procesar el pago.",
             );
         } finally {
             setIsProcessingPayment(false);
@@ -282,7 +266,10 @@ export default function CalendarioDisponibilidad({ reservas, pricePerDay, apartm
                         <div className="mt-4 space-y-2">
                             <button
                                 type="button"
-                                onClick={() => setPaymentOption("deposit")}
+                                onClick={() => {
+                                    setPaymentOption("deposit");
+                                    setShowCardForm(false);
+                                }}
                                 className={`flex w-full items-center justify-between rounded-xl border p-3 text-left transition ${paymentOption === "deposit" ? "border-[#385347] bg-[#edf2e8]" : "border-[#e0ded5] bg-white hover:border-[#bfc5b9]"}`}
                             >
                                 <span className="flex items-center gap-3">
@@ -299,7 +286,10 @@ export default function CalendarioDisponibilidad({ reservas, pricePerDay, apartm
 
                             <button
                                 type="button"
-                                onClick={() => setPaymentOption("full")}
+                                onClick={() => {
+                                    setPaymentOption("full");
+                                    setShowCardForm(false);
+                                }}
                                 className={`flex w-full items-center justify-between rounded-xl border p-3 text-left transition ${paymentOption === "full" ? "border-[#385347] bg-[#edf2e8]" : "border-[#e0ded5] bg-white hover:border-[#bfc5b9]"}`}
                             >
                                 <span className="flex items-center gap-3">
@@ -319,29 +309,41 @@ export default function CalendarioDisponibilidad({ reservas, pricePerDay, apartm
                             <p className="mt-3 text-sm text-[#b74f3d]">{paymentError}</p>
                         )}
 
-                        <div className="mt-4 max-h-[55vh] overflow-y-auto rounded-2xl border border-[#e0ded5] bg-[#f8f4ef] p-3">
-                            <CardPayment
-                                initialization={{
-                                    amount: paymentAmount,
-                                    payer: {
-                                        email: "usuario@email.com",
-                                    },
-                                }}
-                                customization={{
-                                    paymentMethods: {
-                                        maxInstallments: 12,
-                                        minInstallments: 1,
-                                    },
-                                }}
-                                onReady={() => undefined}
-                                onError={(error) => {
-                                    setPaymentError(error?.message ?? "No se pudo inicializar el pago con tarjeta.");
-                                }}
-                                onSubmit={async (formData, additionalData) => {
-                                    await handleCardPaymentSubmit(formData, additionalData);
-                                }}
-                            />
-                        </div>
+                        {!showCardForm ? (
+                            <button
+                                type="button"
+                                onClick={() => setShowCardForm(true)}
+                                disabled={isProcessingPayment}
+                                className="mt-4 w-full rounded-full bg-[#e28b68] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#c7765a] disabled:cursor-not-allowed disabled:bg-[#dcb09b]"
+                            >
+                                Continuar al pago
+                            </button>
+                        ) : (
+                            <div className="mt-4 max-h-[55vh] overflow-y-auto rounded-2xl border border-[#e0ded5] bg-[#f8f4ef] p-3">
+                                <Payment
+                                    initialization={{
+                                        amount: paymentAmount,
+                                    }}
+                                    customization={{
+                                        paymentMethods: {
+                                            ticket: "all",
+                                            creditCard: "all",
+                                            debitCard: "all",
+                                            mercadoPay: "all",
+                                        },
+                                    }}
+                                    callbacks={{
+                                        onReady: () => undefined,
+                                        onSubmit: async (formData: any) => {
+                                            await handlePaymentSubmit(formData);
+                                        },
+                                        onError: (error: any) => {
+                                            setPaymentError(error?.message ?? "No se pudo inicializar el pago.");
+                                        },
+                                    }}
+                                />
+                            </div>
+                        )}
 
                         {isProcessingPayment && (
                             <p className="mt-3 text-center text-sm font-medium text-[#385347]">Procesando pago...</p>
