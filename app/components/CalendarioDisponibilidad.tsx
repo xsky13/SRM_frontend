@@ -160,8 +160,8 @@ export default function CalendarioDisponibilidad({ reservas, pricePerDay, onClos
     const formatPrice = (value: number) => `$${value.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#202722]/35 p-4" onClick={onClose}>
-            <section className="w-full max-w-md rounded-2xl border border-[#e0ded5] bg-[#fffdf9] p-4 shadow-2xl sm:p-5" onClick={(event) => event.stopPropagation()} aria-labelledby="availability-title" role="dialog" aria-modal="true">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#202722]/35 p-4" onClick={onClose}>
+            <section className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-[#e0ded5] bg-[#fffdf9] p-4 shadow-2xl sm:p-5" onClick={(event) => event.stopPropagation()} aria-labelledby="availability-title" role="dialog" aria-modal="true">
                 <div className="flex items-start justify-between gap-3">
                     <div>
                         <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#e28b68]">{step === "dates" ? "Disponibilidad" : "Forma de pago"}</p>
@@ -283,7 +283,7 @@ export default function CalendarioDisponibilidad({ reservas, pricePerDay, onClos
                         )}
 
                         {paymentPreferenceId ? (
-                            <div className="mt-4 rounded-2xl border border-[#e0ded5] bg-[#f8f4ef] p-3">
+                            <div className="mt-4 max-h-[55vh] overflow-y-auto rounded-2xl border border-[#e0ded5] bg-[#f8f4ef] p-3">
                                 <Payment
                                     initialization={{
                                         amount: paymentAmount,
