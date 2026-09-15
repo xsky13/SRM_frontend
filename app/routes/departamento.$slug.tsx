@@ -76,7 +76,8 @@ export default function DepartamentoDetallePage() {
 				</div>
 			</header>
 
-			<div className="mx-auto max-w-7xl px-5 pb-3 md:px-8">
+      <section className="mx-auto max-w-7xl px-5 pb-8 md:px-8 mt-14">
+        <div className="pb-4">
 				<Link
 					className="inline-flex rounded-full border border-[#c8c2b8] bg-[#f5f2ec] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#385347] transition hover:border-[#b7b0a4] hover:bg-[#efeae1]"
 					to="/"
@@ -84,9 +85,7 @@ export default function DepartamentoDetallePage() {
 					Volver al listado
 				</Link>
 			</div>
-
-			<section className="mx-auto max-w-7xl px-5 pb-8 md:px-8">
-				<div className="grid gap-8 lg:grid-cols-[0.95fr_1.35fr]">
+				<div className="grid items-start gap-16 lg:grid-cols-[0.95fr_1.35fr]">
 					<div className="flex flex-col justify-center">
 						<h1 className="font-serif text-5xl tracking-[-0.05em] text-[#202722] md:text-6xl">
 							{departamento.name} en {departamento.location}
@@ -118,7 +117,17 @@ export default function DepartamentoDetallePage() {
 					</div>
 
 					<div className="space-y-4">
-						<div className="grid grid-cols-3 gap-3">
+
+						<div className="rounded-[28px] border border-[#e0ded5] bg-[#fffdf9] p-3 shadow-[0_18px_48px_rgba(56,83,71,0.08)]">
+							<div className="overflow-hidden rounded-[22px] border border-[#e0ded5] bg-[#ede9dc]">
+								<img
+									className="h-[400px] w-full object-cover"
+									src={departamento.coverImgUrl}
+									alt={`${departamento.name}, imagen de portada`}
+								/>
+							</div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
 							{galleryImages.slice(0, 3).map((image, index) => (
 								<button
 									key={image.id}
@@ -136,16 +145,6 @@ export default function DepartamentoDetallePage() {
 									/>
 								</button>
 							))}
-						</div>
-
-						<div className="rounded-[28px] border border-[#e0ded5] bg-[#fffdf9] p-3 shadow-[0_18px_48px_rgba(56,83,71,0.08)]">
-							<div className="overflow-hidden rounded-[22px] border border-[#e0ded5] bg-[#ede9dc]">
-								<img
-									className="h-[400px] w-full object-cover"
-									src={departamento.coverImgUrl}
-									alt={`${departamento.name}, imagen de portada`}
-								/>
-							</div>
 						</div>
 					</div>
 				</div>

@@ -1,4 +1,4 @@
-import { Payment, initMercadoPago } from "@mercadopago/sdk-react";
+import { CardPayment, Payment, initMercadoPago } from "@mercadopago/sdk-react";
 import { ChevronLeft, ChevronRight, CircleCheck, CircleX, CreditCard, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Reserva } from "~/types/Reserva";
@@ -12,7 +12,7 @@ interface CalendarioDisponibilidadProps {
 
 const monthFormatter = new Intl.DateTimeFormat("es-AR", { month: "long", year: "numeric" });
 const weekdayFormatter = new Intl.DateTimeFormat("es-AR", { weekday: "short" });
-const apiBaseUrl = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
+const apiBaseUrl = import.meta.env.VITE_API_URL;
 
 const today = new Date();
 const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -111,7 +111,7 @@ export default function CalendarioDisponibilidad({ reservas, pricePerDay, apartm
         updateRangeEnd(day);
         setIsDragging(false);
     }
-	
+
     async function handlePaymentSubmit(formData: any): Promise<void> {
 					console.log("asdfasdfasdfsdafsadfasd");
 
@@ -119,29 +119,11 @@ export default function CalendarioDisponibilidad({ reservas, pricePerDay, apartm
             throw new Error("Faltan datos de la reserva.");
         }
 
-        // const token = formData?.token ?? "";
-        // const paymentMethodId = formData?.payment_method_id ?? formData?.paymentMethodId ?? "";
-        // const payerEmail = formData?.payer?.email ?? "";
-
-        // if (!token || !paymentMethodId) {
-        //     throw new Error("Falta el token o el método de pago para continuar.");
-        // }
-
         setIsProcessingPayment(true);
         setPaymentError(null);
         setPaymentStatus(null);
 
         try {
-            // const payload = {
-            //     transactionAmount: paymentAmount,
-            //     token,
-            //     description: `Reserva ${selectedDays} ${selectedDays === 1 ? "día" : "días"}`,
-            //     installments: formData?.installments ?? 1,
-            //     paymentMethodId,
-            //     email: payerEmail,
-            //     checkInDate: new Date(rangeStart).toISOString(),
-            //     checkOutDate: new Date(rangeEnd).toISOString(),
-            // };
 
 			console.log("test");
             const response = await fetch(
@@ -226,7 +208,7 @@ export default function CalendarioDisponibilidad({ reservas, pricePerDay, apartm
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#202722]/35 p-4" onClick={onClose}>
-            <section className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-[#e0ded5] bg-[#fffdf9] p-4 shadow-2xl sm:p-5" onClick={(event) => event.stopPropagation()} aria-labelledby="availability-title" role="dialog" aria-modal="true">
+        <section className={`w-full ${step == "dates" ? "max-w-md" : "max-w-3xl"} max-h-[90vh] overflow-y-auto rounded-2xl border border-[#e0ded5] bg-[#fffdf9] p-4 shadow-2xl sm:p-5`} onClick={(event) => event.stopPropagation()} aria-labelledby="availability-title" role="dialog" aria-modal="true">
                 <div className="flex items-start justify-between gap-3">
                     <div>
                         <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#e28b68]">{step === "dates" ? "Disponibilidad" : "Forma de pago"}</p>
@@ -382,8 +364,18 @@ export default function CalendarioDisponibilidad({ reservas, pricePerDay, apartm
                                 Continuar al pago
                             </button>
                         ) : (
-                            <div className="mt-4 max-h-[55vh] overflow-y-auto rounded-2xl border border-[#e0ded5] bg-[#f8f4ef] p-3">
-                                <Payment
+                    <div className="mt-4 max-h-[55vh] overflow-y-auto rounded-2xl border border-[#e0ded5] bg-[#f8f4ef] p-3">
+                      <CardPayment
+                        initialization={{
+                           amount: paymentAmount
+                         }}
+                        onReady={() => undefined}
+                            onSubmit={(formData: any) => handlePaymentSubmit(formData)}
+                            onError={(error: any) => {
+                                setPaymentError(error?.message ?? "No se pudo inicializar el pago.");
+                            }}
+                      />
+                                {/*<Payment
                                     initialization={{
                                         amount: paymentAmount,
                                     }}
@@ -400,7 +392,7 @@ export default function CalendarioDisponibilidad({ reservas, pricePerDay, apartm
                                         onError={(error: any) => {
                                             setPaymentError(error?.message ?? "No se pudo inicializar el pago.");
                                         }}
-                                />
+                                />*/}
                             </div>
                         )}
 
