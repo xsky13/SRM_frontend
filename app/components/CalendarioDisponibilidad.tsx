@@ -12,7 +12,19 @@ interface CalendarioDisponibilidadProps {
 
 const monthFormatter = new Intl.DateTimeFormat("es-AR", { month: "long", year: "numeric" });
 const weekdayFormatter = new Intl.DateTimeFormat("es-AR", { weekday: "short" });
-const apiBaseUrl = import.meta.env.VITE_API_URL ?? "http://localhost:5287";
+const apiBaseUrl = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
+
+const today = new Date();
+const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+const firstAllowedMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+const lastAllowedMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+
+function isSelectableDay(day: Date): boolean {
+    const normalizedDay = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+    const normalizedToday = new Date(todayStart.getFullYear(), todayStart.getMonth(), todayStart.getDate());
+
+    return normalizedDay.getTime() >= normalizedToday.getTime();
+}
 
 function dateKey(date: Date): string {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -77,11 +89,13 @@ export default function CalendarioDisponibilidad({ reservas, pricePerDay, apartm
     );
 
     function updateRangeEnd(day: Date) {
-        if (!rangeStart || rangeHasReservation(rangeStart, day, reservas)) return;
+        if (!rangeStart || !isSelectableDay(day) || rangeHasReservation(rangeStart, day, reservas)) return;
         setRangeEnd(day);
     }
 
     function handleDayPointerDown(day: Date) {
+        if (!isSelectableDay(day)) return;
+
         setIsDragging(true);
         if (!rangeStart || rangeEnd) {
             setRangeStart(day);
@@ -93,35 +107,43 @@ export default function CalendarioDisponibilidad({ reservas, pricePerDay, apartm
     }
 
     function handleDayPointerUp(day: Date) {
-        if (!rangeStart) return;
+        if (!rangeStart || !isSelectableDay(day)) return;
         updateRangeEnd(day);
         setIsDragging(false);
     }
+	
+    async function handlePaymentSubmit(formData: any): Promise<void> {
+					console.log("asdfasdfasdfsdafsadfasd");
 
-    async function handlePaymentSubmit(formData: any) {
         if (!rangeStart || !rangeEnd || !apartmentId) {
-            return;
+            throw new Error("Faltan datos de la reserva.");
         }
+
+        // const token = formData?.token ?? "";
+        // const paymentMethodId = formData?.payment_method_id ?? formData?.paymentMethodId ?? "";
+        // const payerEmail = formData?.payer?.email ?? "";
+
+        // if (!token || !paymentMethodId) {
+        //     throw new Error("Falta el token o el método de pago para continuar.");
+        // }
 
         setIsProcessingPayment(true);
         setPaymentError(null);
         setPaymentStatus(null);
 
         try {
-            const payload = {
-                transactionAmount: 0,
-                token: formData?.token ?? "",
-                description: `Reserva ${selectedDays} ${selectedDays === 1 ? "día" : "días"}`,
-                installments: formData?.installments ?? 1,
-                paymentMethodId: formData?.payment_method_id ?? formData?.paymentMethodId ?? "",
-                cardholderEmail: formData?.payer?.email ?? "",
-                identificationType: formData?.payer?.identification?.type ?? "DNI",
-                identificationNumber: formData?.payer?.identification?.number ?? "",
-                cardholderName: formData?.cardholderName ?? "",
-                checkInDate: new Date(rangeStart).toISOString(),
-                checkOutDate: new Date(rangeEnd).toISOString(),
-            };
+            // const payload = {
+            //     transactionAmount: paymentAmount,
+            //     token,
+            //     description: `Reserva ${selectedDays} ${selectedDays === 1 ? "día" : "días"}`,
+            //     installments: formData?.installments ?? 1,
+            //     paymentMethodId,
+            //     email: payerEmail,
+            //     checkInDate: new Date(rangeStart).toISOString(),
+            //     checkOutDate: new Date(rangeEnd).toISOString(),
+            // };
 
+			console.log("test");
             const response = await fetch(
                 `${apiBaseUrl.replace(/\/$/, "")}/api/Payment/process_card_payment/${apartmentId}`,
                 {
@@ -129,44 +151,66 @@ export default function CalendarioDisponibilidad({ reservas, pricePerDay, apartm
                     headers: {
                         "Content-Type": "application/json",
                     },
-                    body: JSON.stringify(payload),
+                    body: JSON.stringify({...formData, checkInDate: new Date(rangeStart).toISOString(), checkOutDate: new Date(rangeEnd).toISOString(), paymentOption}),
                 },
             );
 
-            const data = await response.json().catch(() => null);
+            const rawText = await response.text();
+            let data: any = null;
+
+			console.log("rawText", rawText);
+
+            if (rawText) {
+                try {
+                    data = JSON.parse(rawText);
+                } catch {
+                    data = { message: rawText };
+                }
+            }
 
             if (!response.ok) {
-                throw new Error(data?.error ?? "No se pudo procesar el pago.");
+                const message =
+                    data?.message ??
+                    data?.error ??
+                    data?.title ??
+                    "No se pudo procesar el pago.";
+
+                throw new Error(message);
             }
 
-            const status = Number(data?.paymentStatus ?? data?.status ?? 0);
-            setPaymentStatus(status);
+            const normalizedStatus = Number(
+                data?.paymentStatus ?? data?.status ?? data?.payment_status ?? 0
+            );
 
-            if (status === 2) {
-                setPaymentError(null);
+            setPaymentStatus(normalizedStatus);
+			console.log(normalizedStatus);
+
+            if (normalizedStatus === 2) {
                 return;
             }
 
-            if (status === 1) {
-                setPaymentError("Pago pendiente. Mercado Pago continuará el proceso y te avisará cuando se confirme.");
-                return;
+            if (normalizedStatus === 1) {
+                throw new Error(
+                    "Pago pendiente. Mercado Pago continuará el proceso y te avisará cuando se confirme."
+                );
             }
 
-            if (status === 4) {
-                setPaymentError("El pago fue rechazado. Verificá los datos de tu tarjeta e intentá nuevamente.");
-                return;
+            if (normalizedStatus === 4) {
+                throw new Error("El pago fue rechazado. Verificá los datos de tu tarjeta.");
             }
 
-            if (status === 5) {
-                setPaymentError("El pago fue cancelado.");
-                return;
+            if (normalizedStatus === 5) {
+                throw new Error("El pago fue cancelado.");
             }
 
-            setPaymentError("El pago fue procesado, pero el backend no devolvió un estado reconocible.");
+            throw new Error("El backend respondió un estado de pago no reconocido.");
         } catch (error) {
             setPaymentError(
-                error instanceof Error ? error.message : "Error al procesar el pago.",
+                error instanceof Error ? error.message : "Error al procesar el pago."
             );
+
+            // Importante: re-lanzar para que el SDK de Mercado Pago pueda cerrar la animación
+            throw error;
         } finally {
             setIsProcessingPayment(false);
         }
@@ -197,11 +241,27 @@ export default function CalendarioDisponibilidad({ reservas, pricePerDay, apartm
                     <>
                         <div className="mt-4 flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
-                                <button type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))} className="rounded-full border border-[#d3d0c6] p-1.5 text-[#385347] transition hover:bg-[#f6f4ee]" aria-label="Mes anterior">
+                                <button
+                                    type="button"
+                                    disabled={month.getTime() <= firstAllowedMonth.getTime()}
+                                    onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}
+                                    className="rounded-full border border-[#d3d0c6] p-1.5 text-[#385347] transition hover:bg-[#f6f4ee] disabled:cursor-not-allowed disabled:opacity-40"
+                                    aria-label="Mes anterior"
+                                >
                                     <ChevronLeft size={16} />
                                 </button>
-                                <strong className="min-w-32 text-center text-sm capitalize text-[#385347]">{monthFormatter.format(month)}</strong>
-                                <button type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} className="rounded-full border border-[#d3d0c6] p-1.5 text-[#385347] transition hover:bg-[#f6f4ee]" aria-label="Mes siguiente">
+
+                                <strong className="min-w-32 text-center text-sm capitalize text-[#385347]">
+                                    {monthFormatter.format(month)}
+                                </strong>
+
+                                <button
+                                    type="button"
+                                    disabled={month.getTime() >= lastAllowedMonth.getTime()}
+                                    onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}
+                                    className="rounded-full border border-[#d3d0c6] p-1.5 text-[#385347] transition hover:bg-[#f6f4ee] disabled:cursor-not-allowed disabled:opacity-40"
+                                    aria-label="Mes siguiente"
+                                >
                                     <ChevronRight size={16} />
                                 </button>
                             </div>
@@ -221,15 +281,18 @@ export default function CalendarioDisponibilidad({ reservas, pricePerDay, apartm
                                         <button
                                             key={dateKey(day)}
                                             type="button"
-                                            disabled={reserved}
+                                            disabled={reserved || !isSelectableDay(day)}
                                             onPointerDown={() => !reserved && handleDayPointerDown(day)}
                                             onPointerEnter={() => isDragging && updateRangeEnd(day)}
                                             onPointerUp={() => !reserved && handleDayPointerUp(day)}
-                                            className={`aspect-square rounded-lg p-0.5 transition ${reserved
-                                                ? "cursor-not-allowed bg-[#f3ddd3] text-[#a85c43]"
-                                                : selected
-                                                    ? "bg-[#385347] text-white shadow-sm"
-                                                    : "bg-[#edf2e8] text-[#385347] hover:bg-[#dce8d8]"
+                                            className={`aspect-square rounded-lg p-0.5 transition ${
+                                                reserved
+                                                    ? "cursor-not-allowed bg-[#f3ddd3] text-[#a85c43]"
+                                                    : !isSelectableDay(day)
+                                                        ? "cursor-not-allowed bg-[#f0efe9] text-[#a6a29a]"
+                                                        : selected
+                                                            ? "bg-[#385347] text-white shadow-sm"
+                                                            : "bg-[#edf2e8] text-[#385347] hover:bg-[#dce8d8]"
                                             }`}
                                             aria-label={`${day.getDate()} de ${monthFormatter.format(month)}${reserved ? ", reservado" : ", disponible"}`}
                                         >
@@ -329,18 +392,14 @@ export default function CalendarioDisponibilidad({ reservas, pricePerDay, apartm
                                             ticket: "all",
                                             creditCard: "all",
                                             debitCard: "all",
-                                            mercadoPay: "all",
+                                            mercadoPay: "none",
                                         },
                                     }}
-                                    callbacks={{
-                                        onReady: () => undefined,
-                                        onSubmit: async (formData: any) => {
-                                            await handlePaymentSubmit(formData);
-                                        },
-                                        onError: (error: any) => {
+                                    onReady={() => undefined}
+                                        onSubmit={(formData: any) => handlePaymentSubmit(formData)}
+                                        onError={(error: any) => {
                                             setPaymentError(error?.message ?? "No se pudo inicializar el pago.");
-                                        },
-                                    }}
+                                        }}
                                 />
                             </div>
                         )}
