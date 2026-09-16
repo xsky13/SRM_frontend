@@ -1,5 +1,6 @@
-import { CardPayment, Payment, initMercadoPago } from "@mercadopago/sdk-react";
+import { CardPayment, initMercadoPago } from "@mercadopago/sdk-react";
 import {
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   CircleCheck,
@@ -53,8 +54,8 @@ function dateKey(date: Date): string {
 }
 
 function parseDate(value: string): Date {
-    const date = new Date(`${value.slice(0, 10)}T00:00:00`);
-    return Number.isNaN(date.getTime()) ? new Date(0) : date;
+  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? new Date(0) : date;
 }
 
 function isReserved(day: Date, reservas: Reserva[]): boolean {
@@ -62,7 +63,13 @@ function isReserved(day: Date, reservas: Reserva[]): boolean {
   return reservas.some((reserva) => {
     const start = dateKey(parseDate(reserva.checkInDate));
     const end = dateKey(parseDate(reserva.checkOutDate));
-    return current >= start && current <= end && (reserva.reservationState == 2 || reserva.reservationState == 3 || reserva.reservationState == 4);
+    return (
+      current >= start &&
+      current <= end &&
+      (reserva.reservationState == 2 ||
+        reserva.reservationState == 3 ||
+        reserva.reservationState == 4)
+    );
   });
 }
 
@@ -107,6 +114,7 @@ export default function CalendarioDisponibilidad({
   const [month, setMonth] = useState(
     () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   );
+  const [userEmail, setUserEmail] = useState("test@gmail.com");
   const [rangeStart, setRangeStart] = useState<Date>();
   const [rangeEnd, setRangeEnd] = useState<Date>();
   const [isDragging, setIsDragging] = useState(false);
@@ -216,6 +224,7 @@ export default function CalendarioDisponibilidad({
         data?.paymentStatus ?? data?.status ?? data?.payment_status ?? 0,
       );
 
+      setUserEmail(data.email);
       setPaymentStatus(normalizedStatus);
 
       if (normalizedStatus === 2) {
@@ -312,7 +321,7 @@ export default function CalendarioDisponibilidad({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  disabled={(month.getTime() <= firstAllowedMonth.getTime())}
+                  disabled={month.getTime() <= firstAllowedMonth.getTime()}
                   onClick={() =>
                     setMonth(
                       new Date(month.getFullYear(), month.getMonth() - 1, 1),
@@ -367,7 +376,7 @@ export default function CalendarioDisponibilidad({
                       <button
                         key={dateKey(day)}
                         type="button"
-                        title={ reserved ? "Fecha reservada" : ""}
+                        title={reserved ? "Fecha reservada" : ""}
                         disabled={reserved || !isSelectableDay(day)}
                         onPointerDown={() =>
                           !reserved && handleDayPointerDown(day)
@@ -510,6 +519,14 @@ export default function CalendarioDisponibilidad({
                     );
                   }}
                 />
+                {isProcessingPayment && (
+                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-[#f8f4ef]/95">
+                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#385347] border-t-transparent" />
+                    <p className="text-sm font-medium text-[#385347]">
+                      Procesando pago...
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -535,8 +552,12 @@ export default function CalendarioDisponibilidad({
           </div>
         ) : step == "success" ? (
           <div className="mt-4 ">
-            <div className="border border-dashed rounded-md border-soft p-10 mb-4 w-full text-center text-[#68716a]">
-              <p>Ingrese a su correo electronico para ver el comprobante.</p>
+            <div className="p-5 py-7 text-center mb-4 w-full flex flex-col items-center  text-[#68716a]">
+              <CheckCircle2 className="text-primary w-15 h-15 pb-3" />
+              <p>
+                Ingrese a su buzon en {userEmail} para ver el comprobante de
+                esta reserva. Si quiere cancelarla, comuniquese con el emisor.
+              </p>
             </div>
             <button
               type="button"
