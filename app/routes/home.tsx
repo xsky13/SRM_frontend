@@ -37,15 +37,15 @@ const query = useQuery<Departamento[]>({
     </a>
 
     <div className="flex items-center gap-4 text-sm text-[#385347]">
-        <a href="/" className="transition hover:text-[#e28b68]">
+		<a href="/" className="ui-link">
             Legal
         </a>
-        <a href="/" className="transition hover:text-[#e28b68]">
+		<a href="/" className="ui-link">
             Crear cuenta
         </a>
         <button
             type="button"
-            className="rounded-full bg-[#385347] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#2d453d]"
+			className="ui-button ui-button-sm"
         >
             Iniciar sesión
         </button>

@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
-import type { Route } from "./+types/departamento.$slug";
 import type { Departamento } from "~/models/Departamento";
 import type { Reserva } from "~/types/Reserva";
 import CalendarioDisponibilidad from "~/components/CalendarioDisponibilidad";
 import api from "~/utils/api";
+import type { Route } from "./+types/departamento";
 
 export default function DepartamentoDetallePage() {
 	const { id } = useParams<Route.ComponentProps["params"]>();
@@ -21,12 +21,12 @@ export default function DepartamentoDetallePage() {
 	const reservationsQuery = useQuery<Reserva[]>({
 		queryKey: ["reservations", id],
 		queryFn: async () => {
-			const { data } = await api.get(`/api/apartment/${id}`);
+			const { data } = await api.get(`/api/reservation/apartment/${id}`);
 			return Array.isArray(data) ? data : data.reservations ?? [];
 		},
 		enabled: Boolean(id),
 		meta: { errorMessage: "No pudimos cargar la disponibilidad de este departamento" },
-	});
+  });
 
 	const departamento = query.data;
 
@@ -61,15 +61,15 @@ export default function DepartamentoDetallePage() {
 				</div>
 
 				<div className="flex items-center gap-4 text-sm text-[#385347]">
-					<Link to="/" className="transition hover:text-[#e28b68]">
+					<Link to="/" className="ui-link">
 						Legal
 					</Link>
-					<Link to="/" className="transition hover:text-[#e28b68]">
+					<Link to="/" className="ui-link">
 						Crear cuenta
 					</Link>
 					<button
 						type="button"
-						className="rounded-full bg-[#385347] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#2d453d]"
+						className="ui-button ui-button-sm"
 					>
 						Iniciar sesión
 					</button>
@@ -79,7 +79,7 @@ export default function DepartamentoDetallePage() {
       <section className="mx-auto max-w-7xl px-5 pb-8 md:px-8 mt-14">
         <div className="pb-4">
 				<Link
-					className="inline-flex rounded-full border border-[#c8c2b8] bg-[#f5f2ec] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#385347] transition hover:border-[#b7b0a4] hover:bg-[#efeae1]"
+					className="ui-button px-3 py-1.5 text-xs uppercase tracking-[0.12em]"
 					to="/"
 				>
 					Volver al listado
@@ -95,7 +95,7 @@ export default function DepartamentoDetallePage() {
 							Lorem ipsum{departamento.descrip}
 						</p> */}
 
-						<div className="mt-8 rounded-2xl border border-dashed border-[#c8c2b8] bg-[#f5f2ec] p-5">
+						<div className="mt-8 rounded-[.8rem] border border-dashed border-[#c8c2b8] bg-[#f5f2ec] p-5">
 							<p className="text-xs font-bold uppercase tracking-[0.14em] text-[#e28b68]">Desde</p>
 							<div className="mt-3 flex items-end gap-2">
 								<span className="font-serif text-5xl tracking-[-0.05em] text-[#385347]">
@@ -109,17 +109,17 @@ export default function DepartamentoDetallePage() {
 							<button
 								type="button"
 								onClick={() => setShowCalendar(true)}
-								className="w-full rounded-full bg-[#385347] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#2d453d]"
+								className="ui-button ui-button-md ui-button-block bg-primary text-primary-foreground"
 							>
-								Crear reserva
+								Reservar departamento
 							</button>
 						</div>
 					</div>
 
 					<div className="space-y-4">
 
-						<div className="rounded-[28px] border border-[#e0ded5] bg-[#fffdf9] p-3 shadow-[0_18px_48px_rgba(56,83,71,0.08)]">
-							<div className="overflow-hidden rounded-[22px] border border-[#e0ded5] bg-[#ede9dc]">
+						<div className="ui-border rounded-md bg-[#fffdf9] p-3">
+							<div className="ui-border overflow-hidden rounded-md bg-[#ede9dc]">
 								<img
 									className="h-[400px] w-full object-cover"
 									src={departamento.coverImgUrl}
@@ -133,7 +133,7 @@ export default function DepartamentoDetallePage() {
 									key={image.id}
 									type="button"
 									onClick={() => setSelectedImageId(image.id)}
-									className={`aspect-[4/3] overflow-hidden rounded-2xl border-2 bg-[#ede9dc] transition hover:-translate-y-0.5 hover:shadow-md ${
+									className={`aspect-[4/3] overflow-hidden rounded-md border-2 bg-[#ede9dc] transition ${
 										selectedImage.id === image.id ? "border-[#e28b68]" : "border-transparent"
 									}`}
 									aria-label={`Mostrar imagen ${index + 1} de ${departamento.name}`}

@@ -1,6 +1,7 @@
 export interface Reserva {
 	id: string;
 	apartmentId: string;
-	startDate: string;
-	endDate: string;
+	checkInDate: string;
+  checkOutDate: string;
+  reservationState: number;
 }
