@@ -17,6 +17,9 @@ interface CalendarioDisponibilidadProps {
   pricePerDay: number;
   apartmentId: string;
   isAuthenticated: boolean;
+  initialCheckInDate?: string;
+  initialCheckOutDate?: string;
+  initialStep?: "dates" | "payment";
   onClose: () => void;
 }
 
@@ -108,9 +111,19 @@ export default function CalendarioDisponibilidad({
   pricePerDay,
   apartmentId,
   isAuthenticated,
+  initialCheckInDate,
+  initialCheckOutDate,
+  initialStep = "dates",
   onClose,
 }: CalendarioDisponibilidadProps) {
   const location = useLocation();
+
+  const initialStart = initialCheckInDate
+    ? new Date(initialCheckInDate)
+    : undefined;
+  const initialEnd = initialCheckOutDate
+    ? new Date(initialCheckOutDate)
+    : undefined;
 
   useEffect(() => {
     initMercadoPago("TEST-440e66b5-54b5-49f2-9930-3dd2e1baed8e");
@@ -120,10 +133,10 @@ export default function CalendarioDisponibilidad({
     () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   );
   const [userEmail, setUserEmail] = useState("test@gmail.com");
-  const [rangeStart, setRangeStart] = useState<Date>();
-  const [rangeEnd, setRangeEnd] = useState<Date>();
+  const [rangeStart, setRangeStart] = useState<Date | undefined>(initialStart);
+  const [rangeEnd, setRangeEnd] = useState<Date | undefined>(initialEnd);
   const [isDragging, setIsDragging] = useState(false);
-  const [step, setStep] = useState<"dates" | "payment" | "success">("dates");
+  const [step, setStep] = useState<"dates" | "payment" | "success">(initialStep);
   const [paymentOption, setPaymentOption] = useState<"deposit" | "full">(
     isAuthenticated ? "deposit" : "full",
   );
@@ -480,10 +493,32 @@ export default function CalendarioDisponibilidad({
                   La opción de abonar la seña es solo para usuarios logueados. {" "}
                   <Link
                     to="/register"
-                    state={{ returnTo: location.pathname }}
+                    state={{
+                      returnTo: location.pathname,
+                      reservation: {
+                        apartmentId,
+                        checkInDate: rangeStart?.toISOString(),
+                        checkOutDate: rangeEnd?.toISOString(),
+                      },
+                    }}
                     className="font-semibold underline"
                   >
                     Registrate
+                  </Link>
+                  {" o "}
+                  <Link
+                    to="/login"
+                    state={{
+                      returnTo: location.pathname,
+                      reservation: {
+                        apartmentId,
+                        checkInDate: rangeStart?.toISOString(),
+                        checkOutDate: rangeEnd?.toISOString(),
+                      },
+                    }}
+                    className="font-semibold underline"
+                  >
+                    iniciá sesión
                   </Link>
                 </p>
               )}

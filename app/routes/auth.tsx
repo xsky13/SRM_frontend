@@ -52,7 +52,11 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
 	const [values, setValues] = useState(initialValues);
 	const [touched, setTouched] = useState<Partial<Record<keyof FormValues, boolean>>>({});
 	const errors = validate(values, mode);
-	const returnTo = (location.state as { returnTo?: unknown } | null)?.returnTo;
+	const navigationState = location.state as {
+		returnTo?: unknown;
+		reservation?: unknown;
+	} | null;
+	const returnTo = navigationState?.returnTo;
 	const destination = typeof returnTo === "string" && returnTo.startsWith("/") ? returnTo : "/";
 	const mutation = useMutation({
 		mutationFn: async () => {
@@ -68,7 +72,11 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
 		onSuccess: () => {
 			queryClient.setQueryData(["auth-user"], true);
 			toast.success(mode === "register" ? "Cuenta creada correctamente" : "Sesión iniciada");
-			navigate(destination);
+			navigate(destination, {
+				state: navigationState?.reservation
+					? { reservation: navigationState.reservation }
+					: undefined,
+			});
 		},
 		onError: (error) => {
 			toast.error(error instanceof ApiError ? error.message : "No se pudo completar la operación")
