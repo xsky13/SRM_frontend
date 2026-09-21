@@ -9,17 +9,16 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router";
+import { Link, useNavigate } from "react-router";
 import type { Reserva } from "~/types/Reserva";
 
 interface CalendarioDisponibilidadProps {
   reservas: Reserva[];
   pricePerDay: number;
   apartmentId: string;
+  apartmentName?: string;
+  apartmentLocation?: string;
   isAuthenticated: boolean;
-  initialCheckInDate?: string;
-  initialCheckOutDate?: string;
-  initialStep?: "dates" | "payment";
   onClose: () => void;
 }
 
@@ -110,20 +109,12 @@ export default function CalendarioDisponibilidad({
   reservas,
   pricePerDay,
   apartmentId,
+  apartmentName,
+  apartmentLocation,
   isAuthenticated,
-  initialCheckInDate,
-  initialCheckOutDate,
-  initialStep = "dates",
   onClose,
 }: CalendarioDisponibilidadProps) {
-  const location = useLocation();
-
-  const initialStart = initialCheckInDate
-    ? new Date(initialCheckInDate)
-    : undefined;
-  const initialEnd = initialCheckOutDate
-    ? new Date(initialCheckOutDate)
-    : undefined;
+  const navigate = useNavigate();
 
   useEffect(() => {
     initMercadoPago("TEST-440e66b5-54b5-49f2-9930-3dd2e1baed8e");
@@ -133,10 +124,10 @@ export default function CalendarioDisponibilidad({
     () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   );
   const [userEmail, setUserEmail] = useState("test@gmail.com");
-  const [rangeStart, setRangeStart] = useState<Date | undefined>(initialStart);
-  const [rangeEnd, setRangeEnd] = useState<Date | undefined>(initialEnd);
+  const [rangeStart, setRangeStart] = useState<Date | undefined>();
+  const [rangeEnd, setRangeEnd] = useState<Date | undefined>();
   const [isDragging, setIsDragging] = useState(false);
-  const [step, setStep] = useState<"dates" | "payment" | "success">(initialStep);
+  const [step, setStep] = useState<"dates" | "payment" | "success">("dates");
   const [paymentOption, setPaymentOption] = useState<"deposit" | "full">(
     isAuthenticated ? "deposit" : "full",
   );
@@ -295,6 +286,29 @@ export default function CalendarioDisponibilidad({
   const formatPrice = (value: number) =>
     `$${value.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
 
+  function confirmDates() {
+    if (!rangeStart || !rangeEnd) return;
+
+    if (isAuthenticated) {
+      onClose();
+      navigate("/reserva", {
+        state: {
+          reservation: {
+            apartmentId,
+            apartmentName,
+            apartmentLocation,
+            pricePerDay,
+            checkInDate: rangeStart.toISOString(),
+            checkOutDate: rangeEnd.toISOString(),
+          },
+        },
+      });
+      return;
+    }
+
+    setStep("payment");
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#202722]/35 p-4"
@@ -445,7 +459,7 @@ export default function CalendarioDisponibilidad({
             <button
               type="button"
               disabled={!rangeStart || !rangeEnd}
-              onClick={() => setStep("payment")}
+              onClick={confirmDates}
               className="ui-button ui-button-md ui-button-block mt-4"
             >
               {rangeStart && rangeEnd
@@ -494,9 +508,12 @@ export default function CalendarioDisponibilidad({
                   <Link
                     to="/register"
                     state={{
-                      returnTo: location.pathname,
+                      returnTo: "/reserva",
                       reservation: {
                         apartmentId,
+                        apartmentName,
+                        apartmentLocation,
+                        pricePerDay,
                         checkInDate: rangeStart?.toISOString(),
                         checkOutDate: rangeEnd?.toISOString(),
                       },
@@ -509,9 +526,12 @@ export default function CalendarioDisponibilidad({
                   <Link
                     to="/login"
                     state={{
-                      returnTo: location.pathname,
+                      returnTo: "/reserva",
                       reservation: {
                         apartmentId,
+                        apartmentName,
+                        apartmentLocation,
+                        pricePerDay,
                         checkInDate: rangeStart?.toISOString(),
                         checkOutDate: rangeEnd?.toISOString(),
                       },

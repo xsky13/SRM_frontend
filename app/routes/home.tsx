@@ -39,9 +39,9 @@ const query = useQuery<Departamento[]>({
     </a>
 
     <div className="flex items-center gap-4 text-sm text-[#385347]">
-		<Link to="/" className="ui-link">
+		{/* <Link to="/" className="ui-link">
             Legal
-		</Link>
+		</Link> */}
 		<NavegacionUsuario />
     </div>
 </header>

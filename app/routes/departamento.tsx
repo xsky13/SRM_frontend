@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import type { Departamento } from "~/models/Departamento";
@@ -15,37 +15,11 @@ export default function DepartamentoDetallePage() {
 	const [selectedImageId, setSelectedImageId] = useState<string>();
 	const [showCalendar, setShowCalendar] = useState(false);
 	const authQuery = useAuthentication();
-	const reservationState = (location.state as {
-		reservation?: {
-			apartmentId?: unknown;
-			checkInDate?: unknown;
-			checkOutDate?: unknown;
-		};
-	} | null)?.reservation;
-	const returnedReservation =
-		reservationState &&
-		reservationState.apartmentId === id &&
-		typeof reservationState.checkInDate === "string" &&
-		typeof reservationState.checkOutDate === "string"
-			? {
-				apartmentId: id,
-				checkInDate: reservationState.checkInDate,
-				checkOutDate: reservationState.checkOutDate,
-			}
-			: undefined;
 
 	function closeCalendar() {
 		setShowCalendar(false);
 		navigate(location.pathname, { replace: true, state: null });
 	}
-
-	useEffect(() => {
-		if (returnedReservation) setShowCalendar(true);
-	}, [
-		returnedReservation?.apartmentId,
-		returnedReservation?.checkInDate,
-		returnedReservation?.checkOutDate,
-	]);
 
 	const query = useQuery<Departamento>({
 		queryKey: ["apartment", id],
@@ -96,9 +70,9 @@ export default function DepartamentoDetallePage() {
 				</div>
 
 				<div className="flex items-center gap-4 text-sm text-[#385347]">
-					<Link to="/" className="ui-link">
+					{/* <Link to="/" className="ui-link">
 						Legal
-					</Link>
+					</Link> */}
 					<NavegacionUsuario />
 				</div>
 			</header>
@@ -182,10 +156,9 @@ export default function DepartamentoDetallePage() {
 					reservas={reservationsQuery.data ?? []}
 					pricePerDay={departamento.price}
 					apartmentId={departamento.id}
+					apartmentName={departamento.name}
+					apartmentLocation={departamento.location}
 					isAuthenticated={authQuery.data === true}
-					initialCheckInDate={returnedReservation?.checkInDate}
-					initialCheckOutDate={returnedReservation?.checkOutDate}
-					initialStep={returnedReservation ? "payment" : "dates"}
 					onClose={closeCalendar}
 				/>
 			)}
