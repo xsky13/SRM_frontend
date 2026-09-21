@@ -64,15 +64,12 @@ export default function DepartamentoDetallePage() {
 					<Link to="/" className="ui-link">
 						Legal
 					</Link>
-					<Link to="/" className="ui-link">
+					<Link to="/register" className="ui-link">
 						Crear cuenta
 					</Link>
-					<button
-						type="button"
-						className="ui-button ui-button-sm"
-					>
+					<Link to="/login" className="ui-button ui-button-sm">
 						Iniciar sesión
-					</button>
+					</Link>
 				</div>
 			</header>
 

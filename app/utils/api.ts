@@ -26,7 +26,7 @@ api.interceptors.response.use(
             const status = error.response.status;
 
             // mensajes mas especificos
-            const backendMessage = error.response.data?.message;
+            const backendMessage = error.response.data?.message ?? error.response.data?.Message ?? error.response.data?.Error;
             const message = backendMessage || ERROR_MESSAGES[status] || ERROR_MESSAGES[400];
 
             /** CUANDO TENGAMOS AUTH, DESCOMENTAR */
