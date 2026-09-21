@@ -9,12 +9,14 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Link, useLocation } from "react-router";
 import type { Reserva } from "~/types/Reserva";
 
 interface CalendarioDisponibilidadProps {
   reservas: Reserva[];
   pricePerDay: number;
   apartmentId: string;
+  isAuthenticated: boolean;
   onClose: () => void;
 }
 
@@ -105,8 +107,11 @@ export default function CalendarioDisponibilidad({
   reservas,
   pricePerDay,
   apartmentId,
+  isAuthenticated,
   onClose,
 }: CalendarioDisponibilidadProps) {
+  const location = useLocation();
+
   useEffect(() => {
     initMercadoPago("TEST-440e66b5-54b5-49f2-9930-3dd2e1baed8e");
   }, []);
@@ -120,7 +125,7 @@ export default function CalendarioDisponibilidad({
   const [isDragging, setIsDragging] = useState(false);
   const [step, setStep] = useState<"dates" | "payment" | "success">("dates");
   const [paymentOption, setPaymentOption] = useState<"deposit" | "full">(
-    "deposit",
+    isAuthenticated ? "deposit" : "full",
   );
   const [showCardForm, setShowCardForm] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -177,6 +182,9 @@ export default function CalendarioDisponibilidad({
     if (!rangeStart || !rangeEnd || !apartmentId) {
       throw new Error("Faltan datos de la reserva.");
     }
+    if (paymentOption === "deposit" && !isAuthenticated) {
+      throw new Error("La opción de abonar la seña es solo para usuarios logueados.");
+    }
 
     setIsProcessingPayment(true);
     setPaymentError(null);
@@ -190,6 +198,7 @@ export default function CalendarioDisponibilidad({
           headers: {
             "Content-Type": "application/json",
           },
+          credentials: "include",
           body: JSON.stringify({
             ...formData,
             checkInDate: new Date(rangeStart).toISOString(),
@@ -441,11 +450,13 @@ export default function CalendarioDisponibilidad({
             <div className="mt-4 space-y-2">
               <button
                 type="button"
+                disabled={!isAuthenticated}
                 onClick={() => {
                   setPaymentOption("deposit");
                   setShowCardForm(false);
                 }}
-                className={`flex w-full items-center justify-between rounded-md border p-3 text-left transition ${paymentOption === "deposit" ? "border-[#385347] bg-[#edf2e8]" : "border-[#e0ded5] bg-white hover:border-[#bfc5b9]"}`}
+                className={`flex w-full items-center justify-between rounded-md border p-3 text-left transition ${paymentOption === "deposit" ? "border-[#385347] bg-[#edf2e8]" : "border-[#e0ded5] bg-white hover:border-[#bfc5b9]"} disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:border-[#e0ded5]`}
+                aria-describedby="deposit-login-message"
               >
                 <span className="flex items-center gap-3">
                   <CreditCard size={18} className="text-[#e28b68]" />
@@ -464,6 +475,18 @@ export default function CalendarioDisponibilidad({
                   )}
                 </span>
               </button>
+              {!isAuthenticated && (
+                <p id="deposit-login-message" className="text-xs text-[#b74f3d]">
+                  La opción de abonar la seña es solo para usuarios logueados. {" "}
+                  <Link
+                    to="/register"
+                    state={{ returnTo: location.pathname }}
+                    className="font-semibold underline"
+                  >
+                    Registrate
+                  </Link>
+                </p>
+              )}
 
               <button
                 type="button"

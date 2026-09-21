@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { Departamento } from "~/models/Departamento";
 import type { Reserva } from "~/types/Reserva";
 import CalendarioDisponibilidad from "~/components/CalendarioDisponibilidad";
+import NavegacionUsuario, { useAuthentication } from "~/components/NavegacionUsuario";
 import api from "~/utils/api";
 import type { Route } from "./+types/departamento";
 
@@ -11,6 +12,7 @@ export default function DepartamentoDetallePage() {
 	const { id } = useParams<Route.ComponentProps["params"]>();
 	const [selectedImageId, setSelectedImageId] = useState<string>();
 	const [showCalendar, setShowCalendar] = useState(false);
+	const authQuery = useAuthentication();
 
 	const query = useQuery<Departamento>({
 		queryKey: ["apartment", id],
@@ -64,12 +66,7 @@ export default function DepartamentoDetallePage() {
 					<Link to="/" className="ui-link">
 						Legal
 					</Link>
-					<Link to="/register" className="ui-link">
-						Crear cuenta
-					</Link>
-					<Link to="/login" className="ui-button ui-button-sm">
-						Iniciar sesión
-					</Link>
+					<NavegacionUsuario />
 				</div>
 			</header>
 
@@ -152,6 +149,7 @@ export default function DepartamentoDetallePage() {
 					reservas={reservationsQuery.data ?? []}
 					pricePerDay={departamento.price}
 					apartmentId={departamento.id}
+					isAuthenticated={authQuery.data === true}
 					onClose={() => setShowCalendar(false)}
 				/>
 			)}

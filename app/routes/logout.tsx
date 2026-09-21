@@ -1,14 +1,19 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import api from "~/utils/api";
 
 export default function LogoutRoute() {
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 	const mutation = useMutation({
 		mutationFn: () => api.post("/api/user/logout"),
-		onSuccess: () => { toast.success("Sesión cerrada"); navigate("/"); },
+		onSuccess: () => {
+			queryClient.setQueryData(["auth-user"], false);
+			toast.success("Sesión cerrada");
+			navigate("/");
+		},
 		onError: () => { toast.error("No se pudo cerrar la sesión"); navigate("/"); },
 	});
 

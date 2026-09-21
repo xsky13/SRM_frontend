@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
-import { useMutation } from "@tanstack/react-query";
+import { Link, useLocation, useNavigate } from "react-router";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import api from "~/utils/api";
 import { ApiError } from "~/types/ApiError";
@@ -47,9 +47,13 @@ export function meta() {
 
 export default function AuthPage({ mode }: { mode: AuthMode }) {
 	const navigate = useNavigate();
+	const location = useLocation();
+	const queryClient = useQueryClient();
 	const [values, setValues] = useState(initialValues);
 	const [touched, setTouched] = useState<Partial<Record<keyof FormValues, boolean>>>({});
 	const errors = validate(values, mode);
+	const returnTo = (location.state as { returnTo?: unknown } | null)?.returnTo;
+	const destination = typeof returnTo === "string" && returnTo.startsWith("/") ? returnTo : "/";
 	const mutation = useMutation({
 		mutationFn: async () => {
 			if (mode === "register") {
@@ -62,10 +66,13 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
 		},
 		meta: { silent: true },
 		onSuccess: () => {
+			queryClient.setQueryData(["auth-user"], true);
 			toast.success(mode === "register" ? "Cuenta creada correctamente" : "Sesión iniciada");
-			navigate("/");
+			navigate(destination);
 		},
-		onError: (error) => toast.error(error instanceof ApiError ? error.message : "No se pudo completar la operación"),
+		onError: (error) => {
+			toast.error(error instanceof ApiError ? error.message : "No se pudo completar la operación")
+		},
 	});
 
 	function updateField(field: keyof FormValues, value: string) {
