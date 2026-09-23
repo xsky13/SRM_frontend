@@ -1,6 +1,7 @@
 import { CardPayment, initMercadoPago } from "@mercadopago/sdk-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
+import api from "~/utils/api";
 
 type ReservationState = {
 	apartmentId: string;
@@ -36,6 +37,9 @@ export default function ReservaPage() {
 	const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 	const [paymentError, setPaymentError] = useState<string | null>(null);
 	const [paymentApproved, setPaymentApproved] = useState(false);
+	const [showUnconfirmedModal, setShowUnconfirmedModal] = useState(false);
+	const [isCreatingReservation, setIsCreatingReservation] = useState(false);
+	const [reservationError, setReservationError] = useState<string | null>(null);
 	const reservation = (location.state as { reservation?: ReservationState } | null)
 		?.reservation;
 
@@ -70,6 +74,28 @@ export default function ReservaPage() {
 		setShowCardForm(false);
 		setPaymentError(null);
 		setPaymentApproved(false);
+	}
+
+	async function createUnconfirmedReservation() {
+		setIsCreatingReservation(true);
+		setReservationError(null);
+
+		try {
+			await api.post("/api/reservation", null, {
+				params: {
+					apartmentId: confirmedReservation.apartmentId,
+					checkInDate: confirmedReservation.checkInDate,
+					checkOutDate: confirmedReservation.checkOutDate,
+				},
+			});
+			setShowUnconfirmedModal(false);
+		} catch (error) {
+			setReservationError(
+				error instanceof Error ? error.message : "No se pudo crear la reserva.",
+			);
+		} finally {
+			setIsCreatingReservation(false);
+		}
 	}
 
 	async function handlePaymentSubmit(formData: any): Promise<void> {
@@ -162,7 +188,16 @@ export default function ReservaPage() {
 						Si no confirma su reserva, cualquiera pueda sacar una reserva en las fechas que tiene
 					</p>
 					<div className="flex gap-4">
-						<button type="button" disabled className="ui-button ui-button-sm opacity-50">Modificar reserva</button>
+						<button
+							type="button"
+							onClick={() => {
+								setReservationError(null);
+								setShowUnconfirmedModal(true);
+							}}
+							className="ui-button ui-button-sm border-2 opacity-200 bg-[#385347] text-white"
+						>
+							Reservar sin confirmar
+						</button>
 						<button type="button" onClick={() => navigate(`/departamento/${reservation.apartmentId}`)} className="ui-button ui-button-sm bg-[#a90000] text-white">Cancelar reserva</button>
 					</div>
 				</div>
@@ -183,7 +218,7 @@ export default function ReservaPage() {
 											type="button"
 											onClick={closePaymentForm}
 											disabled={isProcessingPayment}
-											className="text-sm font-semibold text-[#385347] underline disabled:opacity-50"
+											className="text-sm font-semibold text-[#a90000] underline disabled:opacity-50"
 										>
 											Cerrar
 										</button>
@@ -216,6 +251,47 @@ export default function ReservaPage() {
 					))}
 				</div>
 			</section>
+
+			{showUnconfirmedModal && (
+				<div
+					className="fixed inset-0 z-50 flex items-center justify-center bg-[#202722]/35 p-4"
+					onClick={() => !isCreatingReservation && setShowUnconfirmedModal(false)}
+				>
+					<section
+						className="w-full max-w-md rounded-md bg-[#fffdf9] p-6 shadow-[0_8px_24px_rgba(32,39,34,0.18)]"
+						onClick={(event) => event.stopPropagation()}
+						role="dialog"
+						aria-modal="true"
+						aria-labelledby="unconfirmed-reservation-title"
+					>
+						<h2 id="unconfirmed-reservation-title" className="font-serif text-2xl text-[#385347]">
+							Reserva sin confirmar
+						</h2>
+						<p className="mt-3 text-sm leading-6 text-[#202722]">
+							La reserva todavía no está confirmada. Cualquier usuario puede reservar este departamento en las mismas fechas.
+						</p>
+						{reservationError && <p className="mt-3 text-sm text-[#b74f3d]">{reservationError}</p>}
+						<div className="mt-6 flex justify-end gap-3">
+							<button
+								type="button"
+								disabled={isCreatingReservation}
+								onClick={() => setShowUnconfirmedModal(false)}
+								className="ui-button ui-button-sm"
+							>
+								Cancelar
+							</button>
+							<button
+								type="button"
+								disabled={isCreatingReservation}
+								onClick={createUnconfirmedReservation}
+								className="ui-button ui-button-sm bg-[#385347] text-white disabled:opacity-50"
+							>
+								{isCreatingReservation ? "Guardando..." : "Confirmar"}
+							</button>
+						</div>
+					</section>
+				</div>
+			)}
 		</main>
 	);
 }
