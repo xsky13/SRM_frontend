@@ -299,19 +299,17 @@ export default function CalendarioDisponibilidad({
       startDay: Date;
       endDay: Date;
     }) => {
-      const response = await api.post("/api/reservation", null, {
-        params: {
+      const response = await api.post("/api/reservation", {
           apartmentId: apartmentId,
           checkInDate: new Date(startDay).toISOString(),
           checkOutDate: new Date(endDay).toISOString(),
-        },
       });
       return response.data;
     },
     onSuccess: (data) => {
       toast.success("Reserva creada exitosamente.");
       console.log(data);
-      navigate("/mi-reserva/" + data.id);
+      navigate("/mis-reservas/" + data.id);
     },
   });
 
@@ -325,20 +323,8 @@ export default function CalendarioDisponibilidad({
       createReservationMutation.mutate({
         startDay: rangeStart,
         endDay: rangeEnd,
-      });
+	  });
 
-      // navigate("/reserva", {
-      //   state: {
-      //     reservation: {
-      //       apartmentId,
-      //       apartmentName,
-      //       apartmentLocation,
-      //       pricePerDay,
-      //       checkInDate: rangeStart.toISOString(),
-      //       checkOutDate: rangeEnd.toISOString(),
-      //     },
-      //   },
-      // });
       return;
     }
 
