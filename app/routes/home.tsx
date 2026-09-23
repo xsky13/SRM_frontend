@@ -26,9 +26,9 @@ const query = useQuery<Departamento[]>({
 	return (
 		<main className="min-h-screen bg-[#f6f4ee] font-sans text-[#202722]">
 			<header className="mx-auto flex max-w-7xl items-center justify-between px-5 py-6 md:px-8">
-    <a className="font-serif text-[23px] font-bold tracking-[-0.04em] text-[#385347]" href="/">
+			<span className="font-serif text-[23px] font-bold tracking-[-0.04em] text-[#385347]">
         reservas<span className="text-[#e28b68]">moreno</span>
-    </a>
+			</span>
 
     <div className="flex items-center gap-4 text-sm text-[#385347]">
 		{/* <Link to="/" className="ui-link">
