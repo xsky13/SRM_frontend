@@ -52,14 +52,19 @@ export default function MisReservasPage() {
   const authQuery = useAuthentication();
   const navigate = useNavigate();
 
+  console.log(authQuery.data);
+
   const reservasQuery = useQuery<ReservationListItem[]>({
     queryKey: ["my-reservations"],
     queryFn: async () => {
-      const { data } = await api.get("/api/reservation/my-reservations");
-      return Array.isArray(data) ? data : data.reservations ?? [];
+      const { data } = await api.get(
+        "/api/reservation/user/" + authQuery.data?.id,
+      );
+      return Array.isArray(data) ? data : (data.reservations ?? []);
     },
-    enabled: authQuery.data === true,
+    enabled: authQuery.data?.id != null,
     meta: { silent: true },
+    retry: 1,
   });
 
   if (authQuery.isPending) {
@@ -70,15 +75,21 @@ export default function MisReservasPage() {
     );
   }
 
-  if (authQuery.data !== true) {
+  if (!authQuery.data) {
     return (
       <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">
         <div className="mx-auto max-w-xl rounded-md border border-dashed border-[#c8c2b8] bg-[#fffdf9] p-8 text-center">
           <h1 className="font-serif text-4xl text-[#385347]">Iniciá sesión</h1>
-          <p className="mt-4 text-[#68716a]">Necesitás estar logueado para ver tus reservas.</p>
+          <p className="mt-4 text-[#68716a]">
+            Necesitás estar logueado para ver tus reservas.
+          </p>
           <div className="mt-6 flex justify-center gap-4">
-            <Link to="/login" className="ui-button ui-button-sm">Iniciar sesión</Link>
-            <Link to="/" className="ui-link">Volver al inicio</Link>
+            <Link to="/login" className="ui-button ui-button-sm">
+              Iniciar sesión
+            </Link>
+            <Link to="/" className="ui-link">
+              Volver al inicio
+            </Link>
           </div>
         </div>
       </main>
@@ -93,24 +104,43 @@ export default function MisReservasPage() {
     );
   }
 
+  if (reservasQuery.isError) {
+    return (
+      <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">
+        Ocurrio un error: {JSON.stringify(reservasQuery.error)}
+      </main>
+    );
+  }
+
   const reservas = reservasQuery.data ?? [];
 
   return (
     <main className="min-h-screen bg-[#f6f4ee] text-[#202722]">
       <header className="mx-auto flex max-w-7xl items-center justify-between px-5 py-6 md:px-8">
-        <Link className="font-serif text-[23px] font-bold tracking-[-0.04em] text-[#385347]" to="/">
+        <Link
+          className="font-serif text-[23px] font-bold tracking-[-0.04em] text-[#385347]"
+          to="/"
+        >
           reservas<span className="text-[#e28b68]">moreno</span>
         </Link>
-        <Link to="/" className="ui-link">Volver al inicio</Link>
+        <Link to="/" className="ui-link">
+          Volver al inicio
+        </Link>
       </header>
 
       <section className="mx-auto max-w-7xl px-5 py-8 md:px-8">
         <div className="mb-8 flex items-end justify-between gap-4">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[.13em] text-[#385347]">Cuenta</p>
-            <h1 className="font-serif text-5xl tracking-[-0.05em] text-[#385347]">Mis reservas</h1>
+            <p className="text-[11px] font-bold uppercase tracking-[.13em] text-[#385347]">
+              Cuenta
+            </p>
+            <h1 className="font-serif text-5xl tracking-[-0.05em] text-[#385347]">
+              Mis reservas
+            </h1>
           </div>
-          <p className="text-sm text-[#68716a]">{reservas.length} reserva{reservas.length === 1 ? "" : "s"}</p>
+          <p className="text-sm text-[#68716a]">
+            {reservas.length} reserva{reservas.length === 1 ? "" : "s"}
+          </p>
         </div>
 
         {reservas.length === 0 ? (
@@ -133,7 +163,8 @@ export default function MisReservasPage() {
                       {reserva.apartmentLocation ?? "Ubicación no disponible"}
                     </h2>
                     <p className="mt-2 text-sm text-[#68716a]">
-                      {formatDate(reserva.checkInDate)} — {formatDate(reserva.checkOutDate)}
+                      {formatDate(reserva.checkInDate)} —{" "}
+                      {formatDate(reserva.checkOutDate)}
                     </p>
                   </div>
 
@@ -141,7 +172,10 @@ export default function MisReservasPage() {
                     <span className="rounded-full border border-[#d7d1c7] bg-[#edf2e8] px-2.5 py-1 text-xs font-semibold text-[#385347]">
                       {getReservationStateLabel(reserva.reservationState)}
                     </span>
-                    <p className="text-sm text-[#68716a]">Total: {formatPrice(reserva.totalPrice ?? reserva.fullAmount)}</p>
+                    <p className="text-sm text-[#68716a]">
+                      Total:{" "}
+                      {formatPrice(reserva.totalPrice ?? reserva.fullAmount)}
+                    </p>
                   </div>
                 </div>
 

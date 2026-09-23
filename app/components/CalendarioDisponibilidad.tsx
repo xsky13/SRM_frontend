@@ -1,4 +1,5 @@
 import { CardPayment, initMercadoPago } from "@mercadopago/sdk-react";
+import { useMutation } from "@tanstack/react-query";
 import {
   CheckCircle2,
   ChevronLeft,
@@ -10,7 +11,9 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
+import { toast } from "sonner";
 import type { Reserva } from "~/types/Reserva";
+import api from "~/utils/api";
 
 interface CalendarioDisponibilidadProps {
   reservas: Reserva[];
@@ -187,7 +190,9 @@ export default function CalendarioDisponibilidad({
       throw new Error("Faltan datos de la reserva.");
     }
     if (paymentOption === "deposit" && !isAuthenticated) {
-      throw new Error("La opción de abonar la seña es solo para usuarios logueados.");
+      throw new Error(
+        "La opción de abonar la seña es solo para usuarios logueados.",
+      );
     }
 
     setIsProcessingPayment(true);
@@ -286,23 +291,54 @@ export default function CalendarioDisponibilidad({
   const formatPrice = (value: number) =>
     `$${value.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
 
+  const createReservationMutation = useMutation({
+    mutationFn: async ({
+      startDay,
+      endDay,
+    }: {
+      startDay: Date;
+      endDay: Date;
+    }) => {
+      const response = await api.post("/api/reservation", null, {
+        params: {
+          apartmentId: apartmentId,
+          checkInDate: new Date(startDay).toISOString(),
+          checkOutDate: new Date(endDay).toISOString(),
+        },
+      });
+      return response.data;
+    },
+    onSuccess: (data) => {
+      toast.success("Reserva creada exitosamente.");
+      console.log(data);
+      navigate("/mi-reserva/" + data.id);
+    },
+  });
+
   function confirmDates() {
     if (!rangeStart || !rangeEnd) return;
 
     if (isAuthenticated) {
       onClose();
-      navigate("/reserva", {
-        state: {
-          reservation: {
-            apartmentId,
-            apartmentName,
-            apartmentLocation,
-            pricePerDay,
-            checkInDate: rangeStart.toISOString(),
-            checkOutDate: rangeEnd.toISOString(),
-          },
-        },
+
+      // llamar api de creacion de reserva
+      createReservationMutation.mutate({
+        startDay: rangeStart,
+        endDay: rangeEnd,
       });
+
+      // navigate("/reserva", {
+      //   state: {
+      //     reservation: {
+      //       apartmentId,
+      //       apartmentName,
+      //       apartmentLocation,
+      //       pricePerDay,
+      //       checkInDate: rangeStart.toISOString(),
+      //       checkOutDate: rangeEnd.toISOString(),
+      //     },
+      //   },
+      // });
       return;
     }
 
@@ -353,6 +389,7 @@ export default function CalendarioDisponibilidad({
 
         {step === "dates" ? (
           <>
+            {/*navegacion de meses*/}
             <div className="mt-4 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <button
@@ -389,6 +426,7 @@ export default function CalendarioDisponibilidad({
               </div>
             </div>
 
+            {/* calendario */}
             <div
               className="mt-3 grid grid-cols-7 gap-1 text-center text-[11px] text-[#68716a]"
               onPointerUp={() => setIsDragging(false)}
@@ -503,8 +541,11 @@ export default function CalendarioDisponibilidad({
                 </span>
               </button>
               {!isAuthenticated && (
-                <p id="deposit-login-message" className="text-xs text-[#b74f3d]">
-                  La opción de abonar la seña es solo para usuarios logueados. {" "}
+                <p
+                  id="deposit-login-message"
+                  className="text-xs text-[#b74f3d]"
+                >
+                  La opción de abonar la seña es solo para usuarios logueados.{" "}
                   <Link
                     to="/register"
                     state={{
