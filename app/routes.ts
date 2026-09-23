@@ -8,6 +8,7 @@ export default [
 	route("reserva", "routes/reserva.tsx"),
 	route("mis-reservas", "routes/mis-reservas.tsx"),
 	route("mis-reservas/:id", "routes/mis-reservas-detalle.tsx"),
+	route("mis-reservas/:id/modificar", "routes/mis-reservas-modificar.tsx"),
 	route("departamento/:id", "routes/departamento.tsx"),
 	route("test", "routes/test.tsx")
 ] satisfies RouteConfig;
