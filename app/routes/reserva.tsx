@@ -1,3 +1,5 @@
+import { CardPayment, initMercadoPago } from "@mercadopago/sdk-react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 
 type ReservationState = {
@@ -8,6 +10,8 @@ type ReservationState = {
 	checkInDate: string;
 	checkOutDate: string;
 };
+
+const apiBaseUrl = import.meta.env.VITE_API_URL;
 
 function formatDate(value: string) {
 	return new Intl.DateTimeFormat("es-AR", {
@@ -27,8 +31,17 @@ export function meta() {
 export default function ReservaPage() {
 	const location = useLocation();
 	const navigate = useNavigate();
+	const [paymentOption, setPaymentOption] = useState<"deposit" | "full">("full");
+	const [showCardForm, setShowCardForm] = useState(false);
+	const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+	const [paymentError, setPaymentError] = useState<string | null>(null);
+	const [paymentApproved, setPaymentApproved] = useState(false);
 	const reservation = (location.state as { reservation?: ReservationState } | null)
 		?.reservation;
+
+	useEffect(() => {
+		initMercadoPago("TEST-440e66b5-54b5-49f2-9930-3dd2e1baed8e");
+	}, []);
 
 	if (!reservation) {
 		return (
@@ -41,6 +54,7 @@ export default function ReservaPage() {
 		);
 	}
 
+	const confirmedReservation = reservation;
 	const selectedDays =
 		Math.round(
 			Math.abs(
@@ -49,6 +63,74 @@ export default function ReservaPage() {
 			) / 86_400_000,
 		) + 1;
 	const total = selectedDays * reservation.pricePerDay;
+	const deposit = total * 0.1;
+	const paymentAmount = paymentOption === "deposit" ? deposit : total;
+
+	function closePaymentForm() {
+		setShowCardForm(false);
+		setPaymentError(null);
+		setPaymentApproved(false);
+	}
+
+	async function handlePaymentSubmit(formData: any): Promise<void> {
+		setIsProcessingPayment(true);
+		setPaymentError(null);
+		setPaymentApproved(false);
+
+		try {
+			const response = await fetch(
+				`${apiBaseUrl.replace(/\/$/, "")}/api/Payment/process_card_payment/${confirmedReservation.apartmentId}`,
+				{
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					credentials: "include",
+					body: JSON.stringify({
+						...formData,
+						checkInDate: confirmedReservation.checkInDate,
+						checkOutDate: confirmedReservation.checkOutDate,
+						paymentOption,
+					}),
+				},
+			);
+
+			const rawText = await response.text();
+			let data: any = null;
+			if (rawText) {
+				try {
+					data = JSON.parse(rawText);
+				} catch {
+					data = { message: rawText };
+				}
+			}
+
+			if (!response.ok) {
+				throw new Error(
+					data?.message ?? data?.error ?? data?.title ?? "No se pudo procesar el pago.",
+				);
+			}
+
+			const status = Number(data?.paymentStatus ?? data?.status ?? data?.payment_status ?? 0);
+			if (status === 2) {
+				setPaymentApproved(true);
+				return;
+			}
+			if (status === 1) {
+				throw new Error("Pago pendiente. Mercado Pago continuará el proceso y te avisará cuando se confirme.");
+			}
+			if (status === 4) {
+				throw new Error("El pago fue rechazado. Verificá los datos de tu tarjeta.");
+			}
+			if (status === 5) {
+				throw new Error("El pago fue cancelado.");
+			}
+			throw new Error("El backend respondió un estado de pago no reconocido.");
+		} catch (error) {
+			setPaymentError(error instanceof Error ? error.message : "Error al procesar el pago.");
+			throw error;
+		} finally {
+			setIsProcessingPayment(false);
+		}
+	}
 
 	return (
 		<main className="min-h-screen bg-[#f6f4ee] text-[#202722]">
@@ -87,13 +169,49 @@ export default function ReservaPage() {
 
 				<div className="mt-9 grid gap-8 lg:grid-cols-2">
 					{[
-						["Pagar seña", "Confirmar la reserva pagando un porcentaje ahora, y pagar el resto mas tarde"],
-						["Pagar reserva completa", "Asegurar la reserva pagando el monto total ahora"],
-					].map(([title, description]) => (
+						["Pagar seña", "Confirmar la reserva pagando un porcentaje ahora, y pagar el resto mas tarde", "deposit"],
+						["Pagar reserva completa", "Asegurar la reserva pagando el monto total ahora", "full"],
+					].map(([title, description, option]) => (
 						<article key={title} className="flex min-h-80 flex-col border border-dashed border-[#c8c2b8] p-8">
 							<h2 className="text-center font-serif text-3xl font-bold text-[#202722]">{title}</h2>
 							<p className="mt-3 max-w-md text-sm">{description}</p>
-							<button type="button" className="ui-button ui-button-sm mt-auto self-center">Confirmar reserva</button>
+							<p className="mt-3 text-sm font-semibold">{formatPrice(title === "Pagar seña" ? deposit : total)}</p>
+							{showCardForm && paymentOption === option && !paymentApproved ? (
+								<div className="mt-4 rounded-md border border-[#e0ded5] bg-[#f8f4ef] p-3">
+									<div className="mb-3 flex justify-end">
+										<button
+											type="button"
+											onClick={closePaymentForm}
+											disabled={isProcessingPayment}
+											className="text-sm font-semibold text-[#385347] underline disabled:opacity-50"
+										>
+											Cerrar
+										</button>
+									</div>
+									<CardPayment
+										initialization={{ amount: paymentAmount }}
+										onReady={() => undefined}
+										onSubmit={handlePaymentSubmit}
+										onError={(error: any) => setPaymentError(error?.message ?? "No se pudo inicializar el pago.")}
+									/>
+								</div>
+							) : (
+								<button
+									type="button"
+									disabled={isProcessingPayment}
+									onClick={() => {
+										setPaymentOption(option as "deposit" | "full");
+										setPaymentError(null);
+										setPaymentApproved(false);
+										setShowCardForm(true);
+									}}
+									className="ui-button ui-button-sm mt-auto self-center"
+								>
+									Confirmar reserva
+								</button>
+							)}
+							{showCardForm && paymentOption === option && paymentError && <p className="mt-3 text-sm text-[#b74f3d]">{paymentError}</p>}
+							{showCardForm && paymentOption === option && paymentApproved && <p className="mt-auto text-center text-sm font-semibold text-[#2d6a4f]">Pago aprobado correctamente.</p>}
 						</article>
 					))}
 				</div>
