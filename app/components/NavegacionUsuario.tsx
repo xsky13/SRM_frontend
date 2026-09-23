@@ -2,14 +2,15 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "react-router";
 import api from "~/utils/api";
 import { ApiError } from "~/types/ApiError";
+import type { User } from "~/types/User";
 
-async function checkAuthentication(): Promise<boolean> {
+async function checkAuthentication(): Promise<User | null> {
   try {
-    await api.get("/api/user/me");
-    return true;
+    const response = await api.get("/api/user/me");
+    return response.data;
   } catch (error) {
     if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
-      return false;
+      return null;
     }
     throw error;
   }

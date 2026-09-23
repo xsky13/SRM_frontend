@@ -158,7 +158,7 @@ export default function DepartamentoDetallePage() {
 					apartmentId={departamento.id}
 					apartmentName={departamento.name}
 					apartmentLocation={departamento.location}
-					isAuthenticated={authQuery.data === true}
+					isAuthenticated={authQuery.data != null}
 					onClose={closeCalendar}
 				/>
 			)}

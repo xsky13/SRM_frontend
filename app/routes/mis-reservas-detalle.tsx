@@ -61,7 +61,7 @@ export default function MisReservasDetallePage() {
       const { data } = await api.get(`/api/reservation/${id}`);
       return data;
     },
-    enabled: authQuery.data === true && Boolean(id),
+    enabled: authQuery.data?.id != null && Boolean(id),
     meta: { silent: true },
   });
 
@@ -69,7 +69,7 @@ export default function MisReservasDetallePage() {
     return <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">Verificando sesión...</main>;
   }
 
-  if (authQuery.data !== true) {
+  if (authQuery.data == null) {
     return (
       <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">
         <div className="mx-auto max-w-xl rounded-md border border-dashed border-[#c8c2b8] bg-[#fffdf9] p-8 text-center">
