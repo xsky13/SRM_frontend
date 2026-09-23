@@ -4,6 +4,8 @@ import TarjetaDepartamento from "~/components/DepartamentoCard";
 import { useQuery } from "@tanstack/react-query";
 import api from "~/utils/api";
 import type { Departamento } from "~/models/Departamento";
+import { Link } from "react-router";
+import NavegacionUsuario from "~/components/NavegacionUsuario";
 
 export function meta({ }: Route.MetaArgs) {
 	return [
@@ -37,18 +39,10 @@ const query = useQuery<Departamento[]>({
     </a>
 
     <div className="flex items-center gap-4 text-sm text-[#385347]">
-		<a href="/" className="ui-link">
+		{/* <Link to="/" className="ui-link">
             Legal
-        </a>
-		<a href="/" className="ui-link">
-            Crear cuenta
-        </a>
-        <button
-            type="button"
-			className="ui-button ui-button-sm"
-        >
-            Iniciar sesión
-        </button>
+		</Link> */}
+		<NavegacionUsuario />
     </div>
 </header>
 			<section className="relative overflow-hidden bg-gradient-to-br from-[#dbe1d2] via-[#e4e7db] to-[#f0dbc7] px-5 py-16 md:px-8 md:py-24"><div className="relative z-10 mx-auto max-w-7xl"><div className="max-w-2xl"><p className="mb-4 text-[11px] font-bold uppercase tracking-[.13em] text-[#385347]">Tu próxima estadía empieza acá</p><h1 className="font-serif text-[clamp(42px,5vw,70px)] font-normal leading-[.99] tracking-[-.045em] text-[#385347]">Encontrá tu lugar en <em className="text-[#e28b68]">Libertador.</em></h1><p className="mt-6 text-base text-[#58675c] md:text-lg">Departamentos cómodos, equipados y listos para recibirte.</p></div></div></section>

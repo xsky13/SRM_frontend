@@ -1,16 +1,25 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import type { Departamento } from "~/models/Departamento";
 import type { Reserva } from "~/types/Reserva";
 import CalendarioDisponibilidad from "~/components/CalendarioDisponibilidad";
+import NavegacionUsuario, { useAuthentication } from "~/components/NavegacionUsuario";
 import api from "~/utils/api";
 import type { Route } from "./+types/departamento";
 
 export default function DepartamentoDetallePage() {
 	const { id } = useParams<Route.ComponentProps["params"]>();
+	const location = useLocation();
+	const navigate = useNavigate();
 	const [selectedImageId, setSelectedImageId] = useState<string>();
 	const [showCalendar, setShowCalendar] = useState(false);
+	const authQuery = useAuthentication();
+
+	function closeCalendar() {
+		setShowCalendar(false);
+		navigate(location.pathname, { replace: true, state: null });
+	}
 
 	const query = useQuery<Departamento>({
 		queryKey: ["apartment", id],
@@ -61,18 +70,10 @@ export default function DepartamentoDetallePage() {
 				</div>
 
 				<div className="flex items-center gap-4 text-sm text-[#385347]">
-					<Link to="/" className="ui-link">
+					{/* <Link to="/" className="ui-link">
 						Legal
-					</Link>
-					<Link to="/" className="ui-link">
-						Crear cuenta
-					</Link>
-					<button
-						type="button"
-						className="ui-button ui-button-sm"
-					>
-						Iniciar sesión
-					</button>
+					</Link> */}
+					<NavegacionUsuario />
 				</div>
 			</header>
 
@@ -155,7 +156,10 @@ export default function DepartamentoDetallePage() {
 					reservas={reservationsQuery.data ?? []}
 					pricePerDay={departamento.price}
 					apartmentId={departamento.id}
-					onClose={() => setShowCalendar(false)}
+					apartmentName={departamento.name}
+					apartmentLocation={departamento.location}
+					isAuthenticated={authQuery.data === true}
+					onClose={closeCalendar}
 				/>
 			)}
 		</main>
