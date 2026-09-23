@@ -34,9 +34,14 @@ export default function NavegacionUsuario() {
 
   if (authQuery.data) {
     return (
-      <Link to="/logout" className="ui-button ui-button-sm">
-        Cerrar sesión
-      </Link>
+      <div className="flex items-center gap-3">
+        <Link to="/mis-reservas" className="ui-link">
+          Mis reservas
+        </Link>
+        <Link to="/logout" className="ui-button ui-button-sm">
+          Cerrar sesión
+        </Link>
+      </div>
     );
   }
 
