@@ -187,38 +187,7 @@ export default function MisReservasPage() {
 
                   <button
                     type="button"
-                    onClick={() =>
-                      navigate("/reserva", {
-                        state: {
-                          reservation: {
-                            id: reserva.id,
-                            apartmentId: reserva.apartmentId,
-                            apartmentName: reserva.apartmentName,
-                            apartmentLocation: reserva.apartmentLocation,
-                            pricePerDay:
-                              reserva.totalPrice && reserva.totalPrice > 0
-                                ? Math.round(
-                                    reserva.totalPrice /
-                                      Math.max(
-                                        1,
-                                        Math.round(
-                                          (new Date(reserva.checkOutDate).getTime() -
-                                            new Date(reserva.checkInDate).getTime()) /
-                                            86_400_000,
-                                        ) + 1,
-                                      ),
-                                  )
-                                : 0,
-                            checkInDate: reserva.checkInDate,
-                            checkOutDate: reserva.checkOutDate,
-                            reservationState: Number(reserva.reservationState),
-                            totalPrice: reserva.totalPrice,
-                            depositAmount: reserva.depositAmount,
-                            fullAmount: reserva.fullAmount,
-                          },
-                        },
-                      })
-                    }
+                    onClick={() => navigate(`/reserva/${reserva.id}`)}
                     className="ui-button ui-button-sm"
                   >
                     Ver detalle

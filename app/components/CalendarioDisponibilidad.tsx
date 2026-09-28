@@ -307,23 +307,16 @@ export default function CalendarioDisponibilidad({
         checkOutDate,
       });
       const createdReservation = data?.reservation ?? data;
+      const reservationId =
+        createdReservation?.id ?? createdReservation?.reservationId;
+
+      if (!reservationId) {
+        throw new Error("El servidor no devolvió el ID de la reserva creada.");
+      }
 
       toast.success("Reserva creada exitosamente.");
       onClose();
-      navigate("/reserva", {
-        state: {
-          reservation: {
-            id: createdReservation?.id ?? createdReservation?.reservationId,
-            apartmentId,
-            apartmentName,
-            apartmentLocation,
-            pricePerDay,
-            checkInDate,
-            checkOutDate,
-            reservationState: 0,
-          },
-        },
-      });
+      navigate(`/reserva/${reservationId}`);
     } catch (error) {
       setReservationError(
         error instanceof Error ? error.message : "No se pudo crear la reserva.",

@@ -1,13 +1,15 @@
 import { CardPayment, initMercadoPago } from "@mercadopago/sdk-react";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
+import api from "~/utils/api";
 
 type ReservationState = {
 	id?: string;
 	apartmentId: string;
 	apartmentName?: string;
 	apartmentLocation?: string;
-	pricePerDay: number;
+	pricePerDay?: number;
 	checkInDate: string;
 	checkOutDate: string;
 	reservationState?: number;
@@ -49,23 +51,30 @@ export function meta() {
 }
 
 export default function ReservaPage() {
-	const location = useLocation();
 	const navigate = useNavigate();
+	const { id } = useParams();
 	const [paymentOption, setPaymentOption] = useState<"deposit" | "full">("full");
 	const [showCardForm, setShowCardForm] = useState(false);
 	const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 	const [paymentError, setPaymentError] = useState<string | null>(null);
 	const [paymentApproved, setPaymentApproved] = useState(false);
-	const reservation = (location.state as { reservation?: ReservationState } | null)?.reservation;
+	const reservationQuery = useQuery<ReservationState>({
+		queryKey: ["reservation-detail", id],
+		queryFn: async () => {
+			const { data } = await api.get(`/api/reservation/${id}`);
+			return data?.reservation ?? data;
+		},
+		enabled: Boolean(id),
+	});
 
 	useEffect(() => {
 		initMercadoPago("TEST-440e66b5-54b5-49f2-9930-3dd2e1baed8e");
 	}, []);
 
-	if (!reservation) {
+	if (!id) {
 		return (
 			<main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">
-				<p>No se encontró la reserva.</p>
+				<p>Falta el identificador de la reserva.</p>
 				<Link className="ui-text-link" to="/">
 					Volver al inicio
 				</Link>
@@ -73,7 +82,26 @@ export default function ReservaPage() {
 		);
 	}
 
-	const activeReservation = reservation;
+	if (reservationQuery.isPending) {
+		return (
+			<main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">
+				Cargando reserva...
+			</main>
+		);
+	}
+
+	if (reservationQuery.isError || !reservationQuery.data) {
+		return (
+			<main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">
+				<p>No se pudo cargar la reserva.</p>
+				<Link className="ui-text-link" to="/mis-reservas">
+					Volver a mis reservas
+				</Link>
+			</main>
+		);
+	}
+
+	const activeReservation = reservationQuery.data;
 	const reservationState = Number(activeReservation.reservationState ?? 0);
 	const selectedDays =
 		Math.round(
@@ -84,7 +112,8 @@ export default function ReservaPage() {
 		) + 1;
 	const total =
 		activeReservation.totalPrice ??
-		(activeReservation.fullAmount ?? selectedDays * activeReservation.pricePerDay);
+		(activeReservation.fullAmount ??
+			(activeReservation.pricePerDay ?? 0) * selectedDays);
 	const deposit = activeReservation.depositAmount ?? total * 0.1;
 	const remaining = Math.max(0, total - (activeReservation.depositAmount ?? 0));
 	const paymentAmount =
@@ -116,11 +145,11 @@ export default function ReservaPage() {
 					credentials: "include",
 					body: JSON.stringify({
 						...formData,
-						reservationId: activeReservation.id,
+						reservationId: id,
 						checkInDate: activeReservation.checkInDate,
 						checkOutDate: activeReservation.checkOutDate,
 						paymentOption,
-						isModification: Boolean(activeReservation.id),
+						isModification: false,
 					}),
 				},
 			);
