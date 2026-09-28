@@ -1,15 +1,19 @@
 import { CardPayment, initMercadoPago } from "@mercadopago/sdk-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
-import api from "~/utils/api";
 
 type ReservationState = {
+	id?: string;
 	apartmentId: string;
 	apartmentName?: string;
 	apartmentLocation?: string;
 	pricePerDay: number;
 	checkInDate: string;
 	checkOutDate: string;
+	reservationState?: number;
+	totalPrice?: number;
+	depositAmount?: number;
+	fullAmount?: number;
 };
 
 const apiBaseUrl = import.meta.env.VITE_API_URL;
@@ -25,6 +29,21 @@ function formatPrice(value: number) {
 	return `$${value.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
 }
 
+function getReservationStateLabel(state?: number) {
+	switch (state) {
+		case 0:
+			return "No confirmada";
+		case 1:
+			return "Confirmada no completa";
+		case 2:
+			return "Confirmada completa";
+		case 3:
+			return "Cancelada";
+		default:
+			return "No confirmada";
+	}
+}
+
 export function meta() {
 	return [{ title: "Reserva | Reservas Moreno" }];
 }
@@ -37,11 +56,7 @@ export default function ReservaPage() {
 	const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 	const [paymentError, setPaymentError] = useState<string | null>(null);
 	const [paymentApproved, setPaymentApproved] = useState(false);
-	const [showUnconfirmedModal, setShowUnconfirmedModal] = useState(false);
-	const [isCreatingReservation, setIsCreatingReservation] = useState(false);
-	const [reservationError, setReservationError] = useState<string | null>(null);
-	const reservation = (location.state as { reservation?: ReservationState } | null)
-		?.reservation;
+	const reservation = (location.state as { reservation?: ReservationState } | null)?.reservation;
 
 	useEffect(() => {
 		initMercadoPago("TEST-440e66b5-54b5-49f2-9930-3dd2e1baed8e");
@@ -58,44 +73,33 @@ export default function ReservaPage() {
 		);
 	}
 
-	const confirmedReservation = reservation;
+	const activeReservation = reservation;
+	const reservationState = Number(activeReservation.reservationState ?? 0);
 	const selectedDays =
 		Math.round(
 			Math.abs(
-				new Date(reservation.checkOutDate).getTime() -
-					new Date(reservation.checkInDate).getTime(),
+				new Date(activeReservation.checkOutDate).getTime() -
+					new Date(activeReservation.checkInDate).getTime(),
 			) / 86_400_000,
 		) + 1;
-	const total = selectedDays * reservation.pricePerDay;
-	const deposit = total * 0.1;
-	const paymentAmount = paymentOption === "deposit" ? deposit : total;
+	const total =
+		activeReservation.totalPrice ??
+		(activeReservation.fullAmount ?? selectedDays * activeReservation.pricePerDay);
+	const deposit = activeReservation.depositAmount ?? total * 0.1;
+	const remaining = Math.max(0, total - (activeReservation.depositAmount ?? 0));
+	const paymentAmount =
+		paymentOption === "deposit"
+			? deposit
+			: reservationState === 1
+				? remaining
+				: total;
+	const showPaymentOptions = reservationState === 0 || reservationState === 1;
+	const showCompleteInfoOnly = reservationState === 2;
 
 	function closePaymentForm() {
 		setShowCardForm(false);
 		setPaymentError(null);
 		setPaymentApproved(false);
-	}
-
-	async function createUnconfirmedReservation() {
-		setIsCreatingReservation(true);
-		setReservationError(null);
-
-		try {
-			await api.post("/api/reservation", null, {
-				params: {
-					apartmentId: confirmedReservation.apartmentId,
-					checkInDate: confirmedReservation.checkInDate,
-					checkOutDate: confirmedReservation.checkOutDate,
-				},
-			});
-			setShowUnconfirmedModal(false);
-		} catch (error) {
-			setReservationError(
-				error instanceof Error ? error.message : "No se pudo crear la reserva.",
-			);
-		} finally {
-			setIsCreatingReservation(false);
-		}
 	}
 
 	async function handlePaymentSubmit(formData: any): Promise<void> {
@@ -105,16 +109,18 @@ export default function ReservaPage() {
 
 		try {
 			const response = await fetch(
-				`${apiBaseUrl.replace(/\/$/, "")}/api/Payment/process_card_payment/${confirmedReservation.apartmentId}`,
+				`${apiBaseUrl.replace(/\/$/, "")}/api/Payment/process_card_payment/${activeReservation.apartmentId}`,
 				{
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
 					credentials: "include",
 					body: JSON.stringify({
 						...formData,
-						checkInDate: confirmedReservation.checkInDate,
-						checkOutDate: confirmedReservation.checkOutDate,
+						reservationId: activeReservation.id,
+						checkInDate: activeReservation.checkInDate,
+						checkOutDate: activeReservation.checkOutDate,
 						paymentOption,
+						isModification: Boolean(activeReservation.id),
 					}),
 				},
 			);
@@ -164,134 +170,146 @@ export default function ReservaPage() {
 				<Link className="font-serif text-[23px] font-bold tracking-[-0.04em] text-[#385347]" to="/">
 					reservas<span className="text-[#e28b68]">moreno</span>
 				</Link>
-				{/* <div className="flex items-center gap-8 text-sm text-[#385347]">
-					<Link to="/" className="ui-link">Legal</Link>
-					<Link to="/" className="ui-link">Modificar cuenta</Link>
-				</div> */}
+				<div className="flex items-center gap-3 text-sm text-[#385347]">
+					<Link to="/mis-reservas" className="ui-link">
+						Mis reservas
+					</Link>
+				</div>
 			</header>
 
 			<section className="mx-auto max-w-7xl px-5 py-8 md:px-8">
 				<div className="flex flex-wrap items-end justify-between gap-5">
-					<h1 className="font-serif text-5xl tracking-[-0.05em] text-[#202722]">Reserva</h1>
-					<p className="text-2xl font-bold text-[#202722]">Monto a pagar: {formatPrice(total)}</p>
+					<div>
+						<h1 className="font-serif text-5xl tracking-[-0.05em] text-[#202722]">Reserva</h1>
+						<p className="mt-2 text-sm text-[#68716a]">
+							{activeReservation.apartmentName ?? "Departamento"}
+						</p>
+					</div>
+					<p className="text-2xl font-bold text-[#202722]">Monto total: {formatPrice(total)}</p>
 				</div>
 
 				<div className="mt-8 grid gap-4 rounded-md bg-[#e7e4dc] p-5 text-sm md:grid-cols-4">
-					<p>Inicio: {formatDate(reservation.checkInDate)}</p>
-					<p>Fin: {formatDate(reservation.checkOutDate)}</p>
-					<p>Ubicación: {reservation.apartmentLocation ?? reservation.apartmentId}</p>
-					<p>Estado: no confirmada</p>
+					<p>Inicio: {formatDate(activeReservation.checkInDate)}</p>
+					<p>Fin: {formatDate(activeReservation.checkOutDate)}</p>
+					<p>Ubicación: {activeReservation.apartmentLocation ?? activeReservation.apartmentId}</p>
+					<p>Estado: {getReservationStateLabel(reservationState)}</p>
 				</div>
 
-				<div className="mt-6 flex flex-wrap items-center justify-between gap-4">
-					<p className="text-sm italic text-[#202722]">
-						Si no confirma su reserva, cualquiera pueda sacar una reserva en las fechas que tiene
-					</p>
-					<div className="flex gap-4">
-						<button
-							type="button"
-							onClick={() => {
-								setReservationError(null);
-								setShowUnconfirmedModal(true);
-							}}
-							className="ui-button ui-button-sm border-2 opacity-200 bg-[#385347] text-white"
-						>
-							Reservar sin confirmar
-						</button>
-						<button type="button" onClick={() => navigate(`/departamento/${reservation.apartmentId}`)} className="ui-button ui-button-sm bg-[#a90000] text-white">Cancelar reserva</button>
+				{showCompleteInfoOnly ? (
+					<div className="mt-8 rounded-md border border-dashed border-[#c8c2b8] bg-[#fffdf9] p-6 text-[#202722]">
+						<h2 className="font-serif text-3xl text-[#385347]">Información de la reserva</h2>
+						<div className="mt-4 space-y-2 text-sm text-[#68716a]">
+							<p>
+								<strong className="text-[#202722]">Total:</strong> {formatPrice(total)}
+							</p>
+							<p>
+								<strong className="text-[#202722]">Seña:</strong> {formatPrice(deposit)}
+							</p>
+							<p>
+								<strong className="text-[#202722]">Estado:</strong>
+								{getReservationStateLabel(reservationState)}
+							</p>
+							<p>
+								<strong className="text-[#202722]">Saldo restante:</strong>
+								{formatPrice(remaining)}
+							</p>
+						</div>
 					</div>
-				</div>
-
-				<div className="mt-9 grid gap-8 lg:grid-cols-2">
-					{[
-						["Pagar seña", "Confirmar la reserva pagando un porcentaje ahora, y pagar el resto mas tarde", "deposit"],
-						["Pagar reserva completa", "Asegurar la reserva pagando el monto total ahora", "full"],
-					].map(([title, description, option]) => (
-						<article key={title} className="flex min-h-80 flex-col border border-dashed border-[#c8c2b8] p-8">
-							<h2 className="text-center font-serif text-3xl font-bold text-[#202722]">{title}</h2>
-							<p className="mt-3 max-w-md text-sm">{description}</p>
-							<p className="mt-3 text-sm font-semibold">{formatPrice(title === "Pagar seña" ? deposit : total)}</p>
-							{showCardForm && paymentOption === option && !paymentApproved ? (
-								<div className="mt-4 rounded-md border border-[#e0ded5] bg-[#f8f4ef] p-3">
-									<div className="mb-3 flex justify-end">
-										<button
-											type="button"
-											onClick={closePaymentForm}
-											disabled={isProcessingPayment}
-											className="text-sm font-semibold text-[#a90000] underline disabled:opacity-50"
-										>
-											Cerrar
-										</button>
+				) : (
+					<div className="mt-8 grid gap-8 lg:grid-cols-2">
+						{[
+							["Pagar seña", "Confirmar la reserva pagando un porcentaje ahora, y pagar el resto más tarde", "deposit"],
+							[
+								reservationState === 1 ? "Pagar saldo restante" : "Pagar reserva completa",
+								reservationState === 1
+									? "Completar el pago pendiente de la reserva"
+									: "Asegurar la reserva pagando el monto total ahora",
+								"full",
+							],
+						].filter(([_, __, option]) => {
+							if (reservationState === 0) return true;
+							if (reservationState === 1) return option === "full";
+							return false;
+						}).map(([title, description, option]) => (
+							<article
+								key={title}
+								className="flex min-h-80 flex-col border border-dashed border-[#c8c2b8] p-8"
+							>
+								<h2 className="text-center font-serif text-3xl font-bold text-[#202722]">{title}</h2>
+								<p className="mt-3 max-w-md text-sm">{description}</p>
+								<p className="mt-3 text-sm font-semibold">
+											{option === "deposit" ? formatPrice(deposit) : formatPrice(paymentAmount)}
+								</p>
+								{showCardForm && paymentOption === option && !paymentApproved ? (
+									<div className="mt-4 rounded-md border border-[#e0ded5] bg-[#f8f4ef] p-3">
+										<div className="mb-3 flex justify-end">
+											<button
+												type="button"
+												onClick={closePaymentForm}
+												disabled={isProcessingPayment}
+												className="ui-icon-button p-1.5 disabled:cursor-not-allowed disabled:opacity-50"
+												aria-label="Cerrar formulario de pago"
+											>
+												<svg
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													strokeWidth="2"
+													className="h-4 w-4"
+												>
+													<path d="M18 6L6 18M6 6l12 12" />
+												</svg>
+											</button>
+										</div>
+										<CardPayment
+											initialization={{ amount: paymentAmount }}
+											onReady={() => undefined}
+											onSubmit={(formData: any) => handlePaymentSubmit(formData)}
+											onError={(error: any) => {
+												setPaymentError(error?.message ?? "No se pudo inicializar el pago.");
+											}}
+										/>
+										{isProcessingPayment && (
+											<div className="mt-3 text-center text-sm font-medium text-[#385347]">
+												Procesando pago...
+											</div>
+										)}
 									</div>
-									<CardPayment
-										initialization={{ amount: paymentAmount }}
-										onReady={() => undefined}
-										onSubmit={handlePaymentSubmit}
-										onError={(error: any) => setPaymentError(error?.message ?? "No se pudo inicializar el pago.")}
-									/>
-								</div>
-							) : (
-								<button
-									type="button"
-									disabled={isProcessingPayment}
-									onClick={() => {
-										setPaymentOption(option as "deposit" | "full");
-										setPaymentError(null);
-										setPaymentApproved(false);
-										setShowCardForm(true);
-									}}
-									className="ui-button ui-button-sm mt-auto self-center"
-								>
-									Confirmar reserva
-								</button>
-							)}
-							{showCardForm && paymentOption === option && paymentError && <p className="mt-3 text-sm text-[#b74f3d]">{paymentError}</p>}
-							{showCardForm && paymentOption === option && paymentApproved && <p className="mt-auto text-center text-sm font-semibold text-[#2d6a4f]">Pago aprobado correctamente.</p>}
-						</article>
-					))}
-				</div>
-			</section>
+								) : (
+									<button
+										type="button"
+										onClick={() => {
+											setPaymentOption(option as "deposit" | "full");
+											setShowCardForm(true);
+										}}
+										className="ui-button ui-button-sm mt-auto self-center"
+									>
+										Confirmar reserva
+									</button>
+								)}
+							</article>
+						))}
+					</div>
+				)}
 
-			{showUnconfirmedModal && (
-				<div
-					className="fixed inset-0 z-50 flex items-center justify-center bg-[#202722]/35 p-4"
-					onClick={() => !isCreatingReservation && setShowUnconfirmedModal(false)}
-				>
-					<section
-						className="w-full max-w-md rounded-md bg-[#fffdf9] p-6 shadow-[0_8px_24px_rgba(32,39,34,0.18)]"
-						onClick={(event) => event.stopPropagation()}
-						role="dialog"
-						aria-modal="true"
-						aria-labelledby="unconfirmed-reservation-title"
-					>
-						<h2 id="unconfirmed-reservation-title" className="font-serif text-2xl text-[#385347]">
-							Reserva sin confirmar
-						</h2>
-						<p className="mt-3 text-sm leading-6 text-[#202722]">
-							La reserva todavía no está confirmada. Cualquier usuario puede reservar este departamento en las mismas fechas.
-						</p>
-						{reservationError && <p className="mt-3 text-sm text-[#b74f3d]">{reservationError}</p>}
-						<div className="mt-6 flex justify-end gap-3">
+				{paymentError && <p className="mt-4 text-sm text-[#b74f3d]">{paymentError}</p>}
+				{paymentApproved && (
+					<p className="mt-4 text-sm font-semibold text-[#2d6a4f]">Pago aprobado correctamente.</p>
+				)}
+				{showPaymentOptions && !showCompleteInfoOnly && (
+					<div className="mt-6 flex flex-wrap items-center justify-between gap-4">
+						<div className="flex w-full justify-end">
 							<button
 								type="button"
-								disabled={isCreatingReservation}
-								onClick={() => setShowUnconfirmedModal(false)}
-								className="ui-button ui-button-sm"
+								onClick={() => navigate(`/departamento/${activeReservation.apartmentId}`)}
+								className="ui-button ui-button-sm bg-[#a90000] text-white"
 							>
-								Cancelar
-							</button>
-							<button
-								type="button"
-								disabled={isCreatingReservation}
-								onClick={createUnconfirmedReservation}
-								className="ui-button ui-button-sm bg-[#385347] text-white disabled:opacity-50"
-							>
-								{isCreatingReservation ? "Guardando..." : "Confirmar"}
+								Cancelar reserva
 							</button>
 						</div>
-					</section>
-				</div>
-			)}
+					</div>
+				)}
+			</section>
 		</main>
 	);
 }

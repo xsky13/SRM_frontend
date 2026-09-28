@@ -14,7 +14,7 @@ type ReservationListItem = {
   apartmentLocation?: string;
   checkInDate: string;
   checkOutDate: string;
-  reservationState: number;
+  reservationState: number | string;
   totalPrice?: number;
   depositAmount?: number;
   fullAmount?: number;
@@ -33,8 +33,8 @@ function formatPrice(value?: number) {
   return `$${value.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
 }
 
-function getReservationStateLabel(state: number) {
-  switch (state) {
+function getReservationStateLabel(state: number | string) {
+  switch (Number(state)) {
     case 0:
       return "No confirmada";
     case 1:
@@ -187,7 +187,38 @@ export default function MisReservasPage() {
 
                   <button
                     type="button"
-                    onClick={() => navigate(`/mis-reservas/${reserva.id}`)}
+                    onClick={() =>
+                      navigate("/reserva", {
+                        state: {
+                          reservation: {
+                            id: reserva.id,
+                            apartmentId: reserva.apartmentId,
+                            apartmentName: reserva.apartmentName,
+                            apartmentLocation: reserva.apartmentLocation,
+                            pricePerDay:
+                              reserva.totalPrice && reserva.totalPrice > 0
+                                ? Math.round(
+                                    reserva.totalPrice /
+                                      Math.max(
+                                        1,
+                                        Math.round(
+                                          (new Date(reserva.checkOutDate).getTime() -
+                                            new Date(reserva.checkInDate).getTime()) /
+                                            86_400_000,
+                                        ) + 1,
+                                      ),
+                                  )
+                                : 0,
+                            checkInDate: reserva.checkInDate,
+                            checkOutDate: reserva.checkOutDate,
+                            reservationState: Number(reserva.reservationState),
+                            totalPrice: reserva.totalPrice,
+                            depositAmount: reserva.depositAmount,
+                            fullAmount: reserva.fullAmount,
+                          },
+                        },
+                      })
+                    }
                     className="ui-button ui-button-sm"
                   >
                     Ver detalle

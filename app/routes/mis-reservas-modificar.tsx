@@ -93,7 +93,7 @@ export default function MisReservasModificarPage() {
   const reservaQuery = useQuery<ReservationDetail>({
     queryKey: ["my-reservation-detail", id],
     queryFn: async () => (await api.get(`/api/reservation/${id}`)).data,
-    enabled: authQuery.data === true && Boolean(id),
+    enabled: Boolean(authQuery.data) && Boolean(id),
     meta: { silent: true },
   });
 
@@ -280,7 +280,7 @@ export default function MisReservasModificarPage() {
     return <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">Verificando sesión...</main>;
   }
 
-  if (authQuery.data !== true) {
+  if (!authQuery.data) {
     return <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">Necesitás iniciar sesión para modificar la reserva.</main>;
   }
 
