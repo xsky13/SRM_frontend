@@ -1,5 +1,4 @@
 import { CardPayment, initMercadoPago } from "@mercadopago/sdk-react";
-import { useMutation } from "@tanstack/react-query";
 import {
   CheckCircle2,
   ChevronLeft,
@@ -9,11 +8,12 @@ import {
   CreditCard,
   X,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { toast } from "sonner";
 import type { Reserva } from "~/types/Reserva";
 import api from "~/utils/api";
+import { useMutation } from "@tanstack/react-query";
 
 interface CalendarioDisponibilidadProps {
   reservas: Reserva[];
@@ -138,6 +138,8 @@ export default function CalendarioDisponibilidad({
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<number | null>(null);
+  const [isCreatingReservation, setIsCreatingReservation] = useState(false);
+  const [reservationError, setReservationError] = useState<string | null>(null);
 
   const firstDay = new Date(month.getFullYear(), month.getMonth(), 1);
   const daysInMonth = new Date(
@@ -299,17 +301,25 @@ export default function CalendarioDisponibilidad({
       startDay: Date;
       endDay: Date;
     }) => {
-      const response = await api.post("/api/reservation", {
-          apartmentId: apartmentId,
-          checkInDate: new Date(startDay).toISOString(),
-          checkOutDate: new Date(endDay).toISOString(),
+      const response = await api.post("/api/reservation/with_auth", {
+        apartmentId: apartmentId,
+        checkInDate: new Date(startDay).toISOString(),
+        checkOutDate: new Date(endDay).toISOString(),
       });
       return response.data;
     },
     onSuccess: (data) => {
+      setIsCreatingReservation(false);
+      setReservationError(null);
       toast.success("Reserva creada exitosamente.");
       console.log(data);
-      navigate("/mis-reservas/" + data.id);
+      navigate("/reserva/" + data.id);
+    },
+    onError: (error) => {
+      setIsCreatingReservation(false);
+      setReservationError(
+        error instanceof Error ? error.message : "No se pudo crear la reserva.",
+      );
     },
   });
 
@@ -317,19 +327,53 @@ export default function CalendarioDisponibilidad({
     if (!rangeStart || !rangeEnd) return;
 
     if (isAuthenticated) {
-      onClose();
-
+      // onClose();
+      setIsCreatingReservation(true);
+      setReservationError(null);
       // llamar api de creacion de reserva
       createReservationMutation.mutate({
         startDay: rangeStart,
         endDay: rangeEnd,
-	  });
-
+      });
       return;
     }
 
     setStep("payment");
   }
+
+  //   async function confirmDates() {
+  //     if (!rangeStart || !rangeEnd || isCreatingReservation) return;
+  //
+  //     setIsCreatingReservation(true);
+  //     setReservationError(null);
+  //
+  //     try {
+  //       const checkInDate = rangeStart.toISOString();
+  //       const checkOutDate = rangeEnd.toISOString();
+  //       const { data } = await api.post("/api/reservation", {
+  //         apartmentId,
+  //         checkInDate,
+  //         checkOutDate,
+  //       });
+  //       const createdReservation = data?.reservation ?? data;
+  //       const reservationId =
+  //         createdReservation?.id ?? createdReservation?.reservationId;
+  //
+  //       if (!reservationId) {
+  //         throw new Error("El servidor no devolvió el ID de la reserva creada.");
+  //       }
+  //
+  //       toast.success("Reserva creada exitosamente.");
+  //       onClose();
+  //       navigate(`/reserva/${reservationId}`);
+  //     } catch (error) {
+  //       setReservationError(
+  //         error instanceof Error ? error.message : "No se pudo crear la reserva.",
+  //       );
+  //     } finally {
+  //       setIsCreatingReservation(false);
+  //     }
+  //   }
 
   return (
     <div
@@ -480,15 +524,22 @@ export default function CalendarioDisponibilidad({
               )}
             </div>
 
+            {reservationError && (
+              <p className="mt-3 text-sm text-[#b74f3d]" role="alert">
+                {reservationError}
+              </p>
+            )}
             <button
               type="button"
-              disabled={!rangeStart || !rangeEnd}
+              disabled={!rangeStart || !rangeEnd || isCreatingReservation}
               onClick={confirmDates}
               className="ui-button ui-button-md ui-button-block mt-4"
             >
-              {rangeStart && rangeEnd
-                ? `Reservar ${selectedDays} ${selectedDays === 1 ? "día" : "días"}`
-                : "Reservar días"}
+              {isCreatingReservation
+                ? "Creando reserva..."
+                : rangeStart && rangeEnd
+                  ? `Reservar ${selectedDays} ${selectedDays === 1 ? "día" : "días"}`
+                  : "Reservar días"}
             </button>
           </>
         ) : step == "payment" ? (

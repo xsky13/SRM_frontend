@@ -196,9 +196,12 @@ export default function MisReservasDetallePage() {
           </div>
         </div>
 
-        <div className="mt-8 flex gap-4">
+        <div className="mt-8 flex flex-wrap gap-4">
           <Link to="/mis-reservas" className="ui-link">Volver a reservas</Link>
           <button type="button" onClick={() => navigate(-1)} className="ui-button ui-button-sm">Atrás</button>
+          <Link to={`/mis-reservas/${reserva.id}/modificar`} className="ui-button ui-button-sm">
+            Modificar reserva
+          </Link>
         </div>
       </section>
     </main>

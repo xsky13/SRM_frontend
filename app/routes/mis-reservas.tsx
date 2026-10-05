@@ -14,7 +14,7 @@ type ReservationListItem = {
   apartmentLocation?: string;
   checkInDate: string;
   checkOutDate: string;
-  reservationState: number;
+  reservationState: number | string;
   totalPrice?: number;
   depositAmount?: number;
   fullAmount?: number;
@@ -33,8 +33,8 @@ function formatPrice(value?: number) {
   return `$${value.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
 }
 
-function getReservationStateLabel(state: number) {
-  switch (state) {
+function getReservationStateLabel(state: number | string) {
+  switch (Number(state)) {
     case 0:
       return "No confirmada";
     case 1:
@@ -187,7 +187,7 @@ export default function MisReservasPage() {
 
                   <button
                     type="button"
-                    onClick={() => navigate(`/mis-reservas/${reserva.id}`)}
+                    onClick={() => navigate(`/reserva/${reserva.id}`)}
                     className="ui-button ui-button-sm"
                   >
                     Ver detalle
