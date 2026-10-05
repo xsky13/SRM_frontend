@@ -299,7 +299,7 @@ export default function CalendarioDisponibilidad({
       startDay: Date;
       endDay: Date;
     }) => {
-      const response = await api.post("/api/reservation", {
+      const response = await api.post("/api/reservation/with_auth", {
           apartmentId: apartmentId,
           checkInDate: new Date(startDay).toISOString(),
           checkOutDate: new Date(endDay).toISOString(),

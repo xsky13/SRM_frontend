@@ -18,8 +18,14 @@ type ReservationDetail = {
   totalPrice?: number;
   depositAmount?: number;
   fullAmount?: number;
+  fullCost?: number;
   pricePerDay?: number;
-  paymentMethods?: Array<{ id: string; name: string; type?: string; enabled?: boolean }>;
+  paymentMethods?: Array<{
+    id: string;
+    name: string;
+    type?: string;
+    enabled?: boolean;
+  }>;
 };
 
 function formatDate(value: string) {
@@ -40,11 +46,15 @@ function getReservationStateLabel(state: number) {
     case 0:
       return "No confirmada";
     case 1:
-      return "Confirmada no completa";
+      return "No confirmada";
     case 2:
-      return "Confirmada completa";
+      return "Confirmada pago incompletp";
     case 3:
-      return "Cancelada";
+      return "Confirmada pago completo";
+    case 4:
+      return "Pago pendiente";
+    case 5:
+      return "Cancelado";
     default:
       return "Desconocido";
   }
@@ -54,7 +64,6 @@ export default function MisReservasDetallePage() {
   const { id } = useParams();
   const authQuery = useAuthentication();
   const navigate = useNavigate();
-
   const reservaQuery = useQuery<ReservationDetail>({
     queryKey: ["my-reservation-detail", id],
     queryFn: async () => {
@@ -65,8 +74,15 @@ export default function MisReservasDetallePage() {
     meta: { silent: true },
   });
 
+  console.log(reservaQuery.data)
+
+
   if (authQuery.isPending) {
-    return <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">Verificando sesión...</main>;
+    return (
+      <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">
+        Verificando sesión...
+      </main>
+    );
   }
 
   if (authQuery.data == null) {
@@ -74,10 +90,16 @@ export default function MisReservasDetallePage() {
       <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">
         <div className="mx-auto max-w-xl rounded-md border border-dashed border-[#c8c2b8] bg-[#fffdf9] p-8 text-center">
           <h1 className="font-serif text-4xl text-[#385347]">Iniciá sesión</h1>
-          <p className="mt-4 text-[#68716a]">Necesitás estar logueado para ver el detalle de la reserva.</p>
+          <p className="mt-4 text-[#68716a]">
+            Necesitás estar logueado para ver el detalle de la reserva.
+          </p>
           <div className="mt-6 flex justify-center gap-4">
-            <Link to="/login" className="ui-button ui-button-sm">Iniciar sesión</Link>
-            <Link to="/mis-reservas" className="ui-link">Volver a reservas</Link>
+            <Link to="/login" className="ui-button ui-button-sm">
+              Iniciar sesión
+            </Link>
+            <Link to="/mis-reservas" className="ui-link">
+              Volver a reservas
+            </Link>
           </div>
         </div>
       </main>
@@ -85,16 +107,24 @@ export default function MisReservasDetallePage() {
   }
 
   if (reservaQuery.isPending) {
-    return <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">Cargando reserva...</main>;
+    return (
+      <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">
+        Cargando reserva...
+      </main>
+    );
   }
 
   if (!reservaQuery.data) {
     return (
       <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">
         <div className="mx-auto max-w-xl rounded-md border border-dashed border-[#c8c2b8] bg-[#fffdf9] p-8 text-center">
-          <h1 className="font-serif text-4xl text-[#385347]">Reserva no encontrada</h1>
+          <h1 className="font-serif text-4xl text-[#385347]">
+            Reserva no encontrada
+          </h1>
           <div className="mt-6">
-            <Link to="/mis-reservas" className="ui-button ui-button-sm">Volver a mis reservas</Link>
+            <Link to="/mis-reservas" className="ui-button ui-button-sm">
+              Volver a mis reservas
+            </Link>
           </div>
         </div>
       </main>
@@ -105,23 +135,31 @@ export default function MisReservasDetallePage() {
   const state = reserva.reservationState;
   const canPayDeposit = state === 0;
   const canPayFull = state === 0 || state === 1;
-  const total = reserva.totalPrice ?? reserva.fullAmount ?? (reserva.pricePerDay ?? 0) * 5;
+  const total =
+    reserva.totalPrice ?? reserva.fullCost ?? (reserva.pricePerDay ?? 0) * 5;
 
   return (
     <main className="min-h-screen bg-[#f6f4ee] text-[#202722]">
       <header className="mx-auto flex max-w-7xl items-center justify-between px-5 py-6 md:px-8">
-        <Link className="font-serif text-[23px] font-bold tracking-[-0.04em] text-[#385347]" to="/">
+        <Link
+          className="font-serif text-[23px] font-bold tracking-[-0.04em] text-[#385347]"
+          to="/"
+        >
           reservas<span className="text-[#e28b68]">moreno</span>
         </Link>
         <div className="flex items-center gap-4">
-          <Link to="/mis-reservas" className="ui-link">Mis reservas</Link>
+          <Link to="/mis-reservas" className="ui-link">
+            Mis reservas
+          </Link>
         </div>
       </header>
 
       <section className="mx-auto max-w-6xl px-5 py-8 md:px-8">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[.13em] text-[#385347]">Detalle</p>
+            <p className="text-[11px] font-bold uppercase tracking-[.13em] text-[#385347]">
+              Detalle
+            </p>
             <h1 className="font-serif text-5xl tracking-[-0.05em] text-[#385347]">
               {reserva.apartmentName ?? "Reserva"}
             </h1>
@@ -135,31 +173,55 @@ export default function MisReservasDetallePage() {
           <div className="rounded-md border border-[#d7d1c7] bg-[#fffdf9] p-5">
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[.14em] text-[#68716a]">Check-in</p>
-                <p className="mt-1 text-lg text-[#202722]">{formatDate(reserva.checkInDate)}</p>
+                <p className="text-[10px] font-bold uppercase tracking-[.14em] text-[#68716a]">
+                  Check-in
+                </p>
+                <p className="mt-1 text-lg text-[#202722]">
+                  {formatDate(reserva.checkInDate)}
+                </p>
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[.14em] text-[#68716a]">Check-out</p>
-                <p className="mt-1 text-lg text-[#202722]">{formatDate(reserva.checkOutDate)}</p>
+                <p className="text-[10px] font-bold uppercase tracking-[.14em] text-[#68716a]">
+                  Check-out
+                </p>
+                <p className="mt-1 text-lg text-[#202722]">
+                  {formatDate(reserva.checkOutDate)}
+                </p>
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[.14em] text-[#68716a]">Ubicación</p>
-                <p className="mt-1 text-lg text-[#202722]">{reserva.apartmentLocation ?? "Sin ubicación"}</p>
+                <p className="text-[10px] font-bold uppercase tracking-[.14em] text-[#68716a]">
+                  Ubicación
+                </p>
+                <p className="mt-1 text-lg text-[#202722]">
+                  {reserva.apartmentName ?? "Sin ubicación"}
+                </p>
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[.14em] text-[#68716a]">Total</p>
-                <p className="mt-1 text-lg font-semibold text-[#202722]">{formatPrice(total)}</p>
+                <p className="text-[10px] font-bold uppercase tracking-[.14em] text-[#68716a]">
+                  Total
+                </p>
+                <p className="mt-1 text-lg font-semibold text-[#202722]">
+                  {formatPrice(total)}
+                </p>
               </div>
             </div>
 
             <div className="mt-6 rounded-md border border-dashed border-[#c8c2b8] bg-[#f7f4ee] p-4 text-sm text-[#68716a]">
-              <p><strong className="text-[#202722]">Seña:</strong> {formatPrice(reserva.depositAmount)}</p>
-              <p className="mt-1"><strong className="text-[#202722]">Pago completo:</strong> {formatPrice(reserva.fullAmount ?? total)}</p>
+              <p>
+                <strong className="text-[#202722]">Seña:</strong>{" "}
+                {formatPrice(reserva.depositAmount)}
+              </p>
+              <p className="mt-1">
+                <strong className="text-[#202722]">Saldo debido:</strong>{" "}
+                {formatPrice(reserva.fullAmount ?? total)}
+              </p>
             </div>
           </div>
 
           <div className="rounded-md border border-[#d7d1c7] bg-[#fffdf9] p-5">
-            <p className="text-[10px] font-bold uppercase tracking-[.14em] text-[#e28b68]">Acciones</p>
+            <p className="text-[10px] font-bold uppercase tracking-[.14em] text-[#e28b68]">
+              Acciones
+            </p>
             {state === 2 ? (
               <div className="mt-4 rounded-md border border-[#d7d1c7] bg-[#f3f7f1] p-4 text-sm text-[#385347]">
                 Esta reserva ya está confirmada completa. No hay nada que pagar.
@@ -169,7 +231,9 @@ export default function MisReservasDetallePage() {
                 {canPayDeposit && (
                   <button
                     type="button"
-                    onClick={() => navigate(`/departamento/${reserva.apartmentId}`)}
+                    onClick={() =>
+                      navigate(`/departamento/${reserva.apartmentId}`)
+                    }
                     className="ui-button ui-button-sm w-full"
                   >
                     Pagar seña
@@ -179,7 +243,9 @@ export default function MisReservasDetallePage() {
                 {canPayFull && (
                   <button
                     type="button"
-                    onClick={() => navigate(`/departamento/${reserva.apartmentId}`)}
+                    onClick={() =>
+                      navigate(`/departamento/${reserva.apartmentId}`)
+                    }
                     className="ui-button ui-button-sm w-full"
                   >
                     Pagar reserva completa
@@ -197,8 +263,16 @@ export default function MisReservasDetallePage() {
         </div>
 
         <div className="mt-8 flex gap-4">
-          <Link to="/mis-reservas" className="ui-link">Volver a reservas</Link>
-          <button type="button" onClick={() => navigate(-1)} className="ui-button ui-button-sm">Atrás</button>
+          <Link to="/mis-reservas" className="ui-link">
+            Volver a reservas
+          </Link>
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="ui-button ui-button-sm"
+          >
+            Atrás
+          </button>
         </div>
       </section>
     </main>

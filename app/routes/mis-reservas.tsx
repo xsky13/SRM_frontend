@@ -38,11 +38,15 @@ function getReservationStateLabel(state: number) {
     case 0:
       return "No confirmada";
     case 1:
-      return "Confirmada no completa";
+      return "No confirmada";
     case 2:
-      return "Confirmada completa";
+      return "Confirmada pago incompletp";
     case 3:
-      return "Cancelada";
+      return "Confirmada pago completo";
+    case 4:
+      return "Pago pendiente";
+    case 5:
+      return "Cancelado";
     default:
       return "Desconocido";
   }
@@ -157,10 +161,10 @@ export default function MisReservasPage() {
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-[.14em] text-[#e28b68]">
-                      {reserva.apartmentName ?? "Departamento"}
+                      {reserva.apartmentLocation ?? "Ubicación no disponible"}
                     </p>
                     <h2 className="mt-1 font-serif text-3xl text-[#385347]">
-                      {reserva.apartmentLocation ?? "Ubicación no disponible"}
+                      {reserva.apartmentName ?? "Departamento"}
                     </h2>
                     <p className="mt-2 text-sm text-[#68716a]">
                       {formatDate(reserva.checkInDate)} —{" "}
@@ -171,15 +175,22 @@ export default function MisReservasPage() {
                   <div className="flex flex-col items-start gap-2 md:items-end">
                     <span className="rounded-full border border-[#d7d1c7] bg-[#edf2e8] px-2.5 py-1 text-xs font-semibold text-[#385347]">
                       {getReservationStateLabel(reserva.reservationState)}
-                    </span>
-                    <p className="text-sm text-[#68716a]">
+							</span>
+							<button
+                    type="button"
+                    onClick={() => navigate(`/mis-reservas/${reserva.id}`)}
+                    className="ui-button ui-button-sm"
+                  >
+                    Ver detalle
+                  </button>
+                    {/*<p className="text-sm text-[#68716a]">
                       Total:{" "}
                       {formatPrice(reserva.totalPrice ?? reserva.fullAmount)}
-                    </p>
+                    </p>*/}
                   </div>
                 </div>
 
-                <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[#ece7df] pt-4">
+                {/*<div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[#ece7df] pt-4">
                   <div className="text-sm text-[#68716a]">
                     <p>Seña: {formatPrice(reserva.depositAmount)}</p>
                     <p>Pago completo: {formatPrice(reserva.fullAmount)}</p>
@@ -192,7 +203,7 @@ export default function MisReservasPage() {
                   >
                     Ver detalle
                   </button>
-                </div>
+                </div>*/}
               </article>
             ))}
           </div>
