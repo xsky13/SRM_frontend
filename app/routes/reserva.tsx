@@ -18,6 +18,30 @@ type ReservationState = {
 	fullAmount?: number;
 };
 
+type ReservationPayment = {
+	amount?: number;
+	paymentAmount?: number;
+	amountPaid?: number;
+	type?: string;
+	paymentType?: string;
+	concept?: string;
+};
+
+function getReservationPayload(data: any) {
+	const result = data?.value ?? data?.data ?? data;
+	return result?.reservation ?? result;
+}
+
+function getDepositAmount(payments: ReservationPayment[], total: number) {
+	const depositPayment = payments.find((payment) => {
+		const description = `${payment.type ?? ""} ${payment.paymentType ?? ""} ${payment.concept ?? ""}`.toLowerCase();
+		return description.includes("deposit") || description.includes("seña") || description.includes("sena");
+	});
+
+	const amount = depositPayment?.amount ?? depositPayment?.paymentAmount ?? depositPayment?.amountPaid;
+	return amount ?? (payments.length === 0 ? total * 0.1 : undefined);
+}
+
 const apiBaseUrl = import.meta.env.VITE_API_URL;
 
 function formatDate(value: string) {
@@ -62,9 +86,28 @@ export default function ReservaPage() {
 		queryKey: ["reservation-detail", id],
 		queryFn: async () => {
 			const { data } = await api.get(`/api/reservation/${id}`);
-			return data?.reservation ?? data;
+			const reservation = getReservationPayload(data);
+			const fullCost = Number(reservation?.fullCost ?? reservation?.totalPrice ?? 0);
+			const payments = Array.isArray(reservation?.payments) ? reservation.payments : [];
+			const depositAmount = getDepositAmount(payments, fullCost);
+			return {
+				...reservation,
+				id: reservation?.resrevationId ?? reservation?.reservationId ?? reservation?.id,
+				apartmentName:
+					reservation?.apartmentName ??
+					reservation?.ApartmentName ??
+					reservation?.apartment?.name ??
+					reservation?.apartment?.Name,
+				reservationState: Number(reservation?.state ?? reservation?.reservationState ?? 0),
+				totalPrice: fullCost,
+				fullAmount: fullCost,
+				depositAmount,
+				payments,
+			};
 		},
 		enabled: Boolean(id),
+		retry: 2,
+		retryDelay: (attempt) => (attempt + 1) * 500,
 	});
 
 	useEffect(() => {
