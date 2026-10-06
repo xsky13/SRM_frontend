@@ -293,38 +293,6 @@ export default function CalendarioDisponibilidad({
   const formatPrice = (value: number) =>
     `$${value.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
 
-<<<<<<< HEAD
-  async function confirmDates() {
-    if (!rangeStart || !rangeEnd || isCreatingReservation) return;
-
-    setIsCreatingReservation(true);
-    setReservationError(null);
-
-    try {
-      const checkInDate = rangeStart.toISOString();
-      const checkOutDate = rangeEnd.toISOString();
-      const { data } = await api.post("/api/reservation/with_auth", {
-        apartmentId,
-        checkInDate,
-        checkOutDate,
-      });
-      const createdReservation =
-        data?.reservation ??
-        data?.data?.reservation ??
-        data?.value?.reservation ??
-        data?.data ??
-        data?.value ??
-        data;
-      const reservationId =
-        createdReservation?.id ??
-        createdReservation?.reservationId ??
-        createdReservation?.resrevationId;
-
-      if (!reservationId) {
-        throw new Error("El servidor no devolvió el ID de la reserva creada.");
-      }
-
-=======
   const createReservationMutation = useMutation({
     mutationFn: async ({
       startDay,
@@ -343,7 +311,6 @@ export default function CalendarioDisponibilidad({
     onSuccess: (data) => {
       setIsCreatingReservation(false);
       setReservationError(null);
->>>>>>> 5847c0d124af359ee770b7a5c98f68cbf55199be
       toast.success("Reserva creada exitosamente.");
       console.log(data);
       navigate("/reserva/" + data.id);
