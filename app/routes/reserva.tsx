@@ -82,6 +82,7 @@ export default function ReservaPage() {
 	const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 	const [paymentError, setPaymentError] = useState<string | null>(null);
 	const [paymentApproved, setPaymentApproved] = useState(false);
+	const [showUnconfirmedExitDialog, setShowUnconfirmedExitDialog] = useState(false);
 	const reservationQuery = useQuery<ReservationState>({
 		queryKey: ["reservation-detail", id],
 		queryFn: async () => {
@@ -159,15 +160,12 @@ export default function ReservaPage() {
 			(activeReservation.pricePerDay ?? 0) * selectedDays);
 	const deposit = activeReservation.depositAmount ?? total * 0.1;
 	const remaining = Math.max(0, total - (activeReservation.depositAmount ?? 0));
-	const paymentAmount =
-		paymentOption === "deposit"
-			? deposit
-			: reservationState === 1
-				? remaining
-				: total;
+	const getPaymentAmount = (option: "deposit" | "full") =>
+		option === "deposit" ? deposit : total;
+	const paymentAmount = getPaymentAmount(paymentOption);
 	const showPaymentOptions = reservationState === 0 || reservationState === 1;
 	const showCompleteInfoOnly = reservationState === 2;
-
+ console.log("activeReservation", activeReservation);
 	function closePaymentForm() {
 		setShowCardForm(false);
 		setPaymentError(null);
@@ -236,6 +234,23 @@ export default function ReservaPage() {
 		}
 	}
 
+	const paymentChoices: {
+		title: string;
+		description: string;
+		option: "deposit" | "full";
+	}[] = [
+		{
+			title: "Pagar seña",
+			description: "Confirmar la reserva pagando un porcentaje ahora, y pagar el resto más tarde",
+			option: "deposit",
+		},
+		{
+			title: "Pagar monto completo",
+			description: "Asegurar la reserva pagando el monto total ahora",
+			option: "full",
+		},
+	];
+
 	return (
 		<main className="min-h-screen bg-[#f6f4ee] text-[#202722]">
 			<header className="mx-auto flex max-w-7xl items-center justify-between px-5 py-6 md:px-8">
@@ -263,7 +278,7 @@ export default function ReservaPage() {
 				<div className="mt-8 grid gap-4 rounded-md bg-[#e7e4dc] p-5 text-sm md:grid-cols-4">
 					<p>Inicio: {formatDate(activeReservation.checkInDate)}</p>
 					<p>Fin: {formatDate(activeReservation.checkOutDate)}</p>
-					<p>Ubicación: {activeReservation.apartmentLocation ?? activeReservation.apartmentId}</p>
+					<p>Ubicación: {activeReservation.apartmentLocation ?? activeReservation.apartmentName}</p>
 					<p>Estado: {getReservationStateLabel(reservationState)}</p>
 				</div>
 
@@ -287,22 +302,9 @@ export default function ReservaPage() {
 							</p>
 						</div>
 					</div>
-				) : (
+				) : showPaymentOptions ? (
 					<div className="mt-8 grid gap-8 lg:grid-cols-2">
-						{[
-							["Pagar seña", "Confirmar la reserva pagando un porcentaje ahora, y pagar el resto más tarde", "deposit"],
-							[
-								reservationState === 1 ? "Pagar saldo restante" : "Pagar reserva completa",
-								reservationState === 1
-									? "Completar el pago pendiente de la reserva"
-									: "Asegurar la reserva pagando el monto total ahora",
-								"full",
-							],
-						].filter(([_, __, option]) => {
-							if (reservationState === 0) return true;
-							if (reservationState === 1) return option === "full";
-							return false;
-						}).map(([title, description, option]) => (
+						{paymentChoices.map(({ title, description, option }) => (
 							<article
 								key={title}
 								className="flex min-h-80 flex-col border border-dashed border-[#c8c2b8] p-8"
@@ -310,7 +312,7 @@ export default function ReservaPage() {
 								<h2 className="text-center font-serif text-3xl font-bold text-[#202722]">{title}</h2>
 								<p className="mt-3 max-w-md text-sm">{description}</p>
 								<p className="mt-3 text-sm font-semibold">
-											{option === "deposit" ? formatPrice(deposit) : formatPrice(paymentAmount)}
+									{formatPrice(getPaymentAmount(option))}
 								</p>
 								{showCardForm && paymentOption === option && !paymentApproved ? (
 									<div className="mt-4 rounded-md border border-[#e0ded5] bg-[#f8f4ef] p-3">
@@ -354,7 +356,7 @@ export default function ReservaPage() {
 											setPaymentOption(option as "deposit" | "full");
 											setShowCardForm(true);
 										}}
-										className="ui-button ui-button-sm mt-auto self-center"
+										className="ui-button ui-button-sm mt-auto self-center bg-[#2d6a4f] text-white"
 									>
 										Confirmar reserva
 									</button>
@@ -362,7 +364,7 @@ export default function ReservaPage() {
 							</article>
 						))}
 					</div>
-				)}
+				) : null}
 
 				{paymentError && <p className="mt-4 text-sm text-[#b74f3d]">{paymentError}</p>}
 				{paymentApproved && (
@@ -370,7 +372,14 @@ export default function ReservaPage() {
 				)}
 				{showPaymentOptions && !showCompleteInfoOnly && (
 					<div className="mt-6 flex flex-wrap items-center justify-between gap-4">
-						<div className="flex w-full justify-end">
+						<div className="flex w-full flex-wrap justify-between gap-3">
+							<button
+								type="button"
+								onClick={() => setShowUnconfirmedExitDialog(true)}
+								className="ui-button ui-button-sm"
+							>
+								Reservar sin confirmar
+							</button>
 							<button
 								type="button"
 								onClick={() => navigate(`/departamento/${activeReservation.apartmentId}`)}
@@ -382,6 +391,40 @@ export default function ReservaPage() {
 					</div>
 				)}
 			</section>
+			{showUnconfirmedExitDialog && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+					<div
+						role="dialog"
+						aria-modal="true"
+						aria-labelledby="unconfirmed-exit-title"
+						aria-describedby="unconfirmed-exit-description"
+						className="w-full max-w-md rounded-md bg-[#fffdf9] p-6 text-[#202722] shadow-xl"
+					>
+						<h2 id="unconfirmed-exit-title" className="font-serif text-2xl text-[#385347]">
+							¿Reservar sin confirmar?
+						</h2>
+						<p id="unconfirmed-exit-description" className="mt-3 text-sm text-[#68716a]">
+							Si no confirmás la reserva, las fechas seguirán disponibles y cualquier usuario podrá reservarlas.
+						</p>
+						<div className="mt-6 flex justify-end gap-3">
+							<button
+								type="button"
+								onClick={() => setShowUnconfirmedExitDialog(false)}
+								className="ui-button ui-button-sm bg-[#a90000] text-white"
+							>
+								Cancelar
+							</button>
+							<button
+								type="button"
+								onClick={() => navigate("/")}
+								className="ui-button ui-button-sm bg-[#2d6a4f] text-white"
+							>
+								Aceptar
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 		</main>
 	);
 }
