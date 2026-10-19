@@ -8,6 +8,46 @@ import NavegacionUsuario, { useAuthentication } from "~/components/NavegacionUsu
 import api from "~/utils/api";
 import type { Route } from "./+types/departamento";
 
+function getReservationList(data: any): Reserva[] {
+	const result = data?.value ?? data?.data ?? data;
+	const reservations = Array.isArray(result)
+		? result
+		: result?.reservations ??
+			result?.Reservations ??
+			result?.items ??
+			result?.Items ??
+			[];
+
+	return reservations.map((reservation: any) => {
+		const fields = Object.fromEntries(
+			Object.entries(reservation).map(([key, value]) => [key.toLowerCase(), value]),
+		);
+		const apartment = fields.apartment;
+		const apartmentFields =
+			apartment && typeof apartment === "object"
+				? Object.fromEntries(
+						Object.entries(apartment).map(([key, value]) => [
+							key.toLowerCase(),
+							value,
+						]),
+					)
+				: {};
+
+		return {
+			...reservation,
+			apartmentId:
+				fields.apartmentid ??
+				fields.apartment_id ??
+				apartmentFields.id ??
+				apartmentFields.apartmentid,
+			checkInDate: fields.checkindate ?? fields.check_in_date,
+			checkOutDate: fields.checkoutdate ?? fields.check_out_date,
+			reservationState:
+				fields.reservationstate ?? fields.state ?? fields.status,
+		};
+	});
+}
+
 export default function DepartamentoDetallePage() {
 	const { id } = useParams<Route.ComponentProps["params"]>();
 	const location = useLocation();
@@ -31,11 +71,22 @@ export default function DepartamentoDetallePage() {
 		queryKey: ["reservations", id],
 		queryFn: async () => {
 			const { data } = await api.get(`/api/reservation/apartment/${id}`);
-			return Array.isArray(data) ? data : data.reservations ?? [];
+			return getReservationList(data);
 		},
 		enabled: Boolean(id),
 		meta: { errorMessage: "No pudimos cargar la disponibilidad de este departamento" },
   });
+
+	const ownReservationsQuery = useQuery<Reserva[]>({
+		queryKey: ["my-reservations", authQuery.data?.id],
+		queryFn: async () => {
+			const { data } = await api.get(`/api/reservation/user/${authQuery.data?.id}`);
+			return getReservationList(data);
+		},
+		enabled: authQuery.data?.id != null,
+		meta: { silent: true },
+		retry: 1,
+	});
 
 	const departamento = query.data;
 
@@ -109,7 +160,12 @@ export default function DepartamentoDetallePage() {
 						<div className="mt-6">
 							<button
 								type="button"
-								onClick={() => setShowCalendar(true)}
+								onClick={() => {
+									setShowCalendar(true);
+									if (authQuery.data?.id != null) {
+										void ownReservationsQuery.refetch();
+									}
+								}}
 								className="ui-button ui-button-md ui-button-block bg-primary text-primary-foreground"
 							>
 								Reservar departamento
@@ -153,12 +209,31 @@ export default function DepartamentoDetallePage() {
 
 			{showCalendar && (
 				<CalendarioDisponibilidad
-					reservas={reservationsQuery.data ?? []}
+					reservas={[
+						...(reservationsQuery.data ?? []),
+						...(ownReservationsQuery.data ?? [])
+							.filter(
+								(reservation) =>
+									String(reservation.apartmentId) === String(departamento.id) &&
+									[0, 1].includes(Number(reservation.reservationState)),
+							)
+							.map((reservation) => ({
+								...reservation,
+								isOwnUnconfirmed: true,
+							})),
+					]}
 					pricePerDay={departamento.price}
 					apartmentId={departamento.id}
 					apartmentName={departamento.name}
 					apartmentLocation={departamento.location}
 					isAuthenticated={authQuery.data != null}
+					isCheckingOwnReservations={
+						authQuery.isPending ||
+						(authQuery.data != null && ownReservationsQuery.isFetching)
+					}
+					ownReservationsError={
+						authQuery.data != null && ownReservationsQuery.isError
+					}
 					onClose={closeCalendar}
 				/>
 			)}

@@ -4,4 +4,5 @@ export interface Reserva {
 	checkInDate: string;
   checkOutDate: string;
   reservationState: number;
+  isOwnUnconfirmed?: boolean;
 }
