@@ -154,9 +154,11 @@ export default function ReservaPage() {
 			) / 86_400_000,
 		) + 1;
 	const total =
-		activeReservation.totalPrice ??
+		activeReservation.fullCost ??
 		(activeReservation.fullAmount ??
 			(activeReservation.pricePerDay ?? 0) * selectedDays);
+
+	console.log(activeReservation);
 	const deposit = activeReservation.depositAmount ?? total * 0.1;
 	const remaining = Math.max(0, total - (activeReservation.depositAmount ?? 0));
 	const paymentAmount =
