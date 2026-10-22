@@ -12,5 +12,6 @@ export default [
 	// NUEVO: Layout protegido de administración y su página inicial de departamentos.
 	route("admin", "routes/admin.tsx", [
 		route("departamentos", "routes/admin.departamentos.tsx"),
+		route("departamentos/nuevo", "routes/admin.departamentos.nuevo.tsx"),
 	])
 ] satisfies RouteConfig;
