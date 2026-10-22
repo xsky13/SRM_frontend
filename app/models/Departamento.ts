@@ -7,7 +7,16 @@ export interface DepartamentoData {
 	price: number;
 	coverImgUrl?: string;
 	images: Image[];
+	isDeleted?: boolean;
+	latitude?: number;
+	longitude?: number;
+	[key: string]: unknown;
 }
+
+export type ApartmentWriteInput = Omit<
+	DepartamentoData,
+	"id" | "images" | "isDeleted"
+>;
 
 export class Departamento {
 	public readonly id: string;

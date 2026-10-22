@@ -8,5 +8,9 @@ export default [
 	route("reserva/:id", "routes/reserva.tsx"),
 	route("mis-reservas", "routes/mis-reservas.tsx"),
 	route("departamento/:id", "routes/departamento.tsx"),
-	route("test", "routes/test.tsx")
+	route("test", "routes/test.tsx"),
+	// NUEVO: Layout protegido de administración y su página inicial de departamentos.
+	route("admin", "routes/admin.tsx", [
+		route("departamentos", "routes/admin.departamentos.tsx"),
+	])
 ] satisfies RouteConfig;

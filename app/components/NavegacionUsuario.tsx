@@ -28,17 +28,30 @@ export function useAuthentication() {
 export default function NavegacionUsuario() {
   const authQuery = useAuthentication();
   const location = useLocation();
+  const user = authQuery.data;
+  const usertype: unknown = user?.usertype;
+
+  // NUEVO: Registra solo el campo de rol para evitar exponer datos personales del usuario.
+  console.log("USER DATA DEBUG:", user ? { usertype: user.usertype } : user);
 
   if (authQuery.isPending) {
     return <span className="text-sm text-[#68716a]">Verificando sesión...</span>;
   }
 
-  if (authQuery.data) {
+  if (user) {
+    // TODO: Revisar con Backend por qué /me devuelve usertype: 0
+    const isAdmin = usertype === 1; // NUEVO: Solo el rol válido de administrador habilita el panel.
+
     return (
       <div className="flex items-center gap-3">
         <Link to="/mis-reservas" className="ui-link">
           Mis reservas
         </Link>
+        {isAdmin && (
+          <Link to="/admin/departamentos" className="ui-link">
+            Panel de Admin
+          </Link>
+        )}
         <Link to="/logout" className="ui-button ui-button-sm">
           Cerrar sesión
         </Link>

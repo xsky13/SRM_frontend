@@ -1,5 +1,7 @@
 import axios from 'axios';
 import { ApiError } from '~/types/ApiError';
+import type { DepartamentoData, ApartmentWriteInput } from '~/models/Departamento';
+import type { ImageData } from '~/types/images';
 
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL,
@@ -46,4 +48,45 @@ api.interceptors.response.use(
         return Promise.reject(new ApiError('Error desconocido al realizar la solicitud', 0));
     }
 );
+
+export async function getApartments(): Promise<DepartamentoData[]> {
+    const { data } = await api.get<DepartamentoData[]>('/api/apartment');
+    return data;
+}
+
+export async function createApartment(apartment: ApartmentWriteInput): Promise<DepartamentoData> {
+    const { data } = await api.post<DepartamentoData>('/api/apartment', apartment);
+    return data;
+}
+
+export async function updateApartment(
+    id: string,
+    apartment: Partial<ApartmentWriteInput>,
+): Promise<DepartamentoData> {
+    const { data } = await api.put<DepartamentoData>(`/api/apartment/${id}`, apartment);
+    return data;
+}
+
+export async function deleteApartment(id: string): Promise<void> {
+    await api.delete(`/api/apartment/${id}`);
+}
+
+export async function addApartmentImages(
+    id: string,
+    images: File[],
+): Promise<ImageData[]> {
+    const formData = new FormData();
+    images.forEach((image) => formData.append('images', image));
+    const { data } = await api.post<ImageData[]>(
+        `/api/apartment/${id}/images`,
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+    return data;
+}
+
+export async function deleteApartmentImages(id: string): Promise<void> {
+    await api.delete(`/api/apartment/${id}/images`);
+}
+
 export default api;
