@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ApartmentWriteInput } from "~/models/Departamento";
 import LocationPicker, { type SelectedLocation } from "~/components/admin/LocationPicker";
-import { addApartmentImages, createApartment, updateApartment } from "~/utils/api";
+import { createApartment } from "~/utils/api";
 
 type FormValues = {
 	name: string;
@@ -18,11 +18,6 @@ type FormValues = {
 
 type FormField = keyof FormValues;
 
-type CreateApartmentVariables = {
-	apartment: Omit<ApartmentWriteInput, "coverImgUrl">;
-	coverImage: File;
-};
-
 const initialValues: FormValues = {
 	name: "",
 	description: "",
@@ -33,13 +28,13 @@ const initialValues: FormValues = {
 	coverImgUrl: "",
 };
 
-function validate(values: FormValues, coverImage: File | null): Partial<Record<FormField, string>> {
+function validate(values: FormValues): Partial<Record<FormField, string>> {
 	const errors: Partial<Record<FormField, string>> = {};
 
 	if (!values.name.trim()) errors.name = "Ingresá el nombre del departamento.";
 	if (!values.description.trim()) errors.description = "Ingresá una descripción.";
 	if (!values.location.trim()) errors.location = "Ingresá la ubicación.";
-	if (!coverImage && !values.coverImgUrl.trim()) errors.coverImgUrl = "Seleccioná una imagen de portada.";
+	if (!values.coverImgUrl.trim()) errors.coverImgUrl = "Ingresá la URL de la imagen de portada.";
 	if (values.price.trim() === "" || !Number.isFinite(Number(values.price)) || Number(values.price) <= 0) {
 		errors.price = "Ingresá un precio mayor que cero.";
 	}
@@ -57,37 +52,14 @@ export default function CreateApartmentForm() {
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
 	const [values, setValues] = useState(initialValues);
-	const [coverImage, setCoverImage] = useState<File | null>(null);
 	const [submitted, setSubmitted] = useState(false);
-	const errors = validate(values, coverImage);
+	const errors = validate(values);
 
 	const mutation = useMutation({
-		mutationFn: async ({ apartment, coverImage: selectedImage }: CreateApartmentVariables) => {
-			const createdApartment = await createApartment(apartment);
-			let uploadedImages;
-			try {
-				uploadedImages = await addApartmentImages(createdApartment.id, [selectedImage]);
-			} catch (error) {
-				const reason = error instanceof Error ? error.message : "Error desconocido";
-				throw new Error(`El departamento se creó, pero no se pudo subir la imagen: ${reason}`);
-			}
-			const coverImgUrl = uploadedImages[0]?.url;
-			if (!coverImgUrl) {
-				throw new Error("El departamento se creó, pero no se recibió la URL de la imagen.");
-			}
-			let updatedApartment;
-			try {
-				updatedApartment = await updateApartment(createdApartment.id, { coverImgUrl });
-			} catch (error) {
-				const reason = error instanceof Error ? error.message : "Error desconocido";
-				throw new Error(`La imagen se subió, pero no se pudo guardar como portada: ${reason}`);
-			}
-			return { apartment: updatedApartment, coverImgUrl };
-		},
+		mutationFn: (apartment: ApartmentWriteInput) => createApartment(apartment),
 		meta: { silent: true },
-		onSuccess: async ({ coverImgUrl }) => {
+		onSuccess: async () => {
 			await queryClient.invalidateQueries({ queryKey: ["apartments"] });
-			setValues((current) => ({ ...current, coverImgUrl }));
 			toast.success("Departamento creado correctamente");
 			navigate("/admin/departamentos");
 		},
@@ -109,17 +81,14 @@ export default function CreateApartmentForm() {
 		setSubmitted(true);
 		if (Object.keys(errors).length > 0) return;
 
-		if (!coverImage) return;
 		mutation.mutate({
-			apartment: {
-				name: values.name.trim(),
-				description: values.description.trim(),
-				price: Number(values.price),
-				location: values.location.trim(),
-				latitude: Number(values.latitude),
-				longitude: Number(values.longitude),
-			},
-			coverImage,
+			name: values.name.trim(),
+			description: values.description.trim(),
+			price: Number(values.price),
+			location: values.location.trim(),
+			latitude: Number(values.latitude),
+			longitude: Number(values.longitude),
+			coverImgUrl: values.coverImgUrl.trim(),
 		});
 	}
 
@@ -192,26 +161,11 @@ export default function CreateApartmentForm() {
 			</label>
 			<div className="grid gap-5 sm:grid-cols-2">
 				{field("price", "Precio por día", "number")}
-				<label className="block text-sm text-[#385347]">
-					<span className="mb-1.5 block font-semibold">Imagen de portada</span>
-					<input
-						className="w-full rounded-md border border-[#e5e7eb] bg-[#fffdf9] px-3 py-2.5 text-[#202722] outline-none transition focus:border-[#e28b68]"
-						type="file"
-						name="coverImage"
-						accept="image/*"
-						required
-						onChange={(event) => setCoverImage(event.target.files?.[0] ?? null)}
-						aria-invalid={submitted && Boolean(errors.coverImgUrl)}
-						aria-describedby={submitted && errors.coverImgUrl ? "coverImgUrl-error" : undefined}
-					/>
-					{submitted && errors.coverImgUrl && (
-						<span id="coverImgUrl-error" className="mt-1 block text-xs text-[#b74f3d]">
-							{errors.coverImgUrl}
-						</span>
-					)}
-					{coverImage && <span className="mt-1 block text-xs text-[#68716a]">{coverImage.name}</span>}
-				</label>
+				{field("coverImgUrl", "URL de la imagen de portada")}
 			</div>
+			<p className="text-xs text-[#68716a]">
+				Podrás subir más fotos y cambiar la portada desde la pantalla de Edición una vez creado el departamento.
+			</p>
 			<div className="flex flex-wrap justify-end gap-3 pt-2">
 				<Link
 					to="/admin/departamentos"

@@ -1,6 +1,7 @@
 import { MapPin } from "lucide-react";
 import { Link } from "react-router";
 import type { Departamento } from "~/models/Departamento";
+import { resolveImageUrl } from "~/utils/api";
 
 interface DepartamentoCardProps {
 	departamento: Departamento;
@@ -14,7 +15,7 @@ export default function TarjetaDepartamento(props: DepartamentoCardProps) {
 			<div className="relative h-60 overflow-hidden bg-[#ede9dc]">
 				<img
 					className="h-full w-full object-cover transition duration-500 hover:scale-105"
-					src={departamento.coverImgUrl}
+					src={resolveImageUrl(departamento.coverImgUrl)}
 					alt={`Interior de ${departamento.name}`}
 				/>
 			</div>

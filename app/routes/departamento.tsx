@@ -5,7 +5,7 @@ import type { Departamento } from "~/models/Departamento";
 import type { Reserva } from "~/types/Reserva";
 import CalendarioDisponibilidad from "~/components/CalendarioDisponibilidad";
 import NavegacionUsuario, { useAuthentication } from "~/components/NavegacionUsuario";
-import api from "~/utils/api";
+import api, { resolveImageUrl } from "~/utils/api";
 import type { Route } from "./+types/departamento";
 
 export default function DepartamentoDetallePage() {
@@ -123,7 +123,7 @@ export default function DepartamentoDetallePage() {
 							<div className="ui-border overflow-hidden rounded-md bg-[#ede9dc]">
 								<img
 									className="h-[400px] w-full object-cover"
-									src={departamento.coverImgUrl}
+									src={resolveImageUrl(departamento.coverImgUrl)}
 									alt={`${departamento.name}, imagen de portada`}
 								/>
 							</div>
@@ -141,7 +141,7 @@ export default function DepartamentoDetallePage() {
 								>
 									<img
 										className="h-full w-full object-cover"
-										src={image.url}
+										src={resolveImageUrl(image.url)}
 										alt={`${departamento.name}, vista ${index + 1}`}
 									/>
 								</button>

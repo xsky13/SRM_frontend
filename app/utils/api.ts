@@ -54,6 +54,18 @@ export async function getApartments(): Promise<DepartamentoData[]> {
     return data;
 }
 
+export function resolveImageUrl(url: string | null | undefined): string {
+    if (!url) return '';
+    const baseUrl = import.meta.env.VITE_API_URL;
+    if (!baseUrl) return url;
+    return new URL(url, `${baseUrl.replace(/\/+$/, '')}/`).toString();
+}
+
+export async function getApartmentById(id: string): Promise<DepartamentoData> {
+    const { data } = await api.get<DepartamentoData>(`/api/apartment/${id}`);
+    return data;
+}
+
 export async function createApartment(apartment: ApartmentWriteInput): Promise<DepartamentoData> {
     const { data } = await api.post<DepartamentoData>('/api/apartment', apartment);
     return data;
@@ -76,13 +88,20 @@ export async function addApartmentImages(
     images: File[],
 ): Promise<ImageData[]> {
     const formData = new FormData();
-    images.forEach((image) => formData.append('images', image));
+    images.forEach((image) => formData.append('Images', image));
     const { data } = await api.post<ImageData[]>(
         `/api/apartment/${id}/images`,
         formData,
         { headers: { 'Content-Type': 'multipart/form-data' } },
     );
     return data;
+}
+
+export async function removeImagesFromApartment(
+    id: string,
+    imageIds: string[],
+): Promise<void> {
+    await api.delete(`/api/apartment/${id}/images`, { data: { imageIds: imageIds } });
 }
 
 export async function deleteApartmentImages(id: string): Promise<void> {
