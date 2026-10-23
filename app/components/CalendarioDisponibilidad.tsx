@@ -22,6 +22,8 @@ interface CalendarioDisponibilidadProps {
   apartmentName?: string;
   apartmentLocation?: string;
   isAuthenticated: boolean;
+  isCheckingOwnReservations: boolean;
+  ownReservationsError: boolean;
   onClose: () => void;
 }
 
@@ -73,7 +75,8 @@ function isReserved(day: Date, reservas: Reserva[]): boolean {
     return (
       current >= start &&
       current <= end &&
-      (reserva.reservationState == 2 ||
+      (reserva.isOwnUnconfirmed === true ||
+        reserva.reservationState == 2 ||
         reserva.reservationState == 3 ||
         reserva.reservationState == 4)
     );
@@ -115,6 +118,8 @@ export default function CalendarioDisponibilidad({
   apartmentName,
   apartmentLocation,
   isAuthenticated,
+  isCheckingOwnReservations,
+  ownReservationsError,
   onClose,
 }: CalendarioDisponibilidadProps) {
   const navigate = useNavigate();
@@ -160,6 +165,8 @@ export default function CalendarioDisponibilidad({
 
   function updateRangeEnd(day: Date) {
     if (
+      isCheckingOwnReservations ||
+      ownReservationsError ||
       !rangeStart ||
       !isSelectableDay(day) ||
       rangeHasReservation(rangeStart, day, reservas)
@@ -169,7 +176,13 @@ export default function CalendarioDisponibilidad({
   }
 
   function handleDayPointerDown(day: Date) {
-    if (!isSelectableDay(day)) return;
+    if (
+      isCheckingOwnReservations ||
+      ownReservationsError ||
+      !isSelectableDay(day) ||
+      isReserved(day, reservas)
+    )
+      return;
 
     setIsDragging(true);
     if (!rangeStart || rangeEnd) {
@@ -182,7 +195,14 @@ export default function CalendarioDisponibilidad({
   }
 
   function handleDayPointerUp(day: Date) {
-    if (!rangeStart || !isSelectableDay(day)) return;
+    if (
+      isCheckingOwnReservations ||
+      ownReservationsError ||
+      !rangeStart ||
+      !isSelectableDay(day) ||
+      isReserved(day, reservas)
+    )
+      return;
     updateRangeEnd(day);
     setIsDragging(false);
   }
@@ -324,7 +344,13 @@ export default function CalendarioDisponibilidad({
   });
 
   function confirmDates() {
-    if (!rangeStart || !rangeEnd) return;
+    if (
+      !rangeStart ||
+      !rangeEnd ||
+      isCheckingOwnReservations ||
+      ownReservationsError
+    )
+      return;
 
     if (isAuthenticated) {
       // onClose();
@@ -471,6 +497,14 @@ export default function CalendarioDisponibilidad({
                 day ? (
                   (() => {
                     const reserved = isReserved(day, reservas);
+                    const ownUnconfirmedReservation = reservas.some((reserva) => {
+                      if (!reserva.isOwnUnconfirmed) return false;
+                      const date = dateKey(day);
+                      return (
+                        date >= dateKey(parseDate(reserva.checkInDate)) &&
+                        date <= dateKey(parseDate(reserva.checkOutDate))
+                      );
+                    });
                     const selected =
                       isBetween(day, rangeStart, rangeEnd) ||
                       Boolean(
@@ -480,23 +514,42 @@ export default function CalendarioDisponibilidad({
                       <button
                         key={dateKey(day)}
                         type="button"
-                        title={reserved ? "Fecha reservada" : ""}
-                        disabled={reserved || !isSelectableDay(day)}
+                        title={
+                          ownUnconfirmedReservation
+                            ? "Ya tenés una reserva sin confirmar para este día"
+                            : reserved
+                              ? "Fecha reservada"
+                              : ""
+                        }
+                        disabled={
+                          reserved ||
+                          !isSelectableDay(day) ||
+                          isCheckingOwnReservations ||
+                          ownReservationsError
+                        }
                         onPointerDown={() =>
                           !reserved && handleDayPointerDown(day)
                         }
                         onPointerEnter={() => isDragging && updateRangeEnd(day)}
                         onPointerUp={() => !reserved && handleDayPointerUp(day)}
                         className={`aspect-square rounded-sm border border-transparent p-0.5 transition ${
-                          reserved
-                            ? "cursor-not-allowed bg-[#f3ddd3] text-[#a85c43]"
+                          ownUnconfirmedReservation
+                            ? "cursor-not-allowed bg-[#f5e6b8] text-[#805b16]"
+                            : reserved
+                              ? "cursor-not-allowed bg-[#f3ddd3] text-[#a85c43]"
                             : !isSelectableDay(day)
                               ? "cursor-not-allowed bg-[#f0efe9] text-[#a6a29a]"
                               : selected
                                 ? "bg-[#385347] text-white shadow-sm"
                                 : "bg-[#edf2e8] text-[#385347] hover:bg-[#dce8d8]"
                         }`}
-                        aria-label={`${day.getDate()} de ${monthFormatter.format(month)}${reserved ? ", reservado" : ", disponible"}`}
+                        aria-label={`${day.getDate()} de ${monthFormatter.format(month)}${
+                          ownUnconfirmedReservation
+                            ? ", ya tenés una reserva sin confirmar"
+                            : reserved
+                              ? ", reservado"
+                              : ", disponible"
+                        }`}
                       >
                         <span className="flex h-full items-center justify-center text-xs font-semibold">
                           {day.getDate()}
@@ -517,12 +570,27 @@ export default function CalendarioDisponibilidad({
               <span className="inline-flex items-center gap-1.5">
                 <CircleX size={14} className="text-[#c7765a]" /> Reservado
               </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-3.5 w-3.5 rounded-sm bg-[#f5e6b8]" />
+                Tu reserva sin confirmar
+              </span>
               {rangeStart && rangeEnd && (
                 <span className="w-full text-[#385347]">
                   {dateKey(rangeStart)} a {dateKey(rangeEnd)}
                 </span>
               )}
             </div>
+
+            {isCheckingOwnReservations && (
+              <p className="mt-3 text-sm text-[#68716a]" role="status">
+                Verificando tus reservas...
+              </p>
+            )}
+            {ownReservationsError && (
+              <p className="mt-3 text-sm text-[#b74f3d]" role="alert">
+                No se pudieron verificar tus reservas. Cerrá y volvé a abrir el calendario para intentar nuevamente.
+              </p>
+            )}
 
             {reservationError && (
               <p className="mt-3 text-sm text-[#b74f3d]" role="alert">
@@ -531,7 +599,13 @@ export default function CalendarioDisponibilidad({
             )}
             <button
               type="button"
-              disabled={!rangeStart || !rangeEnd || isCreatingReservation}
+              disabled={
+                !rangeStart ||
+                !rangeEnd ||
+                isCreatingReservation ||
+                isCheckingOwnReservations ||
+                ownReservationsError
+              }
               onClick={confirmDates}
               className="ui-button ui-button-md ui-button-block mt-4"
             >
