@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import {
 	APIProvider,
+	AdvancedMarker,
 	Map,
-	Marker,
 	useMap,
 	useMapsLibrary,
 } from "@vis.gl/react-google-maps";
@@ -45,6 +45,8 @@ function InteractiveMap({
 		const lng = Number(longitude);
 		if (latitude.trim() && longitude.trim() && Number.isFinite(lat) && Number.isFinite(lng)) {
 			setSelectedPosition({ lat, lng });
+		} else {
+			setSelectedPosition(null);
 		}
 	}, [latitude, longitude]);
 
@@ -147,11 +149,12 @@ function InteractiveMap({
 			<Map
 				defaultCenter={selectedPosition ?? initialMapCenter}
 				defaultZoom={13}
+				mapId="DEMO_MAP_ID"
 				mapTypeId="roadmap"
 				className="h-80 w-full overflow-hidden rounded-md border border-[#e5e7eb]"
 				onClick={handleMapClick}
 			>
-				{selectedPosition && <Marker position={selectedPosition} />}
+				{selectedPosition && <AdvancedMarker position={selectedPosition} />}
 			</Map>
 			{error && <p role="alert" className="text-sm text-[#b74f3d]">{error}</p>}
 		</div>

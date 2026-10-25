@@ -25,14 +25,27 @@ export class Departamento {
 	public readonly price: number;
 	public readonly coverImgUrl: string;
 	public readonly images: Image[];
+	public readonly latitude?: number;
+	public readonly longitude?: number;
 
-	constructor({ id, name, location, price, coverImgUrl, images }: DepartamentoData) {
+	constructor({
+		id,
+		name,
+		location,
+		price,
+		coverImgUrl,
+		images,
+		latitude,
+		longitude,
+	}: DepartamentoData) {
 		this.id = id;
 		this.name = name;
 		this.location = location;
 		this.price = price;
 		this.images = images;
 		this.coverImgUrl = coverImgUrl ?? images[0]?.url ?? "";
+		this.latitude = latitude;
+		this.longitude = longitude;
 	}
 
 	static fromDatabase(data: DepartamentoData): Departamento {

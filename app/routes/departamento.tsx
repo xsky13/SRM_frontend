@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
+import { APIProvider, AdvancedMarker, InfoWindow, Map } from "@vis.gl/react-google-maps";
 import type { Departamento } from "~/models/Departamento";
 import type { Reserva } from "~/types/Reserva";
 import CalendarioDisponibilidad from "~/components/CalendarioDisponibilidad";
@@ -48,6 +49,24 @@ export default function DepartamentoDetallePage() {
 	}
 
 	const formattedPrice = `$${departamento.price.toLocaleString("es-AR")}`;
+	const rawLatitude = departamento.latitude;
+	const rawLongitude = departamento.longitude;
+	const latitude = Number(rawLatitude);
+	const longitude = Number(rawLongitude);
+	const hasValidCoordinates =
+		rawLatitude != null &&
+		rawLongitude != null &&
+		String(rawLatitude).trim() !== "" &&
+		String(rawLongitude).trim() !== "" &&
+		Number.isFinite(latitude) &&
+		Number.isFinite(longitude) &&
+		latitude !== 0 &&
+		longitude !== 0 &&
+		latitude >= -90 &&
+		latitude <= 90 &&
+		longitude >= -180 &&
+		longitude <= 180;
+	const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 	const images = departamento.images ?? [];
 	const galleryImages =
 		images.length > 0
@@ -148,6 +167,42 @@ export default function DepartamentoDetallePage() {
 							))}
 						</div>
 					</div>
+				</div>
+			</section>
+
+			<section className="mx-auto max-w-7xl px-5 pb-10 md:px-8">
+				<div className="rounded-md border border-[#e5e7eb] bg-[#fffdf9] p-5 md:p-6">
+					<h2 className="mb-4 font-serif text-3xl tracking-[-0.04em] text-[#385347]">Ubicación</h2>
+					{!hasValidCoordinates ? (
+						<p className="rounded-md bg-[#f5f2ec] px-4 py-6 text-sm text-[#68716a]">
+							Ubicación no disponible
+						</p>
+					) : !apiKey ? (
+						<p role="alert" className="rounded-md bg-[#f5f2ec] px-4 py-6 text-sm text-[#68716a]">
+							No se pudo cargar el mapa porque falta configurar Google Maps.
+						</p>
+					) : (
+						<APIProvider apiKey={apiKey}>
+							<Map
+								center={{ lat: latitude, lng: longitude }}
+								zoom={15}
+								mapId="DEMO_MAP_ID"
+								className="h-80 w-full overflow-hidden rounded-md border border-[#e5e7eb]"
+								aria-label={`Mapa de ubicación de ${departamento.name}`}
+							>
+								<AdvancedMarker
+									position={{ lat: latitude, lng: longitude }}
+									title={departamento.name}
+								/>
+								<InfoWindow position={{ lat: latitude, lng: longitude }}>
+									<div className="max-w-64 text-[#202722]">
+										<strong>{departamento.name}</strong>
+										<p className="mt-1 text-sm">{departamento.location}</p>
+									</div>
+								</InfoWindow>
+							</Map>
+						</APIProvider>
+					)}
 				</div>
 			</section>
 
