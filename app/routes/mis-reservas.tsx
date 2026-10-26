@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import api from "~/utils/api";
 import { useAuthentication } from "~/components/NavegacionUsuario";
+import { RESERVATION_STATE_LABEL, type ReservationStateValue } from "~/types/reservationState";
 
 export function meta() {
   return [{ title: "Mis reservas | Reservas Moreno" }];
@@ -15,9 +16,6 @@ type ReservationListItem = {
   checkInDate: string;
   checkOutDate: string;
   reservationState: number | string;
-  totalPrice?: number;
-  depositAmount?: number;
-  fullAmount?: number;
 };
 
 function formatDate(value: string) {
@@ -28,24 +26,8 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-function formatPrice(value?: number) {
-  if (value == null) return "-";
-  return `$${value.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
-}
-
 function getReservationStateLabel(state: number | string) {
-  switch (Number(state)) {
-    case 0:
-      return "No confirmada";
-    case 1:
-      return "Confirmada no completa";
-    case 2:
-      return "Confirmada completa";
-    case 3:
-      return "Cancelada";
-    default:
-      return "Desconocido";
-  }
+  return RESERVATION_STATE_LABEL[Number(state) as ReservationStateValue] ?? "Desconocido";
 }
 
 export default function MisReservasPage() {
@@ -173,18 +155,13 @@ export default function MisReservasPage() {
                       {getReservationStateLabel(reserva.reservationState)}
                     </span>
                     <p className="text-sm text-[#68716a]">
-                      Total:{" "}
-                      {formatPrice(reserva.totalPrice ?? reserva.fullAmount)}
+                      Total: Precio a confirmar
                     </p>
+                    {/* TODO(G1+G3): mostrar el total cuando el backend lo exponga */}
                   </div>
                 </div>
 
                 <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[#ece7df] pt-4">
-                  <div className="text-sm text-[#68716a]">
-                    <p>Seña: {formatPrice(reserva.depositAmount)}</p>
-                    <p>Pago completo: {formatPrice(reserva.fullAmount)}</p>
-                  </div>
-
                   <button
                     type="button"
                     onClick={() => navigate(`/reserva/${reserva.id}`)}

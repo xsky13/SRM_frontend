@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "react-router";
 import api from "~/utils/api";
 import { ApiError } from "~/types/ApiError";
-import type { User } from "~/types/User";
+import { UserType, type User } from "~/types/User";
 
 async function checkAuthentication(): Promise<User | null> {
   try {
@@ -29,19 +29,13 @@ export default function NavegacionUsuario() {
   const authQuery = useAuthentication();
   const location = useLocation();
   const user = authQuery.data;
-  const usertype: unknown = user?.usertype;
-
-  // NUEVO: Registra solo el campo de rol para evitar exponer datos personales del usuario.
-  console.log("USER DATA DEBUG:", user ? { usertype: user.usertype } : user);
+  const isAdmin = user?.usertype === UserType.Admin;
 
   if (authQuery.isPending) {
     return <span className="text-sm text-[#68716a]">Verificando sesión...</span>;
   }
 
   if (user) {
-    // TODO: Revisar con Backend por qué /me devuelve usertype: 0
-    const isAdmin = usertype === 1; // NUEVO: Solo el rol válido de administrador habilita el panel.
-
     return (
       <div className="flex items-center gap-3">
         <Link to="/mis-reservas" className="ui-link">

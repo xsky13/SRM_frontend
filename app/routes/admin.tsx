@@ -1,10 +1,11 @@
 // NUEVO: Layout del área de administración, protegido por el rol del usuario.
 import { Link, Navigate, NavLink, Outlet } from "react-router";
 import { useAuthentication } from "~/components/NavegacionUsuario";
+import { UserType } from "~/types/User";
 
 export default function AdminLayout() {
   const authQuery = useAuthentication();
-  const usertype: unknown = authQuery.data?.usertype;
+  const isAdmin = authQuery.data?.usertype === UserType.Admin;
 
   if (authQuery.isPending) {
     return (
@@ -14,8 +15,7 @@ export default function AdminLayout() {
     );
   }
 
-  // TODO: Revisar con Backend por qué /me devuelve usertype: 0
-  if (!authQuery.data || usertype !== 1) {
+  if (!authQuery.data || !isAdmin) {
     return <Navigate to="/" replace />;
   }
 
