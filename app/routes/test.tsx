@@ -1,7 +1,7 @@
 
 import type { Route } from "./+types/test";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import api from "~/utils/api";
 
@@ -13,6 +13,13 @@ export function meta({ }: Route.MetaArgs) {
 }
 
 export default function Test() {
+
+	let [tabs, setTabs] = useState([
+		{ id: 1, title: 'Tab 1', content: 'Tab body 1' },
+		{ id: 2, title: 'Tab 2', content: 'Tab body 2' },
+		{ id: 3, title: 'Tab 3', content: 'Tab body 3' }
+	]);
+
     const query = useQuery({
         queryKey: ["todos"],
         queryFn: () => api.get("/info"),
