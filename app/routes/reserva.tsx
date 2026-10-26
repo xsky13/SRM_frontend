@@ -2,9 +2,10 @@ import { CardPayment, initMercadoPago } from "@mercadopago/sdk-react";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
+import { ReservationState, RESERVATION_STATE_LABEL, type ReservationStateValue } from "~/types/reservationState";
 import api from "~/utils/api";
 
-type ReservationState = {
+type ReservationDetail = {
 	id?: string;
 	apartmentId: string;
 	apartmentName?: string;
@@ -12,10 +13,8 @@ type ReservationState = {
 	pricePerDay?: number;
 	checkInDate: string;
 	checkOutDate: string;
-	reservationState?: number;
-	totalPrice?: number;
+	reservationState?: ReservationStateValue;
 	depositAmount?: number;
-	fullAmount?: number;
 };
 
 type ReservationPayment = {
@@ -56,18 +55,7 @@ function formatPrice(value: number) {
 }
 
 function getReservationStateLabel(state?: number) {
-	switch (state) {
-		case 0:
-			return "No confirmada";
-		case 1:
-			return "Confirmada no completa";
-		case 2:
-			return "Confirmada completa";
-		case 3:
-			return "Cancelada";
-		default:
-			return "No confirmada";
-	}
+	return RESERVATION_STATE_LABEL[Number(state) as ReservationStateValue] ?? "No confirmada";
 }
 
 export function meta() {
@@ -82,14 +70,13 @@ export default function ReservaPage() {
 	const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 	const [paymentError, setPaymentError] = useState<string | null>(null);
 	const [paymentApproved, setPaymentApproved] = useState(false);
-	const reservationQuery = useQuery<ReservationState>({
+	const reservationQuery = useQuery<ReservationDetail>({
 		queryKey: ["reservation-detail", id],
 		queryFn: async () => {
 			const { data } = await api.get(`/api/reservation/${id}`);
 			const reservation = getReservationPayload(data);
-			const fullCost = Number(reservation?.fullCost ?? reservation?.totalPrice ?? 0);
 			const payments = Array.isArray(reservation?.payments) ? reservation.payments : [];
-			const depositAmount = getDepositAmount(payments, fullCost);
+			const depositAmount = getDepositAmount(payments, 0);
 			return {
 				...reservation,
 				id: reservation?.resrevationId ?? reservation?.reservationId ?? reservation?.id,
@@ -98,9 +85,7 @@ export default function ReservaPage() {
 					reservation?.ApartmentName ??
 					reservation?.apartment?.name ??
 					reservation?.apartment?.Name,
-				reservationState: Number(reservation?.state ?? reservation?.reservationState ?? 0),
-				totalPrice: fullCost,
-				fullAmount: fullCost,
+				reservationState: Number(reservation?.state ?? reservation?.reservationState ?? ReservationState.NotConfirmed),
 				depositAmount,
 				payments,
 			};
@@ -145,7 +130,7 @@ export default function ReservaPage() {
 	}
 
 	const activeReservation = reservationQuery.data;
-	const reservationState = Number(activeReservation.reservationState ?? 0);
+	const reservationState = Number(activeReservation.reservationState ?? ReservationState.NotConfirmed);
 	const selectedDays =
 		Math.round(
 			Math.abs(
@@ -153,22 +138,14 @@ export default function ReservaPage() {
 					new Date(activeReservation.checkInDate).getTime(),
 			) / 86_400_000,
 		) + 1;
-	const total =
-		activeReservation.fullCost ??
-		(activeReservation.fullAmount ??
-			(activeReservation.pricePerDay ?? 0) * selectedDays);
-
-	console.log(activeReservation);
-	const deposit = activeReservation.depositAmount ?? total * 0.1;
-	const remaining = Math.max(0, total - (activeReservation.depositAmount ?? 0));
-	const paymentAmount =
-		paymentOption === "deposit"
-			? deposit
-			: reservationState === 1
-				? remaining
-				: total;
-	const showPaymentOptions = reservationState === 0 || reservationState === 1;
-	const showCompleteInfoOnly = reservationState === 2;
+	const totalLabel = "Precio a confirmar"; // TODO(G1+G3): reemplazar por valor del backend cuando BE exponga totalCost
+	const deposit = activeReservation.depositAmount ?? 0;
+	const remaining = 0;
+	const paymentAmount = deposit;
+	const showPaymentOptions =
+		reservationState === ReservationState.NotConfirmed ||
+		reservationState === ReservationState.ConfirmedPaymentIncomplete;
+	const showCompleteInfoOnly = reservationState === ReservationState.ConfirmedPaymentComplete;
 
 	function closePaymentForm() {
 		setShowCardForm(false);
@@ -259,7 +236,7 @@ export default function ReservaPage() {
 							{activeReservation.apartmentName ?? "Departamento"}
 						</p>
 					</div>
-					<p className="text-2xl font-bold text-[#202722]">Monto total: {formatPrice(total)}</p>
+					<p className="text-2xl font-bold text-[#202722]">Monto total: {totalLabel}</p>
 				</div>
 
 				<div className="mt-8 grid gap-4 rounded-md bg-[#e7e4dc] p-5 text-sm md:grid-cols-4">
@@ -274,7 +251,7 @@ export default function ReservaPage() {
 						<h2 className="font-serif text-3xl text-[#385347]">Información de la reserva</h2>
 						<div className="mt-4 space-y-2 text-sm text-[#68716a]">
 							<p>
-								<strong className="text-[#202722]">Total:</strong> {formatPrice(total)}
+								<strong className="text-[#202722]">Total:</strong> {totalLabel}
 							</p>
 							<p>
 								<strong className="text-[#202722]">Seña:</strong> {formatPrice(deposit)}
@@ -294,15 +271,15 @@ export default function ReservaPage() {
 						{[
 							["Pagar seña", "Confirmar la reserva pagando un porcentaje ahora, y pagar el resto más tarde", "deposit"],
 							[
-								reservationState === 1 ? "Pagar saldo restante" : "Pagar reserva completa",
-								reservationState === 1
+								reservationState === ReservationState.ConfirmedPaymentIncomplete ? "Pagar saldo restante" : "Pagar reserva completa",
+								reservationState === ReservationState.ConfirmedPaymentIncomplete
 									? "Completar el pago pendiente de la reserva"
 									: "Asegurar la reserva pagando el monto total ahora",
 								"full",
 							],
 						].filter(([_, __, option]) => {
-							if (reservationState === 0) return true;
-							if (reservationState === 1) return option === "full";
+							if (reservationState === ReservationState.NotConfirmed) return true;
+							if (reservationState === ReservationState.ConfirmedPaymentIncomplete) return option === "full";
 							return false;
 						}).map(([title, description, option]) => (
 							<article

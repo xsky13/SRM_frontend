@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import type { Reserva } from "~/types/Reserva";
+import { ReservationState } from "~/types/reservationState";
 import api from "~/utils/api";
 import { useMutation } from "@tanstack/react-query";
 
@@ -70,12 +71,13 @@ function isReserved(day: Date, reservas: Reserva[]): boolean {
   return reservas.some((reserva) => {
     const start = dateKey(parseDate(reserva.checkInDate));
     const end = dateKey(parseDate(reserva.checkOutDate));
+    const state = Number(reserva.reservationState);
     return (
       current >= start &&
       current <= end &&
-      (reserva.reservationState == 2 ||
-        reserva.reservationState == 3 ||
-        reserva.reservationState == 4)
+      (state === ReservationState.ConfirmedPaymentComplete ||
+        state === ReservationState.PaymentPending ||
+        state === ReservationState.Cancelled)
     );
   });
 }
@@ -158,14 +160,27 @@ export default function CalendarioDisponibilidad({
       : new Date(month.getFullYear(), month.getMonth(), index - offset + 1),
   );
 
+  function normalizeRange(start: Date, end: Date) {
+    // TODO(G10): extraer a hook compartido
+    return start.getTime() <= end.getTime()
+      ? { startDate: start, endDate: end }
+      : { startDate: end, endDate: start };
+  }
+
   function updateRangeEnd(day: Date) {
-    if (
-      !rangeStart ||
-      !isSelectableDay(day) ||
-      rangeHasReservation(rangeStart, day, reservas)
-    )
+    if (!rangeStart || !isSelectableDay(day)) return;
+
+    const { startDate, endDate } = normalizeRange(rangeStart, day);
+
+    if (rangeHasReservation(startDate, endDate, reservas)) return;
+
+    if (rangeStart.getTime() <= day.getTime()) {
+      setRangeEnd(day);
       return;
-    setRangeEnd(day);
+    }
+
+    setRangeStart(day);
+    setRangeEnd(rangeStart);
   }
 
   function handleDayPointerDown(day: Date) {
@@ -202,6 +217,7 @@ export default function CalendarioDisponibilidad({
     setPaymentStatus(null);
 
     try {
+      const { startDate, endDate } = normalizeRange(rangeStart, rangeEnd);
       const response = await fetch(
         `${apiBaseUrl.replace(/\/$/, "")}/api/Payment/process_card_payment/${apartmentId}`,
         {
@@ -212,8 +228,8 @@ export default function CalendarioDisponibilidad({
           credentials: "include",
           body: JSON.stringify({
             ...formData,
-            checkInDate: new Date(rangeStart).toISOString(),
-            checkOutDate: new Date(rangeEnd).toISOString(),
+            checkInDate: new Date(startDate).toISOString(),
+            checkOutDate: new Date(endDate).toISOString(),
             paymentOption,
           }),
         },
@@ -326,14 +342,14 @@ export default function CalendarioDisponibilidad({
   function confirmDates() {
     if (!rangeStart || !rangeEnd) return;
 
+    const { startDate, endDate } = normalizeRange(rangeStart, rangeEnd);
+
     if (isAuthenticated) {
-      // onClose();
       setIsCreatingReservation(true);
       setReservationError(null);
-      // llamar api de creacion de reserva
       createReservationMutation.mutate({
-        startDay: rangeStart,
-        endDay: rangeEnd,
+        startDay: startDate,
+        endDay: endDate,
       });
       return;
     }
