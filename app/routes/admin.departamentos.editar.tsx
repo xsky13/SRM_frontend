@@ -1,13 +1,10 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router";
-import ImageGalleryManager from "~/components/admin/ImageGalleryManager";
-import EditApartmentForm from "~/components/admin/forms/EditApartmentForm";
+import ApartmentForm from "~/components/admin/forms/ApartmentForm";
 import { getApartmentById } from "~/utils/api";
 
 export default function EditApartmentPage() {
 	const { id } = useParams();
-	const [selectedCoverUrl, setSelectedCoverUrl] = useState<string | null>(null);
 	const apartmentQuery = useQuery({
 		queryKey: ["apartment", id],
 		queryFn: () => {
@@ -16,33 +13,38 @@ export default function EditApartmentPage() {
 		},
 		enabled: Boolean(id),
 	});
-	const apartment = apartmentQuery.data;
-	const coverUrl = apartment?.coverImgUrl ?? apartment?.images?.[0]?.url;
-	const additionalImages = apartment?.images?.filter((image) => image.url !== coverUrl) ?? [];
+
+	if (!id) {
+		return <p role="alert" className="text-sm text-[#b74f3d]">No se indicó el departamento que se quiere editar.</p>;
+	}
+
+	if (apartmentQuery.isPending) {
+		return <p className="mx-auto max-w-3xl text-sm text-[#68716a]">Cargando departamento...</p>;
+	}
+
+	if (apartmentQuery.isError) {
+		return (
+			<div role="alert" className="mx-auto max-w-3xl space-y-3 text-sm text-[#b74f3d]">
+				<p>No se pudo cargar el departamento: {apartmentQuery.error.message}</p>
+				<button
+					type="button"
+					onClick={() => apartmentQuery.refetch()}
+					className="rounded-md border border-[#e5e7eb] px-4 py-2 font-semibold text-[#385347] transition hover:bg-[#edf2e8]"
+				>
+					Reintentar
+				</button>
+			</div>
+		);
+	}
 
 	return (
-		<div className="mx-auto max-w-3xl space-y-6">
+		<div className="mx-auto max-w-3xl">
 			<section className="rounded-md border border-[#e5e7eb] bg-[#fffdf9] p-6 shadow-[0_18px_45px_rgba(56,83,71,.07)] md:p-8">
 				<h2 className="mb-6 font-serif text-3xl font-normal tracking-[-0.04em] text-[#385347]">
 					Editar Departamento
 				</h2>
-				<EditApartmentForm id={id} selectedCoverUrl={selectedCoverUrl} />
+				<ApartmentForm isEditing initialData={apartmentQuery.data} />
 			</section>
-			{apartment && id && (
-				<section className="rounded-md border border-[#e5e7eb] bg-[#fffdf9] p-6 shadow-[0_18px_45px_rgba(56,83,71,.07)] md:p-8">
-					<h2 className="font-serif text-2xl font-normal tracking-[-0.04em] text-[#385347]">
-						Galería de Imágenes Adicionales
-					</h2>
-					<p className="mb-5 mt-2 text-sm text-[#68716a]">
-						Administrá las fotos adicionales del departamento. La portada se modifica por separado en el formulario principal.
-					</p>
-					<ImageGalleryManager
-						apartmentId={id}
-						images={additionalImages}
-						onSelectCover={setSelectedCoverUrl}
-					/>
-				</section>
-			)}
 		</div>
 	);
 }

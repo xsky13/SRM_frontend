@@ -1,4 +1,4 @@
-import CreateApartmentForm from "~/components/admin/forms/CreateApartmentForm";
+import ApartmentForm from "~/components/admin/forms/ApartmentForm";
 
 export default function CreateApartmentPage() {
 	return (
@@ -6,7 +6,7 @@ export default function CreateApartmentPage() {
 			<h2 className="mb-6 font-serif text-3xl font-normal tracking-[-0.04em] text-[#385347]">
 				Crear Nuevo Departamento
 			</h2>
-			<CreateApartmentForm />
+			<ApartmentForm isEditing={false} />
 		</section>
 	);
 }

@@ -6,26 +6,40 @@ import type { ImageData } from "~/types/images";
 import { addApartmentImages, removeImagesFromApartment, resolveImageUrl } from "~/utils/api";
 
 type ImageGalleryManagerProps = {
-	apartmentId: string;
+	apartmentId?: string;
 	images: ImageData[];
-	onSelectCover: (url: string) => void;
+	onSelectCover?: (url: string) => void;
+	onFilesSelected?: (files: File[]) => void;
+	selectedFiles?: File[];
+	disabled?: boolean;
+	disabledMessage?: string;
+	showGallery?: boolean;
 };
 
 export default function ImageGalleryManager({
 	apartmentId,
 	images,
 	onSelectCover,
+	onFilesSelected,
+	selectedFiles = [],
+	disabled = false,
+	disabledMessage,
+	showGallery = true,
 }: ImageGalleryManagerProps) {
 	const queryClient = useQueryClient();
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [isDragActive, setIsDragActive] = useState(false);
 
 	const addMutation = useMutation({
-		mutationFn: (files: File[]) => addApartmentImages(apartmentId, files),
+		mutationFn: (files: File[]) => {
+			if (!apartmentId) throw new Error("Primero guardá el departamento para subir imágenes.");
+			return addApartmentImages(apartmentId, files);
+		},
 		meta: { silent: true },
-		onSuccess: async (response) => {
-			console.log("RESPUESTA IMÁGENES:", response);
-			await queryClient.invalidateQueries({ queryKey: ["apartment", apartmentId] });
+		onSuccess: async () => {
+			if (apartmentId) {
+				await queryClient.invalidateQueries({ queryKey: ["apartment", apartmentId] });
+			}
 			toast.success("Imágenes agregadas a la galería");
 		},
 		onError: (error) => {
@@ -34,10 +48,15 @@ export default function ImageGalleryManager({
 	});
 
 	const removeMutation = useMutation({
-		mutationFn: (imageId: string) => removeImagesFromApartment(apartmentId, [imageId]),
+		mutationFn: (imageId: string) => {
+			if (!apartmentId) throw new Error("No se indicó el departamento que se quiere editar.");
+			return removeImagesFromApartment(apartmentId, [imageId]);
+		},
 		meta: { silent: true },
 		onSuccess: async () => {
-			await queryClient.invalidateQueries({ queryKey: ["apartment", apartmentId] });
+			if (apartmentId) {
+				await queryClient.invalidateQueries({ queryKey: ["apartment", apartmentId] });
+			}
 			toast.success("Imagen eliminada de la galería");
 		},
 		onError: (error) => {
@@ -46,13 +65,30 @@ export default function ImageGalleryManager({
 	});
 
 	function uploadImages(files: File[]) {
-		if (addMutation.isPending) return;
-		const imageFiles = files.filter((file) => file.type.startsWith("image/"));
-		if (imageFiles.length === 0) {
+		if (disabled || addMutation.isPending || (!apartmentId && !onFilesSelected)) return;
+		if (files.length === 0) {
 			toast.error("Seleccioná al menos un archivo de imagen.");
 			return;
 		}
-		addMutation.mutate(imageFiles);
+		const invalidFiles = files.flatMap((file) => {
+			if (!file.type.startsWith("image/")) {
+				return [`${file.name}: el archivo debe ser una imagen.`];
+			}
+			if (file.size > 5 * 1024 * 1024) {
+				return [`${file.name}: la imagen no puede superar los 5 MB.`];
+			}
+			return [];
+		});
+		if (invalidFiles.length > 0) {
+			toast.error(invalidFiles.join(" "));
+			return;
+		}
+		if (onFilesSelected) {
+			onFilesSelected(files);
+			return;
+		}
+		if (!apartmentId) return;
+		addMutation.mutate(files);
 	}
 
 	function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
@@ -62,11 +98,14 @@ export default function ImageGalleryManager({
 
 	function handleDragOver(event: DragEvent<HTMLDivElement>) {
 		event.preventDefault();
-		event.dataTransfer.dropEffect = "copy";
+		const canSelectFiles = !disabled && Boolean(apartmentId || onFilesSelected);
+		event.dataTransfer.dropEffect = canSelectFiles ? "copy" : "none";
+		if (!canSelectFiles) return;
 		setIsDragActive(true);
 	}
 
 	function handleDragLeave(event: DragEvent<HTMLDivElement>) {
+		if (disabled || (!apartmentId && !onFilesSelected)) return;
 		if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) return;
 		setIsDragActive(false);
 	}
@@ -74,6 +113,7 @@ export default function ImageGalleryManager({
 	function handleDrop(event: DragEvent<HTMLDivElement>) {
 		event.preventDefault();
 		setIsDragActive(false);
+		if (disabled || (!apartmentId && !onFilesSelected)) return;
 		uploadImages(Array.from(event.dataTransfer.files));
 	}
 
@@ -82,16 +122,18 @@ export default function ImageGalleryManager({
 			onDragOver={handleDragOver}
 			onDragLeave={handleDragLeave}
 			onDrop={handleDrop}
-			className={`space-y-5 rounded-md border-2 p-4 transition-colors ${
+			className={`space-y-5 rounded-md border-2 border-dashed p-4 transition-colors ${
 				isDragActive
-					? "border-dashed border-[#385347] bg-[#edf2e8]"
-					: "border-transparent"
+					? "border-[#385347] bg-[#edf2e8]"
+					: "border-[#e5e7eb] bg-[#fffdf9]"
 			}`}
 		>
 			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div>
 					<p className="text-sm font-semibold text-[#385347]">Agregá fotos a la galería</p>
-					<p className="mt-1 text-sm text-[#68716a]">Arrastrá imágenes aquí o seleccioná archivos desde tu computadora.</p>
+					<p className="mt-1 text-sm text-[#68716a]">
+						{disabledMessage ?? "Arrastrá imágenes aquí o seleccioná archivos desde tu computadora. Solo imágenes de hasta 5 MB."}
+					</p>
 				</div>
 				<input
 					type="file"
@@ -100,11 +142,12 @@ export default function ImageGalleryManager({
 					className="hidden"
 					ref={fileInputRef}
 					onChange={handleFileChange}
+					disabled={disabled || (!apartmentId && !onFilesSelected) || addMutation.isPending}
 				/>
 				<button
 					type="button"
 					onClick={() => fileInputRef.current?.click()}
-					disabled={addMutation.isPending}
+					disabled={disabled || (!apartmentId && !onFilesSelected) || addMutation.isPending}
 					className="inline-flex items-center justify-center gap-2 self-start rounded-md bg-[#385347] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2c4238] disabled:cursor-not-allowed disabled:opacity-60 sm:self-auto"
 				>
 					{addMutation.isPending ? (
@@ -120,7 +163,18 @@ export default function ImageGalleryManager({
 				<p role="status" className="text-sm text-[#385347]">Subiendo imágenes...</p>
 			)}
 
-			{images.length === 0 ? (
+			{selectedFiles.length > 0 && (
+				<ul className="space-y-1 text-sm text-[#385347]" aria-label="Archivos seleccionados">
+					{selectedFiles.map((file, index) => (
+						<li key={`${file.name}-${file.lastModified}-${index}`}>
+							{file.name} ({(file.size / (1024 * 1024)).toFixed(2)} MB)
+							{index === 0 && !apartmentId && " - se usará como portada"}
+						</li>
+					))}
+				</ul>
+			)}
+
+			{showGallery && (images.length === 0 ? (
 				<p className="text-sm text-[#68716a]">Todavía no hay imágenes adicionales en la galería.</p>
 			) : (
 				<div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
@@ -137,17 +191,18 @@ export default function ImageGalleryManager({
 									src={resolveImageUrl(image.url)}
 									alt="Imagen adicional del departamento"
 									className="aspect-[4/3] w-full object-cover"
-									onError={(event) => console.log("ERROR AL CARGAR IMAGEN:", event.currentTarget.src)}
 								/>
-								<button
-									type="button"
-									onClick={() => onSelectCover(image.url)}
-									aria-label="Seleccionar imagen como portada"
-									title="Seleccionar como portada"
-									className="absolute left-2 top-2 rounded-full bg-white/95 p-2 text-[#385347] shadow transition hover:bg-white"
-								>
-									<Star aria-hidden="true" className="size-4" />
-								</button>
+								{onSelectCover && (
+									<button
+										type="button"
+										onClick={() => onSelectCover(image.url)}
+										aria-label="Seleccionar imagen como portada"
+										title="Seleccionar como portada"
+										className="absolute left-2 top-2 rounded-full bg-white/95 p-2 text-[#385347] shadow transition hover:bg-white"
+									>
+										<Star aria-hidden="true" className="size-4" />
+									</button>
+								)}
 								<button
 									type="button"
 									onClick={() => removeMutation.mutate(image.id)}
@@ -165,7 +220,7 @@ export default function ImageGalleryManager({
 						);
 					})}
 				</div>
-			)}
+			))}
 		</div>
 	);
 }
