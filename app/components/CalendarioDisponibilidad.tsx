@@ -8,13 +8,21 @@ import {
   CreditCard,
   X,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router";
 import type { Reserva } from "~/types/Reserva";
+import { ReservationState } from "~/types/reservationState";
+import api from "~/utils/api";
+import { useMutation } from "@tanstack/react-query";
 
 interface CalendarioDisponibilidadProps {
   reservas: Reserva[];
   pricePerDay: number;
   apartmentId: string;
+  apartmentName?: string;
+  apartmentLocation?: string;
+  isAuthenticated: boolean;
   onClose: () => void;
 }
 
@@ -63,12 +71,13 @@ function isReserved(day: Date, reservas: Reserva[]): boolean {
   return reservas.some((reserva) => {
     const start = dateKey(parseDate(reserva.checkInDate));
     const end = dateKey(parseDate(reserva.checkOutDate));
+    const state = Number(reserva.reservationState);
     return (
       current >= start &&
       current <= end &&
-      (reserva.reservationState == 2 ||
-        reserva.reservationState == 3 ||
-        reserva.reservationState == 4)
+      (state === ReservationState.ConfirmedPaymentComplete ||
+        state === ReservationState.PaymentPending ||
+        state === ReservationState.Cancelled)
     );
   });
 }
@@ -105,8 +114,13 @@ export default function CalendarioDisponibilidad({
   reservas,
   pricePerDay,
   apartmentId,
+  apartmentName,
+  apartmentLocation,
+  isAuthenticated,
   onClose,
 }: CalendarioDisponibilidadProps) {
+  const navigate = useNavigate();
+
   useEffect(() => {
     initMercadoPago("TEST-440e66b5-54b5-49f2-9930-3dd2e1baed8e");
   }, []);
@@ -115,17 +129,19 @@ export default function CalendarioDisponibilidad({
     () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   );
   const [userEmail, setUserEmail] = useState("test@gmail.com");
-  const [rangeStart, setRangeStart] = useState<Date>();
-  const [rangeEnd, setRangeEnd] = useState<Date>();
+  const [rangeStart, setRangeStart] = useState<Date | undefined>();
+  const [rangeEnd, setRangeEnd] = useState<Date | undefined>();
   const [isDragging, setIsDragging] = useState(false);
   const [step, setStep] = useState<"dates" | "payment" | "success">("dates");
   const [paymentOption, setPaymentOption] = useState<"deposit" | "full">(
-    "deposit",
+    isAuthenticated ? "deposit" : "full",
   );
   const [showCardForm, setShowCardForm] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<number | null>(null);
+  const [isCreatingReservation, setIsCreatingReservation] = useState(false);
+  const [reservationError, setReservationError] = useState<string | null>(null);
 
   const firstDay = new Date(month.getFullYear(), month.getMonth(), 1);
   const daysInMonth = new Date(
@@ -144,14 +160,27 @@ export default function CalendarioDisponibilidad({
       : new Date(month.getFullYear(), month.getMonth(), index - offset + 1),
   );
 
+  function normalizeRange(start: Date, end: Date) {
+    // TODO(G10): extraer a hook compartido
+    return start.getTime() <= end.getTime()
+      ? { startDate: start, endDate: end }
+      : { startDate: end, endDate: start };
+  }
+
   function updateRangeEnd(day: Date) {
-    if (
-      !rangeStart ||
-      !isSelectableDay(day) ||
-      rangeHasReservation(rangeStart, day, reservas)
-    )
+    if (!rangeStart || !isSelectableDay(day)) return;
+
+    const { startDate, endDate } = normalizeRange(rangeStart, day);
+
+    if (rangeHasReservation(startDate, endDate, reservas)) return;
+
+    if (rangeStart.getTime() <= day.getTime()) {
+      setRangeEnd(day);
       return;
-    setRangeEnd(day);
+    }
+
+    setRangeStart(day);
+    setRangeEnd(rangeStart);
   }
 
   function handleDayPointerDown(day: Date) {
@@ -177,12 +206,18 @@ export default function CalendarioDisponibilidad({
     if (!rangeStart || !rangeEnd || !apartmentId) {
       throw new Error("Faltan datos de la reserva.");
     }
+    if (paymentOption === "deposit" && !isAuthenticated) {
+      throw new Error(
+        "La opción de abonar la seña es solo para usuarios logueados.",
+      );
+    }
 
     setIsProcessingPayment(true);
     setPaymentError(null);
     setPaymentStatus(null);
 
     try {
+      const { startDate, endDate } = normalizeRange(rangeStart, rangeEnd);
       const response = await fetch(
         `${apiBaseUrl.replace(/\/$/, "")}/api/Payment/process_card_payment/${apartmentId}`,
         {
@@ -190,10 +225,11 @@ export default function CalendarioDisponibilidad({
           headers: {
             "Content-Type": "application/json",
           },
+          credentials: "include",
           body: JSON.stringify({
             ...formData,
-            checkInDate: new Date(rangeStart).toISOString(),
-            checkOutDate: new Date(rangeEnd).toISOString(),
+            checkInDate: new Date(startDate).toISOString(),
+            checkOutDate: new Date(endDate).toISOString(),
             paymentOption,
           }),
         },
@@ -273,6 +309,88 @@ export default function CalendarioDisponibilidad({
   const formatPrice = (value: number) =>
     `$${value.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
 
+  const createReservationMutation = useMutation({
+    mutationFn: async ({
+      startDay,
+      endDay,
+    }: {
+      startDay: Date;
+      endDay: Date;
+    }) => {
+      const response = await api.post("/api/reservation/with_auth", {
+        apartmentId: apartmentId,
+        checkInDate: new Date(startDay).toISOString(),
+        checkOutDate: new Date(endDay).toISOString(),
+      });
+      return response.data;
+    },
+    onSuccess: (data) => {
+      setIsCreatingReservation(false);
+      setReservationError(null);
+      toast.success("Reserva creada exitosamente.");
+      console.log(data);
+      navigate("/reserva/" + data.id);
+    },
+    onError: (error) => {
+      setIsCreatingReservation(false);
+      setReservationError(
+        error instanceof Error ? error.message : "No se pudo crear la reserva.",
+      );
+    },
+  });
+
+  function confirmDates() {
+    if (!rangeStart || !rangeEnd) return;
+
+    const { startDate, endDate } = normalizeRange(rangeStart, rangeEnd);
+
+    if (isAuthenticated) {
+      setIsCreatingReservation(true);
+      setReservationError(null);
+      createReservationMutation.mutate({
+        startDay: startDate,
+        endDay: endDate,
+      });
+      return;
+    }
+
+    setStep("payment");
+  }
+
+  //   async function confirmDates() {
+  //     if (!rangeStart || !rangeEnd || isCreatingReservation) return;
+  //
+  //     setIsCreatingReservation(true);
+  //     setReservationError(null);
+  //
+  //     try {
+  //       const checkInDate = rangeStart.toISOString();
+  //       const checkOutDate = rangeEnd.toISOString();
+  //       const { data } = await api.post("/api/reservation", {
+  //         apartmentId,
+  //         checkInDate,
+  //         checkOutDate,
+  //       });
+  //       const createdReservation = data?.reservation ?? data;
+  //       const reservationId =
+  //         createdReservation?.id ?? createdReservation?.reservationId;
+  //
+  //       if (!reservationId) {
+  //         throw new Error("El servidor no devolvió el ID de la reserva creada.");
+  //       }
+  //
+  //       toast.success("Reserva creada exitosamente.");
+  //       onClose();
+  //       navigate(`/reserva/${reservationId}`);
+  //     } catch (error) {
+  //       setReservationError(
+  //         error instanceof Error ? error.message : "No se pudo crear la reserva.",
+  //       );
+  //     } finally {
+  //       setIsCreatingReservation(false);
+  //     }
+  //   }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#202722]/35 p-4"
@@ -317,6 +435,7 @@ export default function CalendarioDisponibilidad({
 
         {step === "dates" ? (
           <>
+            {/*navegacion de meses*/}
             <div className="mt-4 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <button
@@ -353,6 +472,7 @@ export default function CalendarioDisponibilidad({
               </div>
             </div>
 
+            {/* calendario */}
             <div
               className="mt-3 grid grid-cols-7 gap-1 text-center text-[11px] text-[#68716a]"
               onPointerUp={() => setIsDragging(false)}
@@ -420,15 +540,22 @@ export default function CalendarioDisponibilidad({
               )}
             </div>
 
+            {reservationError && (
+              <p className="mt-3 text-sm text-[#b74f3d]" role="alert">
+                {reservationError}
+              </p>
+            )}
             <button
               type="button"
-              disabled={!rangeStart || !rangeEnd}
-              onClick={() => setStep("payment")}
+              disabled={!rangeStart || !rangeEnd || isCreatingReservation}
+              onClick={confirmDates}
               className="ui-button ui-button-md ui-button-block mt-4"
             >
-              {rangeStart && rangeEnd
-                ? `Reservar ${selectedDays} ${selectedDays === 1 ? "día" : "días"}`
-                : "Reservar días"}
+              {isCreatingReservation
+                ? "Creando reserva..."
+                : rangeStart && rangeEnd
+                  ? `Reservar ${selectedDays} ${selectedDays === 1 ? "día" : "días"}`
+                  : "Reservar días"}
             </button>
           </>
         ) : step == "payment" ? (
@@ -441,11 +568,13 @@ export default function CalendarioDisponibilidad({
             <div className="mt-4 space-y-2">
               <button
                 type="button"
+                disabled={!isAuthenticated}
                 onClick={() => {
                   setPaymentOption("deposit");
                   setShowCardForm(false);
                 }}
-                className={`flex w-full items-center justify-between rounded-md border p-3 text-left transition ${paymentOption === "deposit" ? "border-[#385347] bg-[#edf2e8]" : "border-[#e0ded5] bg-white hover:border-[#bfc5b9]"}`}
+                className={`flex w-full items-center justify-between rounded-md border p-3 text-left transition ${paymentOption === "deposit" ? "border-[#385347] bg-[#edf2e8]" : "border-[#e0ded5] bg-white hover:border-[#bfc5b9]"} disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:border-[#e0ded5]`}
+                aria-describedby="deposit-login-message"
               >
                 <span className="flex items-center gap-3">
                   <CreditCard size={18} className="text-[#e28b68]" />
@@ -464,6 +593,49 @@ export default function CalendarioDisponibilidad({
                   )}
                 </span>
               </button>
+              {!isAuthenticated && (
+                <p
+                  id="deposit-login-message"
+                  className="text-xs text-[#b74f3d]"
+                >
+                  La opción de abonar la seña es solo para usuarios logueados.{" "}
+                  <Link
+                    to="/register"
+                    state={{
+                      returnTo: "/reserva",
+                      reservation: {
+                        apartmentId,
+                        apartmentName,
+                        apartmentLocation,
+                        pricePerDay,
+                        checkInDate: rangeStart?.toISOString(),
+                        checkOutDate: rangeEnd?.toISOString(),
+                      },
+                    }}
+                    className="font-semibold underline"
+                  >
+                    Registrate
+                  </Link>
+                  {" o "}
+                  <Link
+                    to="/login"
+                    state={{
+                      returnTo: "/reserva",
+                      reservation: {
+                        apartmentId,
+                        apartmentName,
+                        apartmentLocation,
+                        pricePerDay,
+                        checkInDate: rangeStart?.toISOString(),
+                        checkOutDate: rangeEnd?.toISOString(),
+                      },
+                    }}
+                    className="font-semibold underline"
+                  >
+                    iniciá sesión
+                  </Link>
+                </p>
+              )}
 
               <button
                 type="button"
