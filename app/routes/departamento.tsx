@@ -1,26 +1,16 @@
 import { useState } from "react";
-import { Link, useLocation, useNavigate, useParams } from "react-router";
+import { Link, useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
-import { APIProvider, AdvancedMarker, InfoWindow, Map } from "@vis.gl/react-google-maps";
 import type { Departamento } from "~/models/Departamento";
 import type { Reserva } from "~/types/Reserva";
 import CalendarioDisponibilidad from "~/components/CalendarioDisponibilidad";
-import NavegacionUsuario, { useAuthentication } from "~/components/NavegacionUsuario";
-import api, { resolveImageUrl } from "~/utils/api";
+import api from "~/utils/api";
 import type { Route } from "./+types/departamento";
 
 export default function DepartamentoDetallePage() {
 	const { id } = useParams<Route.ComponentProps["params"]>();
-	const location = useLocation();
-	const navigate = useNavigate();
 	const [selectedImageId, setSelectedImageId] = useState<string>();
 	const [showCalendar, setShowCalendar] = useState(false);
-	const authQuery = useAuthentication();
-
-	function closeCalendar() {
-		setShowCalendar(false);
-		navigate(location.pathname, { replace: true, state: null });
-	}
 
 	const query = useQuery<Departamento>({
 		queryKey: ["apartment", id],
@@ -49,24 +39,6 @@ export default function DepartamentoDetallePage() {
 	}
 
 	const formattedPrice = `$${departamento.price.toLocaleString("es-AR")}`;
-	const rawLatitude = departamento.latitude;
-	const rawLongitude = departamento.longitude;
-	const latitude = Number(rawLatitude);
-	const longitude = Number(rawLongitude);
-	const hasValidCoordinates =
-		rawLatitude != null &&
-		rawLongitude != null &&
-		String(rawLatitude).trim() !== "" &&
-		String(rawLongitude).trim() !== "" &&
-		Number.isFinite(latitude) &&
-		Number.isFinite(longitude) &&
-		latitude !== 0 &&
-		longitude !== 0 &&
-		latitude >= -90 &&
-		latitude <= 90 &&
-		longitude >= -180 &&
-		longitude <= 180;
-	const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 	const images = departamento.images ?? [];
 	const galleryImages =
 		images.length > 0
@@ -89,10 +61,18 @@ export default function DepartamentoDetallePage() {
 				</div>
 
 				<div className="flex items-center gap-4 text-sm text-[#385347]">
-					{/* <Link to="/" className="ui-link">
+					<Link to="/" className="ui-link">
 						Legal
-					</Link> */}
-					<NavegacionUsuario />
+					</Link>
+					<Link to="/" className="ui-link">
+						Crear cuenta
+					</Link>
+					<button
+						type="button"
+						className="ui-button ui-button-sm"
+					>
+						Iniciar sesión
+					</button>
 				</div>
 			</header>
 
@@ -142,7 +122,7 @@ export default function DepartamentoDetallePage() {
 							<div className="ui-border overflow-hidden rounded-md bg-[#ede9dc]">
 								<img
 									className="h-[400px] w-full object-cover"
-									src={resolveImageUrl(departamento.coverImgUrl)}
+									src={departamento.coverImgUrl}
 									alt={`${departamento.name}, imagen de portada`}
 								/>
 							</div>
@@ -160,7 +140,7 @@ export default function DepartamentoDetallePage() {
 								>
 									<img
 										className="h-full w-full object-cover"
-										src={resolveImageUrl(image.url)}
+										src={image.url}
 										alt={`${departamento.name}, vista ${index + 1}`}
 									/>
 								</button>
@@ -170,51 +150,12 @@ export default function DepartamentoDetallePage() {
 				</div>
 			</section>
 
-			<section className="mx-auto max-w-7xl px-5 pb-10 md:px-8">
-				<div className="rounded-md border border-[#e5e7eb] bg-[#fffdf9] p-5 md:p-6">
-					<h2 className="mb-4 font-serif text-3xl tracking-[-0.04em] text-[#385347]">Ubicación</h2>
-					{!hasValidCoordinates ? (
-						<p className="rounded-md bg-[#f5f2ec] px-4 py-6 text-sm text-[#68716a]">
-							Ubicación no disponible
-						</p>
-					) : !apiKey ? (
-						<p role="alert" className="rounded-md bg-[#f5f2ec] px-4 py-6 text-sm text-[#68716a]">
-							No se pudo cargar el mapa porque falta configurar Google Maps.
-						</p>
-					) : (
-						<APIProvider apiKey={apiKey}>
-							<Map
-								center={{ lat: latitude, lng: longitude }}
-								zoom={15}
-								mapId="DEMO_MAP_ID"
-								className="h-80 w-full overflow-hidden rounded-md border border-[#e5e7eb]"
-								aria-label={`Mapa de ubicación de ${departamento.name}`}
-							>
-								<AdvancedMarker
-									position={{ lat: latitude, lng: longitude }}
-									title={departamento.name}
-								/>
-								<InfoWindow position={{ lat: latitude, lng: longitude }}>
-									<div className="max-w-64 text-[#202722]">
-										<strong>{departamento.name}</strong>
-										<p className="mt-1 text-sm">{departamento.location}</p>
-									</div>
-								</InfoWindow>
-							</Map>
-						</APIProvider>
-					)}
-				</div>
-			</section>
-
 			{showCalendar && (
 				<CalendarioDisponibilidad
 					reservas={reservationsQuery.data ?? []}
 					pricePerDay={departamento.price}
 					apartmentId={departamento.id}
-					apartmentName={departamento.name}
-					apartmentLocation={departamento.location}
-					isAuthenticated={authQuery.data != null}
-					onClose={closeCalendar}
+					onClose={() => setShowCalendar(false)}
 				/>
 			)}
 		</main>
