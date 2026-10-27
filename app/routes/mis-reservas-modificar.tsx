@@ -5,6 +5,7 @@ import { CardPayment, initMercadoPago } from "@mercadopago/sdk-react";
 import { CheckCircle2, ChevronLeft, ChevronRight, CircleCheck, CircleX, CreditCard, X } from "lucide-react";
 import api from "~/utils/api";
 import { useAuthentication } from "~/components/NavegacionUsuario";
+import { ReservationState } from "~/types/Reserva";
 
 const apiBaseUrl = import.meta.env.VITE_API_URL;
 const monthFormatter = new Intl.DateTimeFormat("es-AR", { month: "long", year: "numeric" });
@@ -17,7 +18,7 @@ interface ReservationDetail {
   apartmentLocation?: string;
   checkInDate: string;
   checkOutDate: string;
-  reservationState: number;
+  reservationState: ReservationState;
   totalPrice?: number;
   depositAmount?: number;
   fullAmount?: number;
@@ -29,7 +30,7 @@ type ReservationReservation = {
   id: string;
   checkInDate: string;
   checkOutDate: string;
-  reservationState: number;
+  reservationState: ReservationState;
 };
 
 function formatDate(value: string) {
@@ -66,15 +67,17 @@ function isBetween(day: Date, start?: Date, end?: Date): boolean {
   return day.getTime() >= Math.min(start.getTime(), end.getTime()) && day.getTime() <= Math.max(start.getTime(), end.getTime());
 }
 
-function getReservationStateLabel(state: number) {
+function getReservationStateLabel(state: ReservationState) {
   switch (state) {
-    case 0:
+    case ReservationState.NotConfirmed:
       return "No confirmada";
-    case 1:
-      return "Confirmada no completa";
-    case 2:
-      return "Confirmada completa";
-    case 3:
+    case ReservationState.ConfirmedPaymentIncomplete:
+      return "Confirmada pago incompleto";
+    case ReservationState.ConfirmedPaymentComplete:
+      return "Confirmada pago completo";
+    case ReservationState.PaymentPending:
+      return "Pago pendiente";
+    case ReservationState.Cancelled:
       return "Cancelada";
     default:
       return "Desconocido";
@@ -166,7 +169,11 @@ export default function MisReservasModificarPage() {
     return existingReservations.some((reservation) => {
       const start = dateKey(parseDate(reservation.checkInDate));
       const end = dateKey(parseDate(reservation.checkOutDate));
-      return current >= start && current <= end && (reservation.reservationState === 2 || reservation.reservationState === 3 || reservation.reservationState === 4);
+      return current >= start && current <= end && (
+        reservation.reservationState === ReservationState.ConfirmedPaymentIncomplete ||
+        reservation.reservationState === ReservationState.ConfirmedPaymentComplete ||
+        reservation.reservationState === ReservationState.PaymentPending
+      );
     });
   };
 
@@ -274,7 +281,13 @@ export default function MisReservasModificarPage() {
   }
 
   const paymentAmount = paymentOption === "deposit" ? Math.max(0, delta) : Math.max(0, delta);
-  const shouldShowPayment = Boolean(reservaQuery.data && (reservaQuery.data.reservationState === 0 || reservaQuery.data.reservationState === 1) && (delta > 0 || refund > 0));
+  const shouldShowPayment = Boolean(
+    reservaQuery.data &&
+      (reservaQuery.data.reservationState === ReservationState.NotConfirmed ||
+        reservaQuery.data.reservationState ===
+          ReservationState.ConfirmedPaymentIncomplete) &&
+      (delta > 0 || refund > 0),
+  );
 
   if (authQuery.isPending) {
     return <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">Verificando sesión...</main>;

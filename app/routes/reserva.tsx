@@ -3,8 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import api from "~/utils/api";
+import { ReservationState } from "~/types/Reserva";
 
-type ReservationState = {
+type ReservationDetail = {
 	id?: string;
 	apartmentId: string;
 	apartmentName?: string;
@@ -12,10 +13,11 @@ type ReservationState = {
 	pricePerDay?: number;
 	checkInDate: string;
 	checkOutDate: string;
-	reservationState?: number;
+	reservationState?: ReservationState;
 	totalPrice?: number;
 	depositAmount?: number;
 	fullAmount?: number;
+	fullCost?: number;
 };
 
 const apiBaseUrl = import.meta.env.VITE_API_URL;
@@ -31,15 +33,17 @@ function formatPrice(value: number) {
 	return `$${value.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
 }
 
-function getReservationStateLabel(state?: number) {
+function getReservationStateLabel(state?: ReservationState) {
 	switch (state) {
-		case 0:
+		case ReservationState.NotConfirmed:
 			return "No confirmada";
-		case 1:
-			return "Confirmada no completa";
-		case 2:
-			return "Confirmada completa";
-		case 3:
+		case ReservationState.ConfirmedPaymentIncomplete:
+			return "Confirmada pago incompleto";
+		case ReservationState.ConfirmedPaymentComplete:
+			return "Confirmada pago completo";
+		case ReservationState.PaymentPending:
+			return "Pago pendiente";
+		case ReservationState.Cancelled:
 			return "Cancelada";
 		default:
 			return "No confirmada";
@@ -58,7 +62,7 @@ export default function ReservaPage() {
 	const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 	const [paymentError, setPaymentError] = useState<string | null>(null);
 	const [paymentApproved, setPaymentApproved] = useState(false);
-	const reservationQuery = useQuery<ReservationState>({
+	const reservationQuery = useQuery<ReservationDetail>({
 		queryKey: ["reservation-detail", id],
 		queryFn: async () => {
 			const { data } = await api.get(`/api/reservation/${id}`);
@@ -102,7 +106,8 @@ export default function ReservaPage() {
 	}
 
 	const activeReservation = reservationQuery.data;
-	const reservationState = Number(activeReservation.reservationState ?? 0);
+	const reservationState =
+		activeReservation.reservationState ?? ReservationState.NotConfirmed;
 	const selectedDays =
 		Math.round(
 			Math.abs(
@@ -121,11 +126,14 @@ export default function ReservaPage() {
 	const paymentAmount =
 		paymentOption === "deposit"
 			? deposit
-			: reservationState === 1
+			: reservationState === ReservationState.ConfirmedPaymentIncomplete
 				? remaining
 				: total;
-	const showPaymentOptions = reservationState === 0 || reservationState === 1;
-	const showCompleteInfoOnly = reservationState === 2;
+	const showPaymentOptions =
+		reservationState === ReservationState.NotConfirmed ||
+		reservationState === ReservationState.ConfirmedPaymentIncomplete;
+	const showCompleteInfoOnly =
+		reservationState === ReservationState.ConfirmedPaymentComplete;
 
 	function closePaymentForm() {
 		setShowCardForm(false);
@@ -251,15 +259,22 @@ export default function ReservaPage() {
 						{[
 							["Pagar seña", "Confirmar la reserva pagando un porcentaje ahora, y pagar el resto más tarde", "deposit"],
 							[
-								reservationState === 1 ? "Pagar saldo restante" : "Pagar reserva completa",
-								reservationState === 1
+								reservationState === ReservationState.ConfirmedPaymentIncomplete
+									? "Pagar saldo restante"
+									: "Pagar reserva completa",
+								reservationState === ReservationState.ConfirmedPaymentIncomplete
 									? "Completar el pago pendiente de la reserva"
 									: "Asegurar la reserva pagando el monto total ahora",
 								"full",
 							],
 						].filter(([_, __, option]) => {
-							if (reservationState === 0) return true;
-							if (reservationState === 1) return option === "full";
+							if (reservationState === ReservationState.NotConfirmed) return true;
+							if (
+								reservationState ===
+								ReservationState.ConfirmedPaymentIncomplete
+							) {
+								return option === "full";
+							}
 							return false;
 						}).map(([title, description, option]) => (
 							<article

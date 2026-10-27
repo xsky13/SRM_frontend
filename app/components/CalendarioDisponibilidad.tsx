@@ -11,7 +11,7 @@ import {
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import type { Reserva } from "~/types/Reserva";
+import { ReservationState, type Reserva } from "~/types/Reserva";
 import api from "~/utils/api";
 import { useMutation } from "@tanstack/react-query";
 
@@ -73,9 +73,11 @@ function isReserved(day: Date, reservas: Reserva[]): boolean {
     return (
       current >= start &&
       current <= end &&
-      (reserva.reservationState == 2 ||
-        reserva.reservationState == 3 ||
-        reserva.reservationState == 4)
+      (reserva.reservationState ===
+        ReservationState.ConfirmedPaymentIncomplete ||
+        reserva.reservationState ===
+          ReservationState.ConfirmedPaymentComplete ||
+        reserva.reservationState === ReservationState.PaymentPending)
     );
   });
 }

@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import api from "~/utils/api";
 import { useAuthentication } from "~/components/NavegacionUsuario";
+import { ReservationState } from "~/types/Reserva";
 
 export function meta() {
   return [{ title: "Mis reservas | Reservas Moreno" }];
@@ -14,7 +15,7 @@ type ReservationListItem = {
   apartmentLocation?: string;
   checkInDate: string;
   checkOutDate: string;
-  reservationState: number | string;
+  reservationState: ReservationState;
   totalPrice?: number;
   depositAmount?: number;
   fullAmount?: number;
@@ -33,20 +34,18 @@ function formatPrice(value?: number) {
   return `$${value.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
 }
 
-function getReservationStateLabel(state: number | string) {
-  switch (Number(state)) {
-    case 0:
+function getReservationStateLabel(state: ReservationState) {
+  switch (state) {
+    case ReservationState.NotConfirmed:
       return "No confirmada";
-    case 1:
-      return "No confirmada";
-    case 2:
-      return "Confirmada pago incompletp";
-    case 3:
+    case ReservationState.ConfirmedPaymentIncomplete:
+      return "Confirmada pago incompleto";
+    case ReservationState.ConfirmedPaymentComplete:
       return "Confirmada pago completo";
-    case 4:
+    case ReservationState.PaymentPending:
       return "Pago pendiente";
-    case 5:
-      return "Cancelado";
+    case ReservationState.Cancelled:
+      return "Cancelada";
     default:
       return "Desconocido";
   }
