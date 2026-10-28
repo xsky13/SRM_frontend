@@ -8,8 +8,8 @@ export type User = {
   usertype: UserType;
 };
 
-export type UserType = {
-  admin: 1;
-  user: 2;
-  guest: 3;
+export enum UserType {
+  Admin = 1,
+  User = 2,
+  Guest = 3
 };

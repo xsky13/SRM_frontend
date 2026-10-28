@@ -205,10 +205,10 @@ export default function ReservaPage() {
 				break;
 		}
 		// const url = isSign ? "process_sign_payment" : isRest ? "process_rest_payment" : "process_card_payment";
-
+		console.log(option)
 		try {
 			const response = await fetch(
-				`${apiBaseUrl.replace(/\/$/, "")}/api/Payment/${url}/${activeReservation.apartmentId}`,
+				`${apiBaseUrl.replace(/\/$/, "")}/api/Payment/${url}/${option == "rest" ? activeReservation.reservationId : activeReservation.apartmentId}`,
 				{
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
