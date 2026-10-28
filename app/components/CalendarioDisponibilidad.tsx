@@ -11,8 +11,7 @@ import {
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import type { Reserva } from "~/types/Reserva";
-import { ReservationState } from "~/types/reservationState";
+import { ReservationState, type Reserva } from "~/types/Reserva";
 import api from "~/utils/api";
 import { useMutation } from "@tanstack/react-query";
 
@@ -75,9 +74,11 @@ function isReserved(day: Date, reservas: Reserva[]): boolean {
     return (
       current >= start &&
       current <= end &&
-      (state === ReservationState.ConfirmedPaymentComplete ||
-        state === ReservationState.PaymentPending ||
-        state === ReservationState.Cancelled)
+      (reserva.reservationState ===
+        ReservationState.ConfirmedPaymentIncomplete ||
+        reserva.reservationState ===
+          ReservationState.ConfirmedPaymentComplete ||
+        reserva.reservationState === ReservationState.PaymentPending)
     );
   });
 }
@@ -329,7 +330,7 @@ export default function CalendarioDisponibilidad({
       setReservationError(null);
       toast.success("Reserva creada exitosamente.");
       console.log(data);
-      navigate("/reserva/" + data.id);
+      navigate("/reservas/" + data.id);
     },
     onError: (error) => {
       setIsCreatingReservation(false);

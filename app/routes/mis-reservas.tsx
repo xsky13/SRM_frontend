@@ -2,7 +2,8 @@ import { Link, useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import api from "~/utils/api";
 import { useAuthentication } from "~/components/NavegacionUsuario";
-import { RESERVATION_STATE_LABEL, type ReservationStateValue } from "~/types/reservationState";
+import { ReservationState } from "~/types/Reserva";
+import { RESERVATION_STATE_LABEL } from "~/types/reservationState";
 
 export function meta() {
   return [{ title: "Mis reservas | Reservas Moreno" }];
@@ -15,7 +16,10 @@ type ReservationListItem = {
   apartmentLocation?: string;
   checkInDate: string;
   checkOutDate: string;
-  reservationState: number | string;
+  reservationState: ReservationState;
+  totalPrice?: number;
+  depositAmount?: number;
+  fullAmount?: number;
 };
 
 function formatDate(value: string) {
@@ -26,15 +30,13 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-function getReservationStateLabel(state: number | string) {
-  return RESERVATION_STATE_LABEL[Number(state) as ReservationStateValue] ?? "Desconocido";
+function getReservationStateLabel(state: ReservationState) {
+  return RESERVATION_STATE_LABEL[state] ?? "Desconocido";
 }
 
 export default function MisReservasPage() {
   const authQuery = useAuthentication();
   const navigate = useNavigate();
-
-  console.log(authQuery.data);
 
   const reservasQuery = useQuery<ReservationListItem[]>({
     queryKey: ["my-reservations"],
@@ -139,10 +141,10 @@ export default function MisReservasPage() {
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-[.14em] text-[#e28b68]">
-                      {reserva.apartmentName ?? "Departamento"}
+                      {reserva.apartmentLocation ?? "Ubicación no disponible"}
                     </p>
                     <h2 className="mt-1 font-serif text-3xl text-[#385347]">
-                      {reserva.apartmentLocation ?? "Ubicación no disponible"}
+                      {reserva.apartmentName ?? "Departamento"}
                     </h2>
                     <p className="mt-2 text-sm text-[#68716a]">
                       {formatDate(reserva.checkInDate)} —{" "}
@@ -153,23 +155,35 @@ export default function MisReservasPage() {
                   <div className="flex flex-col items-start gap-2 md:items-end">
                     <span className="rounded-full border border-[#d7d1c7] bg-[#edf2e8] px-2.5 py-1 text-xs font-semibold text-[#385347]">
                       {getReservationStateLabel(reserva.reservationState)}
-                    </span>
-                    <p className="text-sm text-[#68716a]">
-                      Total: Precio a confirmar
-                    </p>
-                    {/* TODO(G1+G3): mostrar el total cuando el backend lo exponga */}
-                  </div>
-                </div>
-
-                <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[#ece7df] pt-4">
-                  <button
+							</span>
+							<button
                     type="button"
-                    onClick={() => navigate(`/reserva/${reserva.id}`)}
+                    onClick={() => navigate(`/reservas/${reserva.id}`)}
                     className="ui-button ui-button-sm"
                   >
                     Ver detalle
                   </button>
+                    {/*<p className="text-sm text-[#68716a]">
+                      Total:{" "}
+                      {formatPrice(reserva.totalPrice ?? reserva.fullAmount)}
+                    </p>*/}
+                  </div>
                 </div>
+
+                {/*<div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[#ece7df] pt-4">
+                  <div className="text-sm text-[#68716a]">
+                    <p>Seña: {formatPrice(reserva.depositAmount)}</p>
+                    <p>Pago completo: {formatPrice(reserva.fullAmount)}</p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/reservas/${reserva.id}`)}
+                    className="ui-button ui-button-sm"
+                  >
+                    Ver detalle
+                  </button>
+                </div>*/}
               </article>
             ))}
           </div>

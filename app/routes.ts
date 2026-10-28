@@ -5,8 +5,8 @@ export default [
 	route("login", "routes/login.tsx"),
 	route("register", "routes/register.tsx"),
 	route("logout", "routes/logout.tsx"),
-	route("reserva/:id", "routes/reserva.tsx"),
-	route("mis-reservas", "routes/mis-reservas.tsx"),
+	route("reservas/:id", "routes/reserva.tsx"),
+	route("reservas", "routes/mis-reservas.tsx"),
 	route("departamento/:id", "routes/departamento.tsx"),
 	route("test", "routes/test.tsx"),
 	// NUEVO: Layout protegido de administración y su página inicial de departamentos.

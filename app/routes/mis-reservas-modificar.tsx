@@ -5,29 +5,19 @@ import { CardPayment, initMercadoPago } from "@mercadopago/sdk-react";
 import { CheckCircle2, ChevronLeft, ChevronRight, CircleCheck, CircleX, CreditCard, X } from "lucide-react";
 import api from "~/utils/api";
 import { useAuthentication } from "~/components/NavegacionUsuario";
-import { ReservationState, RESERVATION_STATE_LABEL, type ReservationStateValue } from "~/types/reservationState";
+import { ReservationState } from "~/types/Reserva";
+import type { ReservationDetail } from "~/types/ReservationDetail";
+import { RESERVATION_STATE_LABEL } from "~/types/reservationState";
 
 const apiBaseUrl = import.meta.env.VITE_API_URL;
 const monthFormatter = new Intl.DateTimeFormat("es-AR", { month: "long", year: "numeric" });
 const weekdayFormatter = new Intl.DateTimeFormat("es-AR", { weekday: "short" });
 
-interface ReservationDetail {
-  id: string;
-  apartmentId: string;
-  apartmentName?: string;
-  apartmentLocation?: string;
-  checkInDate: string;
-  checkOutDate: string;
-  reservationState: number;
-  pricePerDay?: number;
-  paymentMethods?: Array<{ id: string; name: string; type?: string; enabled?: boolean }>;
-}
-
 type ReservationReservation = {
   id: string;
   checkInDate: string;
   checkOutDate: string;
-  reservationState: number;
+  reservationState: ReservationState;
 };
 
 function formatDate(value: string) {
@@ -36,11 +26,6 @@ function formatDate(value: string) {
     month: "long",
     year: "numeric",
   }).format(new Date(value));
-}
-
-function formatPrice(value?: number) {
-  if (value == null) return "-";
-  return `$${value.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
 }
 
 function dateKey(date: Date): string {
@@ -64,8 +49,8 @@ function isBetween(day: Date, start?: Date, end?: Date): boolean {
   return day.getTime() >= Math.min(start.getTime(), end.getTime()) && day.getTime() <= Math.max(start.getTime(), end.getTime());
 }
 
-function getReservationStateLabel(state: number) {
-  return RESERVATION_STATE_LABEL[Number(state) as ReservationStateValue] ?? "Desconocido";
+function getReservationStateLabel(state: ReservationState) {
+  return RESERVATION_STATE_LABEL[state] ?? "Desconocido";
 }
 
 export function meta() {
@@ -95,7 +80,7 @@ export default function MisReservasModificarPage() {
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<number | null>(null);
   const [userEmail, setUserEmail] = useState("test@gmail.com");
-  const [existingReservations, setExistingReservations] = useState<ReservationReservation[]>([]);
+  const [existingReservations, setExistingReservations] = useState<ReservationDetail[]>([]);
 
   useEffect(() => {
     initMercadoPago("TEST-440e66b5-54b5-49f2-9930-3dd2e1baed8e");
@@ -136,10 +121,11 @@ export default function MisReservasModificarPage() {
     ? Math.round(Math.abs(rangeEnd.getTime() - rangeStart.getTime()) / 86_400_000) + 1
     : 0;
 
-  const originalTotal: number | undefined = undefined;
+  const originalTotal = reservaQuery.data ?
+    reservaQuery.data.fullCost : 0;
 
   const newTotal = rangeStart && rangeEnd
-    ? Math.round(Math.abs(rangeEnd.getTime() - rangeStart.getTime()) / 86_400_000) + 1 * (reservaQuery.data?.pricePerDay ?? 0)
+    ? Math.round(Math.abs(rangeEnd.getTime() - rangeStart.getTime()) / 86_400_000) + 1 * (reservaQuery.data?.apartment.price ?? 0)
     : 0;
 
   const delta = originalTotal == null ? 0 : Math.max(0, newTotal - originalTotal);
@@ -159,11 +145,10 @@ export default function MisReservasModificarPage() {
     return existingReservations.some((reservation) => {
       const start = dateKey(parseDate(reservation.checkInDate));
       const end = dateKey(parseDate(reservation.checkOutDate));
-      const state = Number(reservation.reservationState);
       return current >= start && current <= end && (
-        state === ReservationState.ConfirmedPaymentComplete ||
-        state === ReservationState.PaymentPending ||
-        state === ReservationState.Cancelled
+        reservation.state === ReservationState.ConfirmedPaymentIncomplete ||
+        reservation.state === ReservationState.ConfirmedPaymentComplete ||
+        reservation.state === ReservationState.PaymentPending
       );
     });
   };
@@ -228,7 +213,7 @@ export default function MisReservasModificarPage() {
             checkInDate: new Date(startDate).toISOString(),
             checkOutDate: new Date(endDate).toISOString(),
             paymentOption,
-            reservationId: reservaQuery.data.id,
+            reservationId: reservaQuery.data.reservationId,
             isModification: true,
           }),
         },
@@ -275,9 +260,9 @@ export default function MisReservasModificarPage() {
   const paymentAmount = paymentOption === "deposit" ? Math.max(0, delta) : Math.max(0, delta);
   const shouldShowPayment = Boolean(
     reservaQuery.data &&
-      originalTotal != null &&
-      (Number(reservaQuery.data.reservationState) === ReservationState.NotConfirmed ||
-        Number(reservaQuery.data.reservationState) === ReservationState.ConfirmedPaymentIncomplete) &&
+      (reservaQuery.data.state === ReservationState.NotConfirmed ||
+        reservaQuery.data.state ===
+          ReservationState.ConfirmedPaymentIncomplete) &&
       (delta > 0 || refund > 0),
   );
 
@@ -303,17 +288,17 @@ export default function MisReservasModificarPage() {
         <Link className="font-serif text-[23px] font-bold tracking-[-0.04em] text-[#385347]" to="/">
           reservas<span className="text-[#e28b68]">moreno</span>
         </Link>
-        <Link to="/mis-reservas" className="ui-link">Volver a reservas</Link>
+        <Link to="/reservas" className="ui-link">Volver a reservas</Link>
       </header>
 
       <section className="mx-auto max-w-6xl px-5 py-8 md:px-8">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[.13em] text-[#385347]">Modificar reserva</p>
-            <h1 className="font-serif text-5xl tracking-[-0.05em] text-[#385347]">{reservaQuery.data.apartmentName ?? "Reserva"}</h1>
+            <h1 className="font-serif text-5xl tracking-[-0.05em] text-[#385347]">{reservaQuery.data.apartment.name}</h1>
           </div>
           <span className="rounded-full border border-[#d7d1c7] bg-[#edf2e8] px-2.5 py-1 text-xs font-semibold text-[#385347]">
-            {getReservationStateLabel(reservaQuery.data.reservationState)}
+            {getReservationStateLabel(reservaQuery.data.state)}
           </span>
         </div>
 
@@ -486,7 +471,7 @@ export default function MisReservasModificarPage() {
 
             <div className="mt-4 flex gap-3">
               <button type="button" onClick={() => setStep("dates")} className="ui-link">Volver a fechas</button>
-              <button type="button" onClick={() => navigate(`/mis-reservas/${id}`)} className="ui-button ui-button-sm">Cancelar</button>
+              <button type="button" onClick={() => navigate(`/reservas/${id}`)} className="ui-button ui-button-sm">Cancelar</button>
             </div>
           </div>
         ) : step === "success" ? (
@@ -494,7 +479,7 @@ export default function MisReservasModificarPage() {
             <CheckCircle2 className="mx-auto mb-4 h-14 w-14 text-[#2d6a4f]" />
             <p className="text-lg text-[#202722]">Tu reserva fue modificada correctamente.</p>
             <p className="mt-2 text-sm text-[#68716a]">Se envió la confirmación al correo {userEmail}</p>
-            <button type="button" onClick={() => navigate(`/mis-reservas/${id}`)} className="ui-button ui-button-md mt-5">
+            <button type="button" onClick={() => navigate(`/reservas/${id}`)} className="ui-button ui-button-md mt-5">
               Volver al detalle
             </button>
           </div>

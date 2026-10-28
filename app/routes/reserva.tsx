@@ -2,46 +2,41 @@ import { CardPayment, initMercadoPago } from "@mercadopago/sdk-react";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { ReservationState, RESERVATION_STATE_LABEL, type ReservationStateValue } from "~/types/reservationState";
+import { RESERVATION_STATE_LABEL } from "~/types/reservationState";
 import api from "~/utils/api";
-
-type ReservationDetail = {
-	id?: string;
-	apartmentId: string;
-	apartmentName?: string;
-	apartmentLocation?: string;
-	pricePerDay?: number;
-	checkInDate: string;
-	checkOutDate: string;
-	reservationState?: ReservationStateValue;
-	depositAmount?: number;
-};
-
-type ReservationPayment = {
-	amount?: number;
-	paymentAmount?: number;
-	amountPaid?: number;
-	type?: string;
-	paymentType?: string;
-	concept?: string;
-};
-
-function getReservationPayload(data: any) {
-	const result = data?.value ?? data?.data ?? data;
-	return result?.reservation ?? result;
-}
-
-function getDepositAmount(payments: ReservationPayment[], total: number) {
-	const depositPayment = payments.find((payment) => {
-		const description = `${payment.type ?? ""} ${payment.paymentType ?? ""} ${payment.concept ?? ""}`.toLowerCase();
-		return description.includes("deposit") || description.includes("seña") || description.includes("sena");
-	});
-
-	const amount = depositPayment?.amount ?? depositPayment?.paymentAmount ?? depositPayment?.amountPaid;
-	return amount ?? (payments.length === 0 ? total * 0.1 : undefined);
-}
+import { ReservationState } from "~/types/Reserva";
+import type { ReservationDetail } from "~/types/ReservationDetail";
 
 const apiBaseUrl = import.meta.env.VITE_API_URL;
+const paymentEndpoints = {
+	deposit: "process_sign_payment",
+	full: "process_card_payment",
+	rest: "process_rest_payment",
+} as const;
+
+type PaymentOption = keyof typeof paymentEndpoints;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null;
+}
+
+function parseReservationState(value: unknown): ReservationState | undefined {
+	if (typeof value === "number" && isReservationState(value)) return value;
+	if (typeof value !== "string") return undefined;
+
+	const matchingEntry = Object.entries(ReservationState).find(
+		([name, state]) =>
+			typeof state === "number" &&
+			(name.toLowerCase() === value.toLowerCase() || String(state) === value),
+	);
+	return matchingEntry && isReservationState(matchingEntry[1])
+		? matchingEntry[1]
+		: undefined;
+}
+
+function isReservationState(value: unknown): value is ReservationState {
+	return typeof value === "number" && Object.values(ReservationState).includes(value);
+}
 
 function formatDate(value: string) {
 	return new Intl.DateTimeFormat("es-AR", {
@@ -54,8 +49,8 @@ function formatPrice(value: number) {
 	return `$${value.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
 }
 
-function getReservationStateLabel(state?: number) {
-	return RESERVATION_STATE_LABEL[Number(state) as ReservationStateValue] ?? "No confirmada";
+function getReservationStateLabel(state?: ReservationState) {
+	return RESERVATION_STATE_LABEL[state!] ?? "No confirmada";
 }
 
 export function meta() {
@@ -65,35 +60,27 @@ export function meta() {
 export default function ReservaPage() {
 	const navigate = useNavigate();
 	const { id } = useParams();
-	const [paymentOption, setPaymentOption] = useState<"deposit" | "full">("full");
+	const [paymentOption, setPaymentOption] = useState<"deposit" | "full" | "rest">("full");
 	const [showCardForm, setShowCardForm] = useState(false);
 	const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 	const [paymentError, setPaymentError] = useState<string | null>(null);
 	const [paymentApproved, setPaymentApproved] = useState(false);
+	const [reservationStateOverride, setReservationStateOverride] = useState<{
+		reservationId: string;
+		state: ReservationState;
+	} | null>(null);
 	const reservationQuery = useQuery<ReservationDetail>({
 		queryKey: ["reservation-detail", id],
 		queryFn: async () => {
 			const { data } = await api.get(`/api/reservation/${id}`);
-			const reservation = getReservationPayload(data);
-			const payments = Array.isArray(reservation?.payments) ? reservation.payments : [];
-			const depositAmount = getDepositAmount(payments, 0);
-			return {
-				...reservation,
-				id: reservation?.resrevationId ?? reservation?.reservationId ?? reservation?.id,
-				apartmentName:
-					reservation?.apartmentName ??
-					reservation?.ApartmentName ??
-					reservation?.apartment?.name ??
-					reservation?.apartment?.Name,
-				reservationState: Number(reservation?.state ?? reservation?.reservationState ?? ReservationState.NotConfirmed),
-				depositAmount,
-				payments,
-			};
+			return data;
 		},
 		enabled: Boolean(id),
 		retry: 2,
 		retryDelay: (attempt) => (attempt + 1) * 500,
 	});
+
+	const reservation = reservationQuery.data;
 
 	useEffect(() => {
 		initMercadoPago("TEST-440e66b5-54b5-49f2-9930-3dd2e1baed8e");
@@ -118,34 +105,34 @@ export default function ReservaPage() {
 		);
 	}
 
-	if (reservationQuery.isError || !reservationQuery.data) {
+	if (reservationQuery.isError || !reservation) {
 		return (
 			<main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">
 				<p>No se pudo cargar la reserva.</p>
-				<Link className="ui-text-link" to="/mis-reservas">
+				<Link className="ui-text-link" to="/reservas">
 					Volver a mis reservas
 				</Link>
 			</main>
 		);
 	}
 
-	const activeReservation = reservationQuery.data;
-	const reservationState = Number(activeReservation.reservationState ?? ReservationState.NotConfirmed);
-	const selectedDays =
-		Math.round(
-			Math.abs(
-				new Date(activeReservation.checkOutDate).getTime() -
-					new Date(activeReservation.checkInDate).getTime(),
-			) / 86_400_000,
-		) + 1;
-	const totalLabel = "Precio a confirmar"; // TODO(G1+G3): reemplazar por valor del backend cuando BE exponga totalCost
-	const deposit = activeReservation.depositAmount ?? 0;
-	const remaining = 0;
-	const paymentAmount = deposit;
-	const showPaymentOptions =
-		reservationState === ReservationState.NotConfirmed ||
-		reservationState === ReservationState.ConfirmedPaymentIncomplete;
-	const showCompleteInfoOnly = reservationState === ReservationState.ConfirmedPaymentComplete;
+	const activeReservation =
+		reservationStateOverride?.reservationId === reservation.reservationId
+			? { ...reservation, state: reservationStateOverride.state }
+			: reservation;
+	const reservationState = activeReservation.state;
+	const total = activeReservation.fullCost;
+	const deposit = total * 0.1;
+	const paidAmount = activeReservation.payments.reduce(
+		(amount, payment) => amount + payment.amount,
+		0,
+	);
+	const remaining = Math.max(0, total - paidAmount);
+	const canPayDeposit = reservationState === ReservationState.NotConfirmed;
+	const canPayFull = reservationState === ReservationState.NotConfirmed;
+	const canPayRest = reservationState === ReservationState.ConfirmedPaymentIncomplete;
+	const showCompleteInfoOnly =
+		reservationState === ReservationState.ConfirmedPaymentComplete;
 
 	function closePaymentForm() {
 		setShowCardForm(false);
@@ -153,21 +140,101 @@ export default function ReservaPage() {
 		setPaymentApproved(false);
 	}
 
-	async function handlePaymentSubmit(formData: any): Promise<void> {
+	function renderPaymentOptionCard({
+		title,
+		description,
+		option,
+		amount,
+	}: {
+		title: string;
+		description: string;
+		option: PaymentOption;
+		amount: number;
+	}) {
+		return (
+			<article className="flex min-h-80 flex-col border border-dashed border-[#c8c2b8] p-8">
+				<h2 className="text-center font-serif text-3xl font-bold text-[#202722]">
+					{title}
+				</h2>
+				<p className="mt-3 max-w-md text-sm">{description}</p>
+				<p className="mt-3 text-sm font-semibold">{formatPrice(amount)}</p>
+				{showCardForm && paymentOption === option && !paymentApproved ? (
+					<div className="mt-4 rounded-md border border-[#e0ded5] bg-[#f8f4ef] p-3">
+						{isProcessingPayment ? (
+							<div
+								className="flex min-h-64 flex-col items-center justify-center gap-3 text-[#385347]"
+								role="status"
+								aria-live="polite"
+							>
+								<div className="h-8 w-8 animate-spin rounded-full border-2 border-[#385347] border-t-transparent" />
+								<p className="text-sm font-medium">Procesando pago...</p>
+							</div>
+						) : (
+							<>
+								<div className="mb-3 flex justify-end">
+									<button
+										type="button"
+										onClick={closePaymentForm}
+										className="ui-icon-button p-1.5"
+										aria-label="Cerrar formulario de pago"
+									>
+										<svg
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											strokeWidth="2"
+											className="h-4 w-4"
+										>
+											<path d="M18 6L6 18M6 6l12 12" />
+										</svg>
+									</button>
+								</div>
+								<CardPayment
+									initialization={{ amount }}
+									onReady={() => undefined}
+									onSubmit={(formData: any) => handlePaymentSubmit(formData, option)}
+									onError={(error: any) => {
+										setPaymentError(
+											error?.message ?? "No se pudo inicializar el pago.",
+										);
+									}}
+								/>
+							</>
+						)}
+					</div>
+				) : (
+					<button
+						type="button"
+						onClick={() => {
+							setPaymentOption(option);
+							setPaymentError(null);
+							setPaymentApproved(false);
+							setShowCardForm(true);
+						}}
+						className="ui-button ui-button-sm mt-auto self-center"
+					>
+						Confirmar reserva
+					</button>
+				)}
+			</article>
+		);
+	}
+
+	async function handlePaymentSubmit(formData: any, option: PaymentOption): Promise<void> {
 		setIsProcessingPayment(true);
 		setPaymentError(null);
 		setPaymentApproved(false);
 
 		try {
 			const response = await fetch(
-				`${apiBaseUrl.replace(/\/$/, "")}/api/Payment/process_card_payment/${activeReservation.apartmentId}`,
+				`${apiBaseUrl.replace(/\/$/, "")}/api/Payment/${paymentEndpoints[option]}/${option === "rest" ? activeReservation.reservationId : activeReservation.apartmentId}`,
 				{
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
 					credentials: "include",
 					body: JSON.stringify({
 						...formData,
-						reservationId: id,
+						reservationId: activeReservation.reservationId,
 						checkInDate: activeReservation.checkInDate,
 						checkOutDate: activeReservation.checkOutDate,
 						paymentOption,
@@ -177,24 +244,39 @@ export default function ReservaPage() {
 			);
 
 			const rawText = await response.text();
-			let data: any = null;
+			let data: Record<string, unknown> = {};
 			if (rawText) {
 				try {
-					data = JSON.parse(rawText);
+					const parsed: unknown = JSON.parse(rawText);
+					if (isRecord(parsed)) data = parsed;
+					else data = { message: rawText };
 				} catch {
 					data = { message: rawText };
 				}
 			}
 
 			if (!response.ok) {
+				const message = [data.message, data.error, data.title].find(
+					(value): value is string => typeof value === "string",
+				);
 				throw new Error(
-					data?.message ?? data?.error ?? data?.title ?? "No se pudo procesar el pago.",
+					message ?? "No se pudo procesar el pago.",
 				);
 			}
 
-			const status = Number(data?.paymentStatus ?? data?.status ?? data?.payment_status ?? 0);
+			const status = Number(data.paymentStatus ?? data.status ?? data.payment_status ?? 0);
 			if (status === 2) {
 				setPaymentApproved(true);
+				const nextState =
+					parseReservationState(data.state) ??
+					(option === "deposit"
+						? ReservationState.ConfirmedPaymentIncomplete
+						: ReservationState.ConfirmedPaymentComplete);
+				setReservationStateOverride({
+					reservationId: activeReservation.reservationId,
+					state: nextState,
+				});
+				void reservationQuery.refetch();
 				return;
 			}
 			if (status === 1) {
@@ -222,7 +304,7 @@ export default function ReservaPage() {
 					reservas<span className="text-[#e28b68]">moreno</span>
 				</Link>
 				<div className="flex items-center gap-3 text-sm text-[#385347]">
-					<Link to="/mis-reservas" className="ui-link">
+					<Link to="/reservas" className="ui-link">
 						Mis reservas
 					</Link>
 				</div>
@@ -233,16 +315,16 @@ export default function ReservaPage() {
 					<div>
 						<h1 className="font-serif text-5xl tracking-[-0.05em] text-[#202722]">Reserva</h1>
 						<p className="mt-2 text-sm text-[#68716a]">
-							{activeReservation.apartmentName ?? "Departamento"}
+							{activeReservation.apartment.name}
 						</p>
 					</div>
-					<p className="text-2xl font-bold text-[#202722]">Monto total: {totalLabel}</p>
+					<p className="text-2xl font-bold text-[#202722]">Monto total: {formatPrice(total)}</p>
 				</div>
 
 				<div className="mt-8 grid gap-4 rounded-md bg-[#e7e4dc] p-5 text-sm md:grid-cols-4">
 					<p>Inicio: {formatDate(activeReservation.checkInDate)}</p>
 					<p>Fin: {formatDate(activeReservation.checkOutDate)}</p>
-					<p>Ubicación: {activeReservation.apartmentLocation ?? activeReservation.apartmentId}</p>
+					<p>Ubicación: {activeReservation.apartment.name}</p>
 					<p>Estado: {getReservationStateLabel(reservationState)}</p>
 				</div>
 
@@ -251,14 +333,14 @@ export default function ReservaPage() {
 						<h2 className="font-serif text-3xl text-[#385347]">Información de la reserva</h2>
 						<div className="mt-4 space-y-2 text-sm text-[#68716a]">
 							<p>
-								<strong className="text-[#202722]">Total:</strong> {totalLabel}
+								<strong className="text-[#202722]">Total:</strong> {formatPrice(total)}
 							</p>
 							<p>
 								<strong className="text-[#202722]">Seña:</strong> {formatPrice(deposit)}
 							</p>
 							<p>
 								<strong className="text-[#202722]">Estado:</strong>
-								{getReservationStateLabel(reservationState)}
+								&nbsp;{getReservationStateLabel(reservationState)}
 							</p>
 							<p>
 								<strong className="text-[#202722]">Saldo restante:</strong>
@@ -266,80 +348,33 @@ export default function ReservaPage() {
 							</p>
 						</div>
 					</div>
+				) : canPayDeposit || canPayFull || canPayRest ? (
+					<div className="mt-8 grid gap-8 md:grid-cols-2">
+						{canPayDeposit &&
+							renderPaymentOptionCard({
+								title: "Pagar seña",
+								description:
+									"Confirmar la reserva pagando un porcentaje ahora, y pagar el resto más tarde",
+								option: "deposit",
+								amount: deposit,
+							})}
+						{canPayFull &&
+							renderPaymentOptionCard({
+								title: "Pagar reserva completa",
+								description: "Asegurar la reserva pagando el monto total ahora",
+								option: "full",
+								amount: total,
+							})}
+						{canPayRest && renderPaymentOptionCard({
+								title: "Pagar resto",
+								description: "Completar el pago pendiente de la reserva",
+								option: "rest",
+								amount: total,
+							})}
+					</div>
 				) : (
-					<div className="mt-8 grid gap-8 lg:grid-cols-2">
-						{[
-							["Pagar seña", "Confirmar la reserva pagando un porcentaje ahora, y pagar el resto más tarde", "deposit"],
-							[
-								reservationState === ReservationState.ConfirmedPaymentIncomplete ? "Pagar saldo restante" : "Pagar reserva completa",
-								reservationState === ReservationState.ConfirmedPaymentIncomplete
-									? "Completar el pago pendiente de la reserva"
-									: "Asegurar la reserva pagando el monto total ahora",
-								"full",
-							],
-						].filter(([_, __, option]) => {
-							if (reservationState === ReservationState.NotConfirmed) return true;
-							if (reservationState === ReservationState.ConfirmedPaymentIncomplete) return option === "full";
-							return false;
-						}).map(([title, description, option]) => (
-							<article
-								key={title}
-								className="flex min-h-80 flex-col border border-dashed border-[#c8c2b8] p-8"
-							>
-								<h2 className="text-center font-serif text-3xl font-bold text-[#202722]">{title}</h2>
-								<p className="mt-3 max-w-md text-sm">{description}</p>
-								<p className="mt-3 text-sm font-semibold">
-											{option === "deposit" ? formatPrice(deposit) : formatPrice(paymentAmount)}
-								</p>
-								{showCardForm && paymentOption === option && !paymentApproved ? (
-									<div className="mt-4 rounded-md border border-[#e0ded5] bg-[#f8f4ef] p-3">
-										<div className="mb-3 flex justify-end">
-											<button
-												type="button"
-												onClick={closePaymentForm}
-												disabled={isProcessingPayment}
-												className="ui-icon-button p-1.5 disabled:cursor-not-allowed disabled:opacity-50"
-												aria-label="Cerrar formulario de pago"
-											>
-												<svg
-													viewBox="0 0 24 24"
-													fill="none"
-													stroke="currentColor"
-													strokeWidth="2"
-													className="h-4 w-4"
-												>
-													<path d="M18 6L6 18M6 6l12 12" />
-												</svg>
-											</button>
-										</div>
-										<CardPayment
-											initialization={{ amount: paymentAmount }}
-											onReady={() => undefined}
-											onSubmit={(formData: any) => handlePaymentSubmit(formData)}
-											onError={(error: any) => {
-												setPaymentError(error?.message ?? "No se pudo inicializar el pago.");
-											}}
-										/>
-										{isProcessingPayment && (
-											<div className="mt-3 text-center text-sm font-medium text-[#385347]">
-												Procesando pago...
-											</div>
-										)}
-									</div>
-								) : (
-									<button
-										type="button"
-										onClick={() => {
-											setPaymentOption(option as "deposit" | "full");
-											setShowCardForm(true);
-										}}
-										className="ui-button ui-button-sm mt-auto self-center"
-									>
-										Confirmar reserva
-									</button>
-								)}
-							</article>
-						))}
+					<div className="mt-8 rounded-md border border-dashed border-[#c8c2b8] bg-[#fffdf9] p-6 text-sm text-[#68716a]">
+						No hay pagos disponibles para esta reserva.
 					</div>
 				)}
 
@@ -347,7 +382,7 @@ export default function ReservaPage() {
 				{paymentApproved && (
 					<p className="mt-4 text-sm font-semibold text-[#2d6a4f]">Pago aprobado correctamente.</p>
 				)}
-				{showPaymentOptions && !showCompleteInfoOnly && (
+				{canPayDeposit || canPayFull ? (
 					<div className="mt-6 flex flex-wrap items-center justify-between gap-4">
 						<div className="flex w-full justify-end">
 							<button
@@ -359,7 +394,7 @@ export default function ReservaPage() {
 							</button>
 						</div>
 					</div>
-				)}
+				) : null}
 			</section>
 		</main>
 	);
