@@ -7,6 +7,7 @@ import api from "~/utils/api";
 import { useAuthentication } from "~/components/NavegacionUsuario";
 import { ReservationState } from "~/types/Reserva";
 import type { ReservationDetail } from "~/types/ReservationDetail";
+import { RESERVATION_STATE_LABEL } from "~/types/reservationState";
 
 const apiBaseUrl = import.meta.env.VITE_API_URL;
 const monthFormatter = new Intl.DateTimeFormat("es-AR", { month: "long", year: "numeric" });
@@ -49,20 +50,7 @@ function isBetween(day: Date, start?: Date, end?: Date): boolean {
 }
 
 function getReservationStateLabel(state: ReservationState) {
-  switch (state) {
-    case ReservationState.NotConfirmed:
-      return "No confirmada";
-    case ReservationState.ConfirmedPaymentIncomplete:
-      return "Confirmada pago incompleto";
-    case ReservationState.ConfirmedPaymentComplete:
-      return "Confirmada pago completo";
-    case ReservationState.PaymentPending:
-      return "Pago pendiente";
-    case ReservationState.Cancelled:
-      return "Cancelada";
-    default:
-      return "Desconocido";
-  }
+  return RESERVATION_STATE_LABEL[state] ?? "Desconocido";
 }
 
 export function meta() {
@@ -140,10 +128,17 @@ export default function MisReservasModificarPage() {
     ? Math.round(Math.abs(rangeEnd.getTime() - rangeStart.getTime()) / 86_400_000) + 1 * (reservaQuery.data?.apartment.price ?? 0)
     : 0;
 
-  const delta = Math.max(0, newTotal - originalTotal);
-  const refund = Math.max(0, originalTotal - newTotal);
+  const delta = originalTotal == null ? 0 : Math.max(0, newTotal - originalTotal);
+  const refund = originalTotal == null ? 0 : Math.max(0, originalTotal - newTotal);
 
   const formatPrice = (value: number) => `$${value.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
+
+  const normalizeRange = (start: Date, end: Date) => {
+    // TODO(G10): extraer a hook compartido
+    return start.getTime() <= end.getTime()
+      ? { startDate: start, endDate: end }
+      : { startDate: end, endDate: start };
+  };
 
   const isReservedDay = (day: Date) => {
     const current = dateKey(day);
@@ -206,6 +201,7 @@ export default function MisReservasModificarPage() {
     setPaymentStatus(null);
 
     try {
+      const { startDate, endDate } = normalizeRange(rangeStart, rangeEnd);
       const response = await fetch(
         `${apiBaseUrl.replace(/\/$/, "")}/api/Payment/process_card_payment/${reservaQuery.data.apartmentId}`,
         {
@@ -214,8 +210,8 @@ export default function MisReservasModificarPage() {
           credentials: "include",
           body: JSON.stringify({
             ...formData,
-            checkInDate: new Date(rangeStart).toISOString(),
-            checkOutDate: new Date(rangeEnd).toISOString(),
+            checkInDate: new Date(startDate).toISOString(),
+            checkOutDate: new Date(endDate).toISOString(),
             paymentOption,
             reservationId: reservaQuery.data.reservationId,
             isModification: true,
@@ -308,7 +304,8 @@ export default function MisReservasModificarPage() {
 
         <div className="mb-6 rounded-md border border-dashed border-[#c8c2b8] bg-[#fffdf9] p-4 text-sm text-[#68716a]">
           <p>Reserva actual: {formatDate(reservaQuery.data.checkInDate)} — {formatDate(reservaQuery.data.checkOutDate)}</p>
-          <p className="mt-1">Monto actual: {formatPrice(originalTotal)}</p>
+          <p className="mt-1">Monto actual: {originalTotal == null ? "Precio a confirmar" : formatPrice(originalTotal)}</p>
+          {/* TODO(G1+G3): habilitar la comparación de montos cuando el backend exponga el total */}
         </div>
 
         {step === "dates" ? (

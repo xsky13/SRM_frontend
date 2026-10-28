@@ -2,8 +2,9 @@ import { CardPayment, initMercadoPago } from "@mercadopago/sdk-react";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
+import { RESERVATION_STATE_LABEL, type ReservationStateValue } from "~/types/reservationState";
 import api from "~/utils/api";
-import { ReservationState } from "~/types/Reserva";
+import { type ReservationState } from "~/types/Reserva";
 import type { ReservationDetail } from "~/types/ReservationDetail";
 
 const apiBaseUrl = import.meta.env.VITE_API_URL;
@@ -20,20 +21,7 @@ function formatPrice(value: number) {
 }
 
 function getReservationStateLabel(state?: ReservationState) {
-	switch (state) {
-		case ReservationState.NotConfirmed:
-			return "No confirmada";
-		case ReservationState.ConfirmedPaymentIncomplete:
-			return "Confirmada pago incompleto";
-		case ReservationState.ConfirmedPaymentComplete:
-			return "Confirmada pago completo";
-		case ReservationState.PaymentPending:
-			return "Pago pendiente";
-		case ReservationState.Cancelled:
-			return "Cancelada";
-		default:
-			return "Desconocido";
-	}
+	return RESERVATION_STATE_LABEL[Number(state) as ReservationStateValue] ?? "No confirmada";
 }
 
 export function meta() {
@@ -52,9 +40,25 @@ export default function ReservaPage() {
 		queryKey: ["reservation-detail", id],
 		queryFn: async () => {
 			const { data } = await api.get(`/api/reservation/${id}`);
-			return data?.reservation ?? data;
+			const reservation = getReservationPayload(data);
+			const payments = Array.isArray(reservation?.payments) ? reservation.payments : [];
+			const depositAmount = getDepositAmount(payments, 0);
+			return {
+				...reservation,
+				id: reservation?.resrevationId ?? reservation?.reservationId ?? reservation?.id,
+				apartmentName:
+					reservation?.apartmentName ??
+					reservation?.ApartmentName ??
+					reservation?.apartment?.name ??
+					reservation?.apartment?.Name,
+				reservationState: Number(reservation?.state ?? reservation?.reservationState ?? ReservationState.NotConfirmed),
+				depositAmount,
+				payments,
+			};
 		},
 		enabled: Boolean(id),
+		retry: 2,
+		retryDelay: (attempt) => (attempt + 1) * 500,
 	});
 
 	useEffect(() => {
@@ -284,7 +288,7 @@ export default function ReservaPage() {
 							{activeReservation.apartment.name}
 						</p>
 					</div>
-					<p className="text-2xl font-bold text-[#202722]">Monto total: {formatPrice(total)}</p>
+					<p className="text-2xl font-bold text-[#202722]">Monto total: {totalLabel}</p>
 				</div>
 
 				<div className="mt-8 grid gap-4 rounded-md bg-[#e7e4dc] p-5 text-sm md:grid-cols-4">
@@ -299,7 +303,7 @@ export default function ReservaPage() {
 						<h2 className="font-serif text-3xl text-[#385347]">Información de la reserva</h2>
 						<div className="mt-4 space-y-2 text-sm text-[#68716a]">
 							<p>
-								<strong className="text-[#202722]">Total:</strong> {formatPrice(total)}
+								<strong className="text-[#202722]">Total:</strong> {totalLabel}
 							</p>
 							<p>
 								<strong className="text-[#202722]">Seña:</strong> {formatPrice(deposit)}

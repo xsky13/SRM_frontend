@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import api from "~/utils/api";
 import { useAuthentication } from "~/components/NavegacionUsuario";
 import { ReservationState } from "~/types/Reserva";
+import { RESERVATION_STATE_LABEL } from "~/types/reservationState";
 
 export function meta() {
   return [{ title: "Mis reservas | Reservas Moreno" }];
@@ -29,26 +30,8 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-function formatPrice(value?: number) {
-  if (value == null) return "-";
-  return `$${value.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
-}
-
 function getReservationStateLabel(state: ReservationState) {
-  switch (state) {
-    case ReservationState.NotConfirmed:
-      return "No confirmada";
-    case ReservationState.ConfirmedPaymentIncomplete:
-      return "Confirmada pago incompleto";
-    case ReservationState.ConfirmedPaymentComplete:
-      return "Confirmada pago completo";
-    case ReservationState.PaymentPending:
-      return "Pago pendiente";
-    case ReservationState.Cancelled:
-      return "Cancelada";
-    default:
-      return "Desconocido";
-  }
+  return RESERVATION_STATE_LABEL[state] ?? "Desconocido";
 }
 
 export default function MisReservasPage() {

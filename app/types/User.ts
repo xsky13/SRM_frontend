@@ -1,3 +1,11 @@
+export const UserType = {
+  Admin: 1,
+  User: 2,
+  Guest: 3,
+} as const;
+
+export type UserType = typeof UserType[keyof typeof UserType];
+
 export type User = {
   id: string;
   name: string;
@@ -6,10 +14,4 @@ export type User = {
   telefono: string;
   pwdHash: string | null;
   usertype: UserType;
-};
-
-export type UserType = {
-  admin: 1;
-  user: 2;
-  guest: 3;
 };

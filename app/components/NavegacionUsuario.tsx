@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "react-router";
 import api from "~/utils/api";
 import { ApiError } from "~/types/ApiError";
-import type { User } from "~/types/User";
+import { UserType, type User } from "~/types/User";
 
 async function checkAuthentication(): Promise<User | null> {
   try {
@@ -28,17 +28,24 @@ export function useAuthentication() {
 export default function NavegacionUsuario() {
   const authQuery = useAuthentication();
   const location = useLocation();
+  const user = authQuery.data;
+  const isAdmin = user?.usertype === UserType.Admin;
 
   if (authQuery.isPending) {
     return <span className="text-sm text-[#68716a]">Verificando sesión...</span>;
   }
 
-  if (authQuery.data) {
+  if (user) {
     return (
       <div className="flex items-center gap-3">
         <Link to="/mis-reservas" className="ui-link">
           Mis reservas
         </Link>
+        {isAdmin && (
+          <Link to="/admin/departamentos" className="ui-link">
+            Panel de Admin
+          </Link>
+        )}
         <Link to="/logout" className="ui-button ui-button-sm">
           Cerrar sesión
         </Link>

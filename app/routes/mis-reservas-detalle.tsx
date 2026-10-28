@@ -2,12 +2,25 @@ import { Link, useNavigate, useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import api from "~/utils/api";
 import { useAuthentication } from "~/components/NavegacionUsuario";
-import { ReservationState } from "~/types/Reserva";
-import type { ReservationDetail } from "~/types/ReservationDetail";
 
 export function meta() {
   return [{ title: "Detalle de reserva | Reservas Moreno" }];
 }
+
+type ReservationDetail = {
+  id: string;
+  apartmentId: string;
+  apartmentName?: string;
+  apartmentLocation?: string;
+  checkInDate: string;
+  checkOutDate: string;
+  reservationState: number;
+  totalPrice?: number;
+  depositAmount?: number;
+  fullAmount?: number;
+  pricePerDay?: number;
+  paymentMethods?: Array<{ id: string; name: string; type?: string; enabled?: boolean }>;
+};
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("es-AR", {
@@ -17,22 +30,15 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-function formatPrice(value?: number) {
-  if (value == null) return "-";
-  return `$${value.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
-}
-
-function getReservationStateLabel(state: ReservationState) {
+function getReservationStateLabel(state: number) {
   switch (state) {
-    case ReservationState.NotConfirmed:
+    case 0:
       return "No confirmada";
-    case ReservationState.ConfirmedPaymentIncomplete:
-      return "Confirmada pago incompleto";
-    case ReservationState.ConfirmedPaymentComplete:
-      return "Confirmada pago completo";
-    case ReservationState.PaymentPending:
-      return "Pago pendiente";
-    case ReservationState.Cancelled:
+    case 1:
+      return "Confirmada no completa";
+    case 2:
+      return "Confirmada completa";
+    case 3:
       return "Cancelada";
     default:
       return "Desconocido";
@@ -111,12 +117,10 @@ export default function MisReservasDetallePage() {
   }
 
   const reserva = reservaQuery.data;
-  const state = reserva.state;
-  const canPayDeposit = state === ReservationState.NotConfirmed;
-  const canPayFull =
-    state === ReservationState.NotConfirmed ||
-    state === ReservationState.ConfirmedPaymentIncomplete;
-  const total =  reserva.fullCost
+  const state = reserva.reservationState;
+  const canPayDeposit = state === 0;
+  const canPayFull = state === 0 || state === 1;
+  const total = reserva.totalPrice ?? reserva.fullAmount ?? (reserva.pricePerDay ?? 0) * 5;
 
   return (
     <main className="min-h-screen bg-[#f6f4ee] text-[#202722]">
@@ -177,32 +181,20 @@ export default function MisReservasDetallePage() {
                 </p>
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[.14em] text-[#68716a]">
-                  Total
-                </p>
-                <p className="mt-1 text-lg font-semibold text-[#202722]">
-                  {formatPrice(total)}
-                </p>
+                <p className="text-[10px] font-bold uppercase tracking-[.14em] text-[#68716a]">Total</p>
+                <p className="mt-1 text-lg font-semibold text-[#202722]">{formatPrice(total)}</p>
               </div>
             </div>
 
             <div className="mt-6 rounded-md border border-dashed border-[#c8c2b8] bg-[#f7f4ee] p-4 text-sm text-[#68716a]">
-              <p>
-                <strong className="text-[#202722]">Seña:</strong>{" "}
-                {formatPrice(reserva.fullCost * 0.1)}
-              </p>
-              <p className="mt-1">
-                <strong className="text-[#202722]">Saldo debido:</strong>{" "}
-                {formatPrice(reserva.fullCost ?? total)}
-              </p>
+              <p><strong className="text-[#202722]">Seña:</strong> {formatPrice(reserva.depositAmount)}</p>
+              <p className="mt-1"><strong className="text-[#202722]">Pago completo:</strong> {formatPrice(reserva.fullAmount ?? total)}</p>
             </div>
           </div>
 
           <div className="rounded-md border border-[#d7d1c7] bg-[#fffdf9] p-5">
-            <p className="text-[10px] font-bold uppercase tracking-[.14em] text-[#e28b68]">
-              Acciones
-            </p>
-            {state === ReservationState.ConfirmedPaymentComplete ? (
+            <p className="text-[10px] font-bold uppercase tracking-[.14em] text-[#e28b68]">Acciones</p>
+            {state === 2 ? (
               <div className="mt-4 rounded-md border border-[#d7d1c7] bg-[#f3f7f1] p-4 text-sm text-[#385347]">
                 Esta reserva ya está confirmada completa. No hay nada que pagar.
               </div>
