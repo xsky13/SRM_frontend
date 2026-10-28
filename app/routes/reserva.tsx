@@ -2,9 +2,9 @@ import { CardPayment, initMercadoPago } from "@mercadopago/sdk-react";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { RESERVATION_STATE_LABEL, type ReservationStateValue } from "~/types/reservationState";
+import { RESERVATION_STATE_LABEL, } from "~/types/reservationState";
 import api from "~/utils/api";
-import { type ReservationState } from "~/types/Reserva";
+import { ReservationState } from "~/types/Reserva";
 import type { ReservationDetail } from "~/types/ReservationDetail";
 
 const apiBaseUrl = import.meta.env.VITE_API_URL;
@@ -21,7 +21,7 @@ function formatPrice(value: number) {
 }
 
 function getReservationStateLabel(state?: ReservationState) {
-	return RESERVATION_STATE_LABEL[Number(state) as ReservationStateValue] ?? "No confirmada";
+	return RESERVATION_STATE_LABEL[state!] ?? "No confirmada";
 }
 
 export function meta() {
@@ -40,21 +40,7 @@ export default function ReservaPage() {
 		queryKey: ["reservation-detail", id],
 		queryFn: async () => {
 			const { data } = await api.get(`/api/reservation/${id}`);
-			const reservation = getReservationPayload(data);
-			const payments = Array.isArray(reservation?.payments) ? reservation.payments : [];
-			const depositAmount = getDepositAmount(payments, 0);
-			return {
-				...reservation,
-				id: reservation?.resrevationId ?? reservation?.reservationId ?? reservation?.id,
-				apartmentName:
-					reservation?.apartmentName ??
-					reservation?.ApartmentName ??
-					reservation?.apartment?.name ??
-					reservation?.apartment?.Name,
-				reservationState: Number(reservation?.state ?? reservation?.reservationState ?? ReservationState.NotConfirmed),
-				depositAmount,
-				payments,
-			};
+			return data;
 		},
 		enabled: Boolean(id),
 		retry: 2,
@@ -88,7 +74,7 @@ export default function ReservaPage() {
 		return (
 			<main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">
 				<p>No se pudo cargar la reserva.</p>
-				<Link className="ui-text-link" to="/mis-reservas">
+				<Link className="ui-text-link" to="/reservas">
 					Volver a mis reservas
 				</Link>
 			</main>
@@ -212,7 +198,7 @@ export default function ReservaPage() {
 
 		try {
 			const response = await fetch(
-				`${apiBaseUrl.replace(/\/$/, "")}/api/Payment/${url}/${activeReservation.apartmentId}`,
+				`${apiBaseUrl.replace(/\/$/, "")}/api/Payment/${url}/${option == "rest" ? activeReservation.reservationId : activeReservation.apartmentId}`,
 				{
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
@@ -274,7 +260,7 @@ export default function ReservaPage() {
 					reservas<span className="text-[#e28b68]">moreno</span>
 				</Link>
 				<div className="flex items-center gap-3 text-sm text-[#385347]">
-					<Link to="/mis-reservas" className="ui-link">
+					<Link to="/reservas" className="ui-link">
 						Mis reservas
 					</Link>
 				</div>
@@ -288,7 +274,7 @@ export default function ReservaPage() {
 							{activeReservation.apartment.name}
 						</p>
 					</div>
-					<p className="text-2xl font-bold text-[#202722]">Monto total: {totalLabel}</p>
+					<p className="text-2xl font-bold text-[#202722]">Monto total: {formatPrice(total)}</p>
 				</div>
 
 				<div className="mt-8 grid gap-4 rounded-md bg-[#e7e4dc] p-5 text-sm md:grid-cols-4">
@@ -303,14 +289,14 @@ export default function ReservaPage() {
 						<h2 className="font-serif text-3xl text-[#385347]">Información de la reserva</h2>
 						<div className="mt-4 space-y-2 text-sm text-[#68716a]">
 							<p>
-								<strong className="text-[#202722]">Total:</strong> {totalLabel}
+								<strong className="text-[#202722]">Total:</strong> {formatPrice(total)}
 							</p>
 							<p>
 								<strong className="text-[#202722]">Seña:</strong> {formatPrice(deposit)}
 							</p>
 							<p>
 								<strong className="text-[#202722]">Estado:</strong>
-								{getReservationStateLabel(reservationState)}
+								&nbsp;{getReservationStateLabel(reservationState)}
 							</p>
 							<p>
 								<strong className="text-[#202722]">Saldo restante:</strong>

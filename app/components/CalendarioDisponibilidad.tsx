@@ -330,7 +330,7 @@ export default function CalendarioDisponibilidad({
       setReservationError(null);
       toast.success("Reserva creada exitosamente.");
       console.log(data);
-      navigate("/reserva/" + data.id);
+      navigate("/reservas/" + data.id);
     },
     onError: (error) => {
       setIsCreatingReservation(false);

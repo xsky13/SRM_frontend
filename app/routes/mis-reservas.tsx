@@ -158,7 +158,7 @@ export default function MisReservasPage() {
 							</span>
 							<button
                     type="button"
-                    onClick={() => navigate(`/mis-reservas/${reserva.id}`)}
+                    onClick={() => navigate(`/reservas/${reserva.id}`)}
                     className="ui-button ui-button-sm"
                   >
                     Ver detalle
@@ -178,7 +178,7 @@ export default function MisReservasPage() {
 
                   <button
                     type="button"
-                    onClick={() => navigate(`/reserva/${reserva.id}`)}
+                    onClick={() => navigate(`/reservas/${reserva.id}`)}
                     className="ui-button ui-button-sm"
                   >
                     Ver detalle

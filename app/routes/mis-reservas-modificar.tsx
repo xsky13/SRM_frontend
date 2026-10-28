@@ -288,7 +288,7 @@ export default function MisReservasModificarPage() {
         <Link className="font-serif text-[23px] font-bold tracking-[-0.04em] text-[#385347]" to="/">
           reservas<span className="text-[#e28b68]">moreno</span>
         </Link>
-        <Link to="/mis-reservas" className="ui-link">Volver a reservas</Link>
+        <Link to="/reservas" className="ui-link">Volver a reservas</Link>
       </header>
 
       <section className="mx-auto max-w-6xl px-5 py-8 md:px-8">
@@ -471,7 +471,7 @@ export default function MisReservasModificarPage() {
 
             <div className="mt-4 flex gap-3">
               <button type="button" onClick={() => setStep("dates")} className="ui-link">Volver a fechas</button>
-              <button type="button" onClick={() => navigate(`/mis-reservas/${id}`)} className="ui-button ui-button-sm">Cancelar</button>
+              <button type="button" onClick={() => navigate(`/reservas/${id}`)} className="ui-button ui-button-sm">Cancelar</button>
             </div>
           </div>
         ) : step === "success" ? (
@@ -479,7 +479,7 @@ export default function MisReservasModificarPage() {
             <CheckCircle2 className="mx-auto mb-4 h-14 w-14 text-[#2d6a4f]" />
             <p className="text-lg text-[#202722]">Tu reserva fue modificada correctamente.</p>
             <p className="mt-2 text-sm text-[#68716a]">Se envió la confirmación al correo {userEmail}</p>
-            <button type="button" onClick={() => navigate(`/mis-reservas/${id}`)} className="ui-button ui-button-md mt-5">
+            <button type="button" onClick={() => navigate(`/reservas/${id}`)} className="ui-button ui-button-md mt-5">
               Volver al detalle
             </button>
           </div>
