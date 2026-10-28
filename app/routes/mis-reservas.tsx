@@ -55,8 +55,6 @@ export default function MisReservasPage() {
   const authQuery = useAuthentication();
   const navigate = useNavigate();
 
-  console.log(authQuery.data);
-
   const reservasQuery = useQuery<ReservationListItem[]>({
     queryKey: ["my-reservations"],
     queryFn: async () => {

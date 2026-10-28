@@ -3,31 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import api from "~/utils/api";
 import { useAuthentication } from "~/components/NavegacionUsuario";
 import { ReservationState } from "~/types/Reserva";
+import type { ReservationDetail } from "~/types/ReservationDetail";
 
 export function meta() {
   return [{ title: "Detalle de reserva | Reservas Moreno" }];
 }
-
-type ReservationDetail = {
-  id: string;
-  apartmentId: string;
-  apartmentName?: string;
-  apartmentLocation?: string;
-  checkInDate: string;
-  checkOutDate: string;
-  reservationState: ReservationState;
-  totalPrice?: number;
-  depositAmount?: number;
-  fullAmount?: number;
-  fullCost?: number;
-  pricePerDay?: number;
-  paymentMethods?: Array<{
-    id: string;
-    name: string;
-    type?: string;
-    enabled?: boolean;
-  }>;
-};
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("es-AR", {
@@ -131,13 +111,12 @@ export default function MisReservasDetallePage() {
   }
 
   const reserva = reservaQuery.data;
-  const state = reserva.reservationState;
+  const state = reserva.state;
   const canPayDeposit = state === ReservationState.NotConfirmed;
   const canPayFull =
     state === ReservationState.NotConfirmed ||
     state === ReservationState.ConfirmedPaymentIncomplete;
-  const total =
-    reserva.totalPrice ?? reserva.fullCost ?? (reserva.pricePerDay ?? 0) * 5;
+  const total =  reserva.fullCost
 
   return (
     <main className="min-h-screen bg-[#f6f4ee] text-[#202722]">
@@ -162,7 +141,7 @@ export default function MisReservasDetallePage() {
               Detalle
             </p>
             <h1 className="font-serif text-5xl tracking-[-0.05em] text-[#385347]">
-              {reserva.apartmentName ?? "Reserva"}
+              {reserva.apartment.name ?? "Reserva"}
             </h1>
           </div>
           <span className="rounded-full border border-[#d7d1c7] bg-[#edf2e8] px-2.5 py-1 text-xs font-semibold text-[#385347]">
@@ -194,7 +173,7 @@ export default function MisReservasDetallePage() {
                   Ubicación
                 </p>
                 <p className="mt-1 text-lg text-[#202722]">
-                  {reserva.apartmentName ?? "Sin ubicación"}
+                  {reserva.apartment.location ?? "Sin ubicación"}
                 </p>
               </div>
               <div>
@@ -210,11 +189,11 @@ export default function MisReservasDetallePage() {
             <div className="mt-6 rounded-md border border-dashed border-[#c8c2b8] bg-[#f7f4ee] p-4 text-sm text-[#68716a]">
               <p>
                 <strong className="text-[#202722]">Seña:</strong>{" "}
-                {formatPrice(reserva.depositAmount)}
+                {formatPrice(reserva.fullCost * 0.1)}
               </p>
               <p className="mt-1">
                 <strong className="text-[#202722]">Saldo debido:</strong>{" "}
-                {formatPrice(reserva.fullAmount ?? total)}
+                {formatPrice(reserva.fullCost ?? total)}
               </p>
             </div>
           </div>
@@ -266,7 +245,7 @@ export default function MisReservasDetallePage() {
         <div className="mt-8 flex flex-wrap gap-4">
           <Link to="/mis-reservas" className="ui-link">Volver a reservas</Link>
           <button type="button" onClick={() => navigate(-1)} className="ui-button ui-button-sm">Atrás</button>
-          <Link to={`/mis-reservas/${reserva.id}/modificar`} className="ui-button ui-button-sm">
+          <Link to={`/mis-reservas/${reserva.reservationId}/modificar`} className="ui-button ui-button-sm">
             Modificar reserva
           </Link>
         </div>

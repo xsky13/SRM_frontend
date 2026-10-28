@@ -6,25 +6,11 @@ import { CheckCircle2, ChevronLeft, ChevronRight, CircleCheck, CircleX, CreditCa
 import api from "~/utils/api";
 import { useAuthentication } from "~/components/NavegacionUsuario";
 import { ReservationState } from "~/types/Reserva";
+import type { ReservationDetail } from "~/types/ReservationDetail";
 
 const apiBaseUrl = import.meta.env.VITE_API_URL;
 const monthFormatter = new Intl.DateTimeFormat("es-AR", { month: "long", year: "numeric" });
 const weekdayFormatter = new Intl.DateTimeFormat("es-AR", { weekday: "short" });
-
-interface ReservationDetail {
-  id: string;
-  apartmentId: string;
-  apartmentName?: string;
-  apartmentLocation?: string;
-  checkInDate: string;
-  checkOutDate: string;
-  reservationState: ReservationState;
-  totalPrice?: number;
-  depositAmount?: number;
-  fullAmount?: number;
-  pricePerDay?: number;
-  paymentMethods?: Array<{ id: string; name: string; type?: string; enabled?: boolean }>;
-}
 
 type ReservationReservation = {
   id: string;
@@ -39,11 +25,6 @@ function formatDate(value: string) {
     month: "long",
     year: "numeric",
   }).format(new Date(value));
-}
-
-function formatPrice(value?: number) {
-  if (value == null) return "-";
-  return `$${value.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
 }
 
 function dateKey(date: Date): string {
@@ -111,7 +92,7 @@ export default function MisReservasModificarPage() {
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<number | null>(null);
   const [userEmail, setUserEmail] = useState("test@gmail.com");
-  const [existingReservations, setExistingReservations] = useState<ReservationReservation[]>([]);
+  const [existingReservations, setExistingReservations] = useState<ReservationDetail[]>([]);
 
   useEffect(() => {
     initMercadoPago("TEST-440e66b5-54b5-49f2-9930-3dd2e1baed8e");
@@ -153,10 +134,10 @@ export default function MisReservasModificarPage() {
     : 0;
 
   const originalTotal = reservaQuery.data ?
-    (reservaQuery.data.totalPrice ?? reservaQuery.data.fullAmount ?? (reservaQuery.data.pricePerDay ?? 0) * 5) : 0;
+    reservaQuery.data.fullCost : 0;
 
   const newTotal = rangeStart && rangeEnd
-    ? Math.round(Math.abs(rangeEnd.getTime() - rangeStart.getTime()) / 86_400_000) + 1 * (reservaQuery.data?.pricePerDay ?? 0)
+    ? Math.round(Math.abs(rangeEnd.getTime() - rangeStart.getTime()) / 86_400_000) + 1 * (reservaQuery.data?.apartment.price ?? 0)
     : 0;
 
   const delta = Math.max(0, newTotal - originalTotal);
@@ -170,9 +151,9 @@ export default function MisReservasModificarPage() {
       const start = dateKey(parseDate(reservation.checkInDate));
       const end = dateKey(parseDate(reservation.checkOutDate));
       return current >= start && current <= end && (
-        reservation.reservationState === ReservationState.ConfirmedPaymentIncomplete ||
-        reservation.reservationState === ReservationState.ConfirmedPaymentComplete ||
-        reservation.reservationState === ReservationState.PaymentPending
+        reservation.state === ReservationState.ConfirmedPaymentIncomplete ||
+        reservation.state === ReservationState.ConfirmedPaymentComplete ||
+        reservation.state === ReservationState.PaymentPending
       );
     });
   };
@@ -236,7 +217,7 @@ export default function MisReservasModificarPage() {
             checkInDate: new Date(rangeStart).toISOString(),
             checkOutDate: new Date(rangeEnd).toISOString(),
             paymentOption,
-            reservationId: reservaQuery.data.id,
+            reservationId: reservaQuery.data.reservationId,
             isModification: true,
           }),
         },
@@ -283,8 +264,8 @@ export default function MisReservasModificarPage() {
   const paymentAmount = paymentOption === "deposit" ? Math.max(0, delta) : Math.max(0, delta);
   const shouldShowPayment = Boolean(
     reservaQuery.data &&
-      (reservaQuery.data.reservationState === ReservationState.NotConfirmed ||
-        reservaQuery.data.reservationState ===
+      (reservaQuery.data.state === ReservationState.NotConfirmed ||
+        reservaQuery.data.state ===
           ReservationState.ConfirmedPaymentIncomplete) &&
       (delta > 0 || refund > 0),
   );
@@ -318,10 +299,10 @@ export default function MisReservasModificarPage() {
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[.13em] text-[#385347]">Modificar reserva</p>
-            <h1 className="font-serif text-5xl tracking-[-0.05em] text-[#385347]">{reservaQuery.data.apartmentName ?? "Reserva"}</h1>
+            <h1 className="font-serif text-5xl tracking-[-0.05em] text-[#385347]">{reservaQuery.data.apartment.name}</h1>
           </div>
           <span className="rounded-full border border-[#d7d1c7] bg-[#edf2e8] px-2.5 py-1 text-xs font-semibold text-[#385347]">
-            {getReservationStateLabel(reservaQuery.data.reservationState)}
+            {getReservationStateLabel(reservaQuery.data.state)}
           </span>
         </div>
 
