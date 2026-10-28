@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { RESERVATION_STATE_LABEL, type ReservationStateValue } from "~/types/reservationState";
 import type { Reserva } from "~/types/Reserva";
 import AddPaymentModal from "~/components/admin/AddPaymentModal";
+import CancelReservationModal from "~/components/admin/CancelReservationModal";
 import CreateReservationModal from "~/components/admin/CreateReservationModal";
-import { getAdminReservations } from "~/utils/api";
+import { cancelReservationAdmin, getAdminReservations } from "~/utils/api";
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("es-AR", {
@@ -19,12 +21,26 @@ function getReservationStateLabel(state: number) {
 }
 
 export default function AdminReservasPage() {
+  const queryClient = useQueryClient();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedReservationId, setSelectedReservationId] = useState<string | null>(null);
+  const [reservationToCancel, setReservationToCancel] = useState<string | null>(null);
   const reservationsQuery = useQuery<Reserva[]>({
     queryKey: ["admin-reservations"],
     queryFn: getAdminReservations,
     meta: { silent: true },
+  });
+  const cancelMutation = useMutation({
+    mutationFn: cancelReservationAdmin,
+    meta: { silent: true },
+    onSuccess: async () => {
+      setReservationToCancel(null);
+      await queryClient.invalidateQueries({ queryKey: ["admin-reservations"] });
+      toast.success("Reserva cancelada correctamente");
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "No se pudo cancelar la reserva");
+    },
   });
   const reservations = reservationsQuery.data ?? [];
 
@@ -88,15 +104,26 @@ export default function AdminReservasPage() {
                     {getReservationStateLabel(reservation.reservationState)}
                   </td>
                   <td className="px-5 py-4">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedReservationId(reservation.id)}
-                      className="rounded-lg bg-[#385347] px-4 py-1.5 text-sm font-semibold text-white shadow-sm
-                                 transition hover:bg-[#2c4238] focus:outline-none focus-visible:ring-2
-                                 focus-visible:ring-[#385347]/50 focus-visible:ring-offset-2 active:scale-95"
-                    >
-                      Registrar Pago
-                    </button>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedReservationId(reservation.id)}
+                        className="rounded-lg bg-[#385347] px-4 py-1.5 text-sm font-semibold text-white shadow-sm
+                                   transition hover:bg-[#2c4238] focus:outline-none focus-visible:ring-2
+                                   focus-visible:ring-[#385347]/50 focus-visible:ring-offset-2 active:scale-95"
+                      >
+                        Registrar Pago
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setReservationToCancel(reservation.id)}
+                        className="rounded-lg bg-[#e28b68] px-4 py-1.5 text-sm font-semibold text-white shadow-sm
+                                   transition hover:bg-[#d47b58] focus:outline-none focus-visible:ring-2
+                                   focus-visible:ring-[#e28b68]/50 focus-visible:ring-offset-2 active:scale-95"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -112,6 +139,15 @@ export default function AdminReservasPage() {
       <AddPaymentModal
         reservationId={selectedReservationId}
         onClose={() => setSelectedReservationId(null)}
+      />
+      <CancelReservationModal
+        isOpen={reservationToCancel !== null}
+        onClose={() => setReservationToCancel(null)}
+        onConfirm={() => {
+          if (reservationToCancel) cancelMutation.mutate(reservationToCancel);
+        }}
+        reservationId={reservationToCancel ?? ""}
+        isPending={cancelMutation.isPending}
       />
     </section>
   );

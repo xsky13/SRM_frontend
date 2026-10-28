@@ -115,6 +115,13 @@ export async function getAdminReservations(): Promise<Reserva[]> {
     return reservations;
 }
 
+export async function cancelReservationAdmin(id: string): Promise<Reserva> {
+    const { data } = await api.delete<Reserva>(
+        `/api/booking/${encodeURIComponent(id)}/admin`,
+    );
+    return data;
+}
+
 export async function addAdminReservationPayment(
     reservationId: string,
     amount: number,
