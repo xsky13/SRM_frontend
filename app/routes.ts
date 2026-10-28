@@ -13,6 +13,7 @@ export default [
 	route("admin", "routes/admin.tsx", [
 		route("departamentos", "routes/admin.departamentos.tsx"),
 		route("departamentos/nuevo", "routes/admin.departamentos.nuevo.tsx"),
-			route("departamentos/:id/editar", "routes/admin.departamentos.editar.tsx"),
-		])
+		route("departamentos/:id/editar", "routes/admin.departamentos.editar.tsx"),
+		route("reservas", "routes/admin.reservas.tsx"),
+	])
 ] satisfies RouteConfig;
