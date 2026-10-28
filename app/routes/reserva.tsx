@@ -160,39 +160,46 @@ export default function ReservaPage() {
 				<p className="mt-3 text-sm font-semibold">{formatPrice(amount)}</p>
 				{showCardForm && paymentOption === option && !paymentApproved ? (
 					<div className="mt-4 rounded-md border border-[#e0ded5] bg-[#f8f4ef] p-3">
-						<div className="mb-3 flex justify-end">
-							<button
-								type="button"
-								onClick={closePaymentForm}
-								disabled={isProcessingPayment}
-								className="ui-icon-button p-1.5 disabled:cursor-not-allowed disabled:opacity-50"
-								aria-label="Cerrar formulario de pago"
+						{isProcessingPayment ? (
+							<div
+								className="flex min-h-64 flex-col items-center justify-center gap-3 text-[#385347]"
+								role="status"
+								aria-live="polite"
 							>
-								<svg
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									strokeWidth="2"
-									className="h-4 w-4"
-								>
-									<path d="M18 6L6 18M6 6l12 12" />
-								</svg>
-							</button>
-						</div>
-						<CardPayment
-							initialization={{ amount }}
-							onReady={() => undefined}
-							onSubmit={(formData: any) => handlePaymentSubmit(formData, option)}
-							onError={(error: any) => {
-								setPaymentError(
-									error?.message ?? "No se pudo inicializar el pago.",
-								);
-							}}
-						/>
-						{isProcessingPayment && (
-							<div className="mt-3 text-center text-sm font-medium text-[#385347]">
-								Procesando pago...
+								<div className="h-8 w-8 animate-spin rounded-full border-2 border-[#385347] border-t-transparent" />
+								<p className="text-sm font-medium">Procesando pago...</p>
 							</div>
+						) : (
+							<>
+								<div className="mb-3 flex justify-end">
+									<button
+										type="button"
+										onClick={closePaymentForm}
+										className="ui-icon-button p-1.5"
+										aria-label="Cerrar formulario de pago"
+									>
+										<svg
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											strokeWidth="2"
+											className="h-4 w-4"
+										>
+											<path d="M18 6L6 18M6 6l12 12" />
+										</svg>
+									</button>
+								</div>
+								<CardPayment
+									initialization={{ amount }}
+									onReady={() => undefined}
+									onSubmit={(formData: any) => handlePaymentSubmit(formData, option)}
+									onError={(error: any) => {
+										setPaymentError(
+											error?.message ?? "No se pudo inicializar el pago.",
+										);
+									}}
+								/>
+							</>
 						)}
 					</div>
 				) : (
