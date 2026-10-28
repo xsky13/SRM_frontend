@@ -2,12 +2,41 @@ import { CardPayment, initMercadoPago } from "@mercadopago/sdk-react";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { RESERVATION_STATE_LABEL, } from "~/types/reservationState";
+import { RESERVATION_STATE_LABEL } from "~/types/reservationState";
 import api from "~/utils/api";
 import { ReservationState } from "~/types/Reserva";
 import type { ReservationDetail } from "~/types/ReservationDetail";
 
 const apiBaseUrl = import.meta.env.VITE_API_URL;
+const paymentEndpoints = {
+	deposit: "process_sign_payment",
+	full: "process_card_payment",
+	rest: "process_rest_payment",
+} as const;
+
+type PaymentOption = keyof typeof paymentEndpoints;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null;
+}
+
+function parseReservationState(value: unknown): ReservationState | undefined {
+	if (typeof value === "number" && isReservationState(value)) return value;
+	if (typeof value !== "string") return undefined;
+
+	const matchingEntry = Object.entries(ReservationState).find(
+		([name, state]) =>
+			typeof state === "number" &&
+			(name.toLowerCase() === value.toLowerCase() || String(state) === value),
+	);
+	return matchingEntry && isReservationState(matchingEntry[1])
+		? matchingEntry[1]
+		: undefined;
+}
+
+function isReservationState(value: unknown): value is ReservationState {
+	return typeof value === "number" && Object.values(ReservationState).includes(value);
+}
 
 function formatDate(value: string) {
 	return new Intl.DateTimeFormat("es-AR", {
@@ -36,6 +65,10 @@ export default function ReservaPage() {
 	const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 	const [paymentError, setPaymentError] = useState<string | null>(null);
 	const [paymentApproved, setPaymentApproved] = useState(false);
+	const [reservationStateOverride, setReservationStateOverride] = useState<{
+		reservationId: string;
+		state: ReservationState;
+	} | null>(null);
 	const reservationQuery = useQuery<ReservationDetail>({
 		queryKey: ["reservation-detail", id],
 		queryFn: async () => {
@@ -46,6 +79,8 @@ export default function ReservaPage() {
 		retry: 2,
 		retryDelay: (attempt) => (attempt + 1) * 500,
 	});
+
+	const reservation = reservationQuery.data;
 
 	useEffect(() => {
 		initMercadoPago("TEST-440e66b5-54b5-49f2-9930-3dd2e1baed8e");
@@ -70,7 +105,7 @@ export default function ReservaPage() {
 		);
 	}
 
-	if (reservationQuery.isError || !reservationQuery.data) {
+	if (reservationQuery.isError || !reservation) {
 		return (
 			<main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">
 				<p>No se pudo cargar la reserva.</p>
@@ -81,7 +116,10 @@ export default function ReservaPage() {
 		);
 	}
 
-	const activeReservation = reservationQuery.data;
+	const activeReservation =
+		reservationStateOverride?.reservationId === reservation.reservationId
+			? { ...reservation, state: reservationStateOverride.state }
+			: reservation;
 	const reservationState = activeReservation.state;
 	const total = activeReservation.fullCost;
 	const deposit = total * 0.1;
@@ -110,7 +148,7 @@ export default function ReservaPage() {
 	}: {
 		title: string;
 		description: string;
-		option: "deposit" | "full" | "rest";
+		option: PaymentOption;
 		amount: number;
 	}) {
 		return (
@@ -175,30 +213,14 @@ export default function ReservaPage() {
 		);
 	}
 
-	async function handlePaymentSubmit(formData: any, option: "deposit" | "full" | "rest"): Promise<void> {
+	async function handlePaymentSubmit(formData: any, option: PaymentOption): Promise<void> {
 		setIsProcessingPayment(true);
 		setPaymentError(null);
 		setPaymentApproved(false);
-		
-		let url;
-		switch (option) {
-			case "deposit":
-				url = "process_sign_payment"
-				break;
-			case "full":
-				url = "process_card_payment"
-				break;
-			case "rest":
-				url = "process_rest_payment"
-				break;
-			default:
-				break;
-		}
-		// const url = isSign ? "process_sign_payment" : isRest ? "process_rest_payment" : "process_card_payment";
 
 		try {
 			const response = await fetch(
-				`${apiBaseUrl.replace(/\/$/, "")}/api/Payment/${url}/${option == "rest" ? activeReservation.reservationId : activeReservation.apartmentId}`,
+				`${apiBaseUrl.replace(/\/$/, "")}/api/Payment/${paymentEndpoints[option]}/${option === "rest" ? activeReservation.reservationId : activeReservation.apartmentId}`,
 				{
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
@@ -215,24 +237,39 @@ export default function ReservaPage() {
 			);
 
 			const rawText = await response.text();
-			let data: any = null;
+			let data: Record<string, unknown> = {};
 			if (rawText) {
 				try {
-					data = JSON.parse(rawText);
+					const parsed: unknown = JSON.parse(rawText);
+					if (isRecord(parsed)) data = parsed;
+					else data = { message: rawText };
 				} catch {
 					data = { message: rawText };
 				}
 			}
 
 			if (!response.ok) {
+				const message = [data.message, data.error, data.title].find(
+					(value): value is string => typeof value === "string",
+				);
 				throw new Error(
-					data?.message ?? data?.error ?? data?.title ?? "No se pudo procesar el pago.",
+					message ?? "No se pudo procesar el pago.",
 				);
 			}
 
-			const status = Number(data?.paymentStatus ?? data?.status ?? data?.payment_status ?? 0);
+			const status = Number(data.paymentStatus ?? data.status ?? data.payment_status ?? 0);
 			if (status === 2) {
 				setPaymentApproved(true);
+				const nextState =
+					parseReservationState(data.state) ??
+					(option === "deposit"
+						? ReservationState.ConfirmedPaymentIncomplete
+						: ReservationState.ConfirmedPaymentComplete);
+				setReservationStateOverride({
+					reservationId: activeReservation.reservationId,
+					state: nextState,
+				});
+				void reservationQuery.refetch();
 				return;
 			}
 			if (status === 1) {
