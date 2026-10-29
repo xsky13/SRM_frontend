@@ -1,7 +1,7 @@
 import type { FormEvent, ReactNode } from "react";
 import { Link } from "react-router";
 import { ArrowLeft } from "lucide-react";
-import LocationPicker, { type SelectedLocation } from "~/components/admin/LocationPicker";
+import { LocationPicker, type Coordinates } from "~/components/LocationPicker";
 import { resolveImageUrl } from "~/utils/api";
 
 export type ApartmentFormValues = {
@@ -15,7 +15,9 @@ export type ApartmentFormValues = {
 };
 
 export type ApartmentFormField = keyof ApartmentFormValues;
-export type ApartmentFormErrors = Partial<Record<ApartmentFormField, string>>;
+export type ApartmentFormErrors = Partial<Record<ApartmentFormField, string>> & {
+	images?: string;
+};
 
 type ApartmentFormLayoutProps = {
 	values: ApartmentFormValues;
@@ -23,9 +25,10 @@ type ApartmentFormLayoutProps = {
 	submitted: boolean;
 	isPending: boolean;
 	submitLabel: string;
+	pendingLabel: string;
 	onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 	onFieldChange: (field: ApartmentFormField, value: string) => void;
-	onLocationChange: (location: SelectedLocation) => void;
+	onLocationChange: (coordinates: Coordinates) => void;
 	children: ReactNode;
 };
 
@@ -35,11 +38,26 @@ export default function ApartmentFormLayout({
 	submitted,
 	isPending,
 	submitLabel,
+	pendingLabel,
 	onSubmit,
 	onFieldChange,
 	onLocationChange,
 	children,
 }: ApartmentFormLayoutProps) {
+	const latitude = Number(values.latitude);
+	const longitude = Number(values.longitude);
+	const initialPosition =
+		values.latitude.trim() &&
+		values.longitude.trim() &&
+		Number.isFinite(latitude) &&
+		latitude >= -90 &&
+		latitude <= 90 &&
+		Number.isFinite(longitude) &&
+		longitude >= -180 &&
+		longitude <= 180
+			? { latitude, longitude }
+			: undefined;
+
 	function field(name: ApartmentFormField, label: string, type = "text") {
 		return (
 			<label className="block text-sm text-[#385347]">
@@ -94,11 +112,13 @@ export default function ApartmentFormLayout({
 			{field("price", "Precio por día", "number")}
 			<div className="space-y-2">
 				<span className="block text-sm font-semibold text-[#385347]">Ubicación</span>
+				{field("location", "Dirección o zona")}
+				<p className="text-xs text-[#68716a]">
+					Ingresá la dirección o zona y hacé clic en el mapa para fijar el punto exacto.
+				</p>
 				<LocationPicker
-					location={values.location}
-					latitude={values.latitude}
-					longitude={values.longitude}
-					onLocationChange={onLocationChange}
+					initialPosition={initialPosition}
+					onChange={onLocationChange}
 				/>
 				{submitted && errors.location && (
 					<span className="block text-xs text-[#b74f3d]">{errors.location}</span>
@@ -109,20 +129,20 @@ export default function ApartmentFormLayout({
 				{submitted && errors.longitude && (
 					<span className="block text-xs text-[#b74f3d]">{errors.longitude}</span>
 				)}
-				{values.location && values.latitude && values.longitude && (
-					<p className="text-xs text-[#68716a]">
-						{values.location} ({values.latitude}, {values.longitude})
-					</p>
-				)}
 			</div>
 			<section className="space-y-4">
-				<h3 className="text-sm font-semibold text-[#385347]">Imágenes</h3>
+				<h3 className="text-sm font-semibold text-[#385347]">
+					{values.coverImgUrl ? "Imágenes y portada" : "Fotos"}
+				</h3>
 				{values.coverImgUrl && (
 					<img
 						src={resolveImageUrl(values.coverImgUrl)}
 						alt={`Portada de ${values.name || "departamento"}`}
 						className="h-32 w-full rounded-md object-cover"
 					/>
+				)}
+				{submitted && errors.images && (
+					<span className="block text-xs text-[#b74f3d]">{errors.images}</span>
 				)}
 				{submitted && errors.coverImgUrl && (
 					<span className="block text-xs text-[#b74f3d]">{errors.coverImgUrl}</span>
@@ -141,7 +161,7 @@ export default function ApartmentFormLayout({
 					disabled={isPending}
 					className="rounded-md bg-[#385347] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2c4238] disabled:cursor-not-allowed disabled:opacity-60"
 				>
-					{isPending ? "Guardando..." : submitLabel}
+					{isPending ? pendingLabel : submitLabel}
 				</button>
 			</div>
 		</form>

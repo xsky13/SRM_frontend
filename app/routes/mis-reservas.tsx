@@ -118,7 +118,7 @@ export default function MisReservasPage() {
             <p className="text-[11px] font-bold uppercase tracking-[.13em] text-[#385347]">
               Cuenta
             </p>
-            <h1 className="font-serif text-5xl tracking-[-0.05em] text-[#385347]">
+            <h1 className="font-serif text-5xl tracking-tighter text-[#385347]">
               Mis reservas
             </h1>
           </div>

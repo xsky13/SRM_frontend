@@ -6,6 +6,9 @@ export default function CreateApartmentPage() {
 			<h2 className="mb-6 font-serif text-3xl font-normal tracking-[-0.04em] text-[#385347]">
 				Crear Nuevo Departamento
 			</h2>
+			<p className="mb-6 text-sm text-[#68716a]">
+				Completá los datos, elegí las fotos y creá el departamento en un solo paso.
+			</p>
 			<ApartmentForm isEditing={false} />
 		</section>
 	);

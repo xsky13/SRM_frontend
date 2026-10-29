@@ -3,6 +3,7 @@ import type { Image } from "~/types/images";
 export interface DepartamentoData {
 	id: string;
 	name: string;
+	description?: string;
 	location: string;
 	price: number;
 	coverImgUrl?: string;
@@ -12,6 +13,16 @@ export interface DepartamentoData {
 	longitude?: number;
 	[key: string]: unknown;
 }
+
+export type ApartmentCreateInput = {
+	name: string;
+	description: string;
+	price: number;
+	location: string;
+	images: File[];
+	latitude: number;
+	longitude: number;
+};
 
 export type ApartmentWriteInput = Omit<
 	DepartamentoData,

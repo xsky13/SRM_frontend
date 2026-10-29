@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { ApiError } from '~/types/ApiError';
-import type { DepartamentoData, ApartmentWriteInput } from '~/models/Departamento';
+import type { ApartmentCreateInput, DepartamentoData, ApartmentWriteInput } from '~/models/Departamento';
 import type { ImageData } from '~/types/images';
 
 const api = axios.create({
@@ -28,7 +28,9 @@ api.interceptors.response.use(
             const status = error.response.status;
 
             // mensajes mas especificos
-        
+            //
+            console.log(error.response)
+
             const backendMessage = error.response.data?.error ?? error.response.data?.message ?? error.response.data?.Error;
             const message = backendMessage || ERROR_MESSAGES[status] || ERROR_MESSAGES[400];
 
@@ -66,8 +68,21 @@ export async function getApartmentById(id: string): Promise<DepartamentoData> {
     return data;
 }
 
-export async function createApartment(apartment: ApartmentWriteInput): Promise<DepartamentoData> {
-    const { data } = await api.post<DepartamentoData>('/api/apartment', apartment);
+export async function createApartment(apartment: ApartmentCreateInput): Promise<DepartamentoData> {
+    const formData = new FormData();
+    formData.append('Name', apartment.name);
+    formData.append('Description', apartment.description);
+    formData.append('Price', String(apartment.price));
+    formData.append('Location', apartment.location);
+    apartment.images.forEach((image) => formData.append('Images', image));
+    formData.append('Latitude', String(apartment.latitude));
+    formData.append('Longitude', String(apartment.longitude));
+
+    const { data } = await api.post<DepartamentoData>(
+        '/api/apartment',
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
     return data;
 }
 

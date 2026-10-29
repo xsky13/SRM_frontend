@@ -84,7 +84,16 @@ export default function ImageGalleryManager({
 			return;
 		}
 		if (onFilesSelected) {
-			onFilesSelected(files);
+			const newFiles = files.filter(
+				(file) =>
+					!selectedFiles.some(
+						(selectedFile) =>
+							selectedFile.name === file.name &&
+							selectedFile.size === file.size &&
+							selectedFile.lastModified === file.lastModified,
+					),
+			);
+			onFilesSelected([...selectedFiles, ...newFiles]);
 			return;
 		}
 		if (!apartmentId) return;
@@ -94,6 +103,10 @@ export default function ImageGalleryManager({
 	function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
 		uploadImages(Array.from(event.target.files ?? []));
 		event.target.value = "";
+	}
+
+	function removeSelectedFile(fileIndex: number) {
+		onFilesSelected?.(selectedFiles.filter((_, index) => index !== fileIndex));
 	}
 
 	function handleDragOver(event: DragEvent<HTMLDivElement>) {
@@ -130,9 +143,15 @@ export default function ImageGalleryManager({
 		>
 			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div>
-					<p className="text-sm font-semibold text-[#385347]">Agregá fotos a la galería</p>
+					<p className="text-sm font-semibold text-[#385347]">
+						{onFilesSelected ? "Fotos del departamento" : "Fotos de la galería"}
+					</p>
 					<p className="mt-1 text-sm text-[#68716a]">
-						{disabledMessage ?? "Arrastrá imágenes aquí o seleccioná archivos desde tu computadora. Solo imágenes de hasta 5 MB."}
+						{disabledMessage ?? (
+							onFilesSelected
+								? "Elegí una o más imágenes; se enviarán junto con los datos al crear el departamento. Máximo 5 MB por imagen."
+								: "Arrastrá imágenes aquí o seleccioná archivos desde tu computadora. Solo imágenes de hasta 5 MB."
+						)}
 					</p>
 				</div>
 				<input
@@ -155,7 +174,11 @@ export default function ImageGalleryManager({
 					) : (
 						<ImagePlus aria-hidden="true" className="size-4" />
 					)}
-					{addMutation.isPending ? "Subiendo..." : "Agregar imagen"}
+					{addMutation.isPending
+						? "Subiendo..."
+						: onFilesSelected
+							? "Elegir fotos"
+							: "Agregar imágenes"}
 				</button>
 			</div>
 
@@ -166,9 +189,22 @@ export default function ImageGalleryManager({
 			{selectedFiles.length > 0 && (
 				<ul className="space-y-1 text-sm text-[#385347]" aria-label="Archivos seleccionados">
 					{selectedFiles.map((file, index) => (
-						<li key={`${file.name}-${file.lastModified}-${index}`}>
+						<li
+							key={`${file.name}-${file.lastModified}-${index}`}
+							className="flex items-center justify-between gap-3"
+						>
 							{file.name} ({(file.size / (1024 * 1024)).toFixed(2)} MB)
-							{index === 0 && !apartmentId && " - se usará como portada"}
+							{onFilesSelected && (
+								<button
+									type="button"
+									onClick={() => removeSelectedFile(index)}
+									disabled={disabled}
+									className="font-semibold text-[#b74f3d] hover:underline disabled:opacity-60"
+									aria-label={`Quitar ${file.name}`}
+								>
+									Quitar
+								</button>
+							)}
 						</li>
 					))}
 				</ul>

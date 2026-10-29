@@ -1,16 +1,20 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import type { ApartmentWriteInput, DepartamentoData } from "~/models/Departamento";
-import type { SelectedLocation } from "~/components/admin/LocationPicker";
+import type {
+	ApartmentCreateInput,
+	ApartmentWriteInput,
+	DepartamentoData,
+} from "~/models/Departamento";
+import type { Coordinates } from "~/components/LocationPicker";
 import ImageGalleryManager from "~/components/admin/ImageGalleryManager";
 import ApartmentFormLayout, {
 	type ApartmentFormErrors,
 	type ApartmentFormField,
 	type ApartmentFormValues,
 } from "~/components/admin/forms/ApartmentFormLayout";
-import { addApartmentImages, createApartment, updateApartment } from "~/utils/api";
+import { createApartment, updateApartment } from "~/utils/api";
 
 type ApartmentFormProps = {
 	initialData?: DepartamentoData;
@@ -46,14 +50,26 @@ function validate(values: ApartmentFormValues, isEditing: boolean, files: File[]
 	if (!values.name.trim()) errors.name = "Ingresá el nombre del departamento.";
 	if (!values.description.trim()) errors.description = "Ingresá una descripción.";
 	if (!values.location.trim()) errors.location = "Ingresá la ubicación.";
-	if (!isEditing && files.length === 0) errors.coverImgUrl = "Seleccioná al menos una imagen.";
+	if (!isEditing && files.length === 0) errors.images = "Seleccioná al menos una imagen.";
 	if (values.price.trim() === "" || !Number.isFinite(Number(values.price)) || Number(values.price) <= 0) {
 		errors.price = "Ingresá un precio mayor que cero.";
 	}
-	if (values.latitude.trim() === "" || !Number.isFinite(Number(values.latitude))) {
+	const latitude = Number(values.latitude);
+	if (
+		values.latitude.trim() === "" ||
+		!Number.isFinite(latitude) ||
+		latitude < -90 ||
+		latitude > 90
+	) {
 		errors.latitude = "Ingresá una latitud válida.";
 	}
-	if (values.longitude.trim() === "" || !Number.isFinite(Number(values.longitude))) {
+	const longitude = Number(values.longitude);
+	if (
+		values.longitude.trim() === "" ||
+		!Number.isFinite(longitude) ||
+		longitude < -180 ||
+		longitude > 180
+	) {
 		errors.longitude = "Ingresá una longitud válida.";
 	}
 
@@ -72,10 +88,24 @@ function toApartmentInput(values: ApartmentFormValues, coverImgUrl = values.cove
 	};
 }
 
+function toApartmentCreateInput(
+	values: ApartmentFormValues,
+	images: File[],
+): ApartmentCreateInput {
+	return {
+		name: values.name.trim(),
+		description: values.description.trim(),
+		price: Number(values.price),
+		location: values.location.trim(),
+		images,
+		latitude: Number(values.latitude),
+		longitude: Number(values.longitude),
+	};
+}
+
 export default function ApartmentForm({ initialData, isEditing }: ApartmentFormProps) {
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
-	const createdApartmentId = useRef<string | null>(null);
 	const [values, setValues] = useState(() => getFormValues(initialData));
 	const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 	const [submitted, setSubmitted] = useState(false);
@@ -88,26 +118,12 @@ export default function ApartmentForm({ initialData, isEditing }: ApartmentFormP
 				return updateApartment(initialData.id, toApartmentInput(values));
 			}
 
-			const createdApartment = await createApartment(toApartmentInput(values, ""));
+			const createdApartment = await createApartment(
+				toApartmentCreateInput(values, selectedFiles),
+			);
 			if (!createdApartment.id) {
-				throw new Error("El departamento se creó, pero no se recibió su identificador.");
+				throw new Error("El departamento se envió, pero el servidor no devolvió su identificador.");
 			}
-			createdApartmentId.current = createdApartment.id;
-
-			try {
-				const uploadedImages = await addApartmentImages(createdApartment.id, selectedFiles);
-				const coverImgUrl = uploadedImages[0]?.url;
-				if (!coverImgUrl) {
-					throw new Error("Las imágenes se subieron, pero no se recibió la URL de portada.");
-				}
-				await updateApartment(createdApartment.id, { coverImgUrl });
-			} catch (error) {
-				const reason = error instanceof Error ? error.message : "Error desconocido";
-				throw new Error(
-					`El departamento se creó, pero no se pudieron guardar las imágenes. Podés continuar desde edición. ${reason}`,
-				);
-			}
-
 			return createdApartment;
 		},
 		meta: { silent: true },
@@ -119,15 +135,8 @@ export default function ApartmentForm({ initialData, isEditing }: ApartmentFormP
 			toast.success(isEditing ? "Departamento actualizado correctamente" : "Departamento creado correctamente");
 			navigate("/admin/departamentos");
 		},
-		onError: async (error) => {
+		onError: (error) => {
 			toast.error(error instanceof Error ? error.message : "No se pudo guardar el departamento");
-			if (!isEditing && createdApartmentId.current) {
-				await Promise.all([
-					queryClient.invalidateQueries({ queryKey: ["apartments"] }),
-					queryClient.invalidateQueries({ queryKey: ["apartment", createdApartmentId.current] }),
-				]);
-				navigate(`/admin/departamentos/${createdApartmentId.current}/editar`);
-			}
 		},
 	});
 
@@ -135,8 +144,12 @@ export default function ApartmentForm({ initialData, isEditing }: ApartmentFormP
 		setValues((current) => ({ ...current, [field]: value }));
 	}
 
-	function updateLocation(selectedLocation: SelectedLocation) {
-		setValues((current) => ({ ...current, ...selectedLocation }));
+	function updateLocation(coordinates: Coordinates) {
+		setValues((current) => ({
+			...current,
+			latitude: String(coordinates.latitude),
+			longitude: String(coordinates.longitude),
+		}));
 	}
 
 	function submit(event: FormEvent<HTMLFormElement>) {
@@ -154,7 +167,8 @@ export default function ApartmentForm({ initialData, isEditing }: ApartmentFormP
 			errors={errors}
 			submitted={submitted}
 			isPending={mutation.isPending}
-			submitLabel={isEditing ? "Guardar cambios" : "Guardar departamento"}
+			submitLabel={isEditing ? "Guardar cambios" : "Crear departamento"}
+			pendingLabel={isEditing ? "Guardando..." : "Creando..."}
 			onSubmit={submit}
 			onFieldChange={updateField}
 			onLocationChange={updateLocation}

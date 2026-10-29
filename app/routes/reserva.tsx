@@ -313,7 +313,7 @@ export default function ReservaPage() {
 			<section className="mx-auto max-w-7xl px-5 py-8 md:px-8">
 				<div className="flex flex-wrap items-end justify-between gap-5">
 					<div>
-						<h1 className="font-serif text-5xl tracking-[-0.05em] text-[#202722]">Reserva</h1>
+						<h1 className="font-serif text-5xl tracking-tighter text-[#202722]">Reserva</h1>
 						<p className="mt-2 text-sm text-[#68716a]">
 							{activeReservation.apartment.name}
 						</p>

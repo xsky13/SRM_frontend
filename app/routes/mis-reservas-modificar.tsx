@@ -295,7 +295,7 @@ export default function MisReservasModificarPage() {
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[.13em] text-[#385347]">Modificar reserva</p>
-            <h1 className="font-serif text-5xl tracking-[-0.05em] text-[#385347]">{reservaQuery.data.apartment.name}</h1>
+            <h1 className="font-serif text-5xl tracking-tighter text-[#385347]">{reservaQuery.data.apartment.name}</h1>
           </div>
           <span className="rounded-full border border-[#d7d1c7] bg-[#edf2e8] px-2.5 py-1 text-xs font-semibold text-[#385347]">
             {getReservationStateLabel(reservaQuery.data.state)}
