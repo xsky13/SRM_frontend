@@ -55,7 +55,7 @@ export default function AdminLayout() {
           <NavLink to="/admin/reservas" className={tabClassName}>
             Reservas
           </NavLink>
-          <NavLink to="/admin/usuarios" className={tabClassName}>
+          <NavLink to="/admin" className={tabClassName}>
             Usuarios
           </NavLink>
         </div>

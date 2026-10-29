@@ -2,6 +2,21 @@ import axios from 'axios';
 import { ApiError } from '~/types/ApiError';
 import type { ApartmentCreateInput, DepartamentoData, ApartmentWriteInput } from '~/models/Departamento';
 import type { ImageData } from '~/types/images';
+import type { Reserva } from '~/types/Reserva';
+
+export interface AdminCreateReservationInput {
+    apartmentId: string;
+    startDate: string;
+    endDate: string;
+    isRegisteredUser: boolean;
+    userId: string | null;
+    guestUserInfo: {
+        firstName: string;
+        lastName: string;
+        telefono: string;
+        email: string;
+    } | null;
+}
 
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL,
@@ -96,6 +111,41 @@ export async function updateApartment(
 
 export async function deleteApartment(id: string): Promise<void> {
     await api.delete(`/api/apartment/${id}`);
+}
+
+export async function createAdminReservation(
+    reservation: AdminCreateReservationInput,
+): Promise<void> {
+    await api.post('/api/booking/admin_create', reservation);
+}
+
+export async function getAdminReservations(): Promise<Reserva[]> {
+    const { data } = await api.get<Reserva[] | { reservations: Reserva[] }>('/api/booking');
+    const reservations = Array.isArray(data) ? data : data.reservations;
+
+    if (!Array.isArray(reservations)) {
+        throw new Error('La respuesta del servidor no contiene una lista de reservas');
+    }
+
+    return reservations;
+}
+
+export async function cancelReservationAdmin(id: string): Promise<Reserva> {
+    const { data } = await api.delete<Reserva>(
+        `/api/booking/${encodeURIComponent(id)}/admin`,
+    );
+    return data;
+}
+
+export async function addAdminReservationPayment(
+    reservationId: string,
+    amount: number,
+): Promise<unknown> {
+    const { data } = await api.post(
+        `/api/booking/${encodeURIComponent(reservationId)}/add_payment_admin`,
+        { amount },
+    );
+    return data;
 }
 
 export async function addApartmentImages(
