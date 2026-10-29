@@ -3,7 +3,7 @@ import type { Image } from "~/types/images";
 export interface DepartamentoData {
 	id: string;
 	name: string;
-	description?: string;
+	description: string;
 	location: string;
 	price: number;
 	coverImgUrl?: string;
@@ -34,6 +34,7 @@ export class Departamento {
 	public readonly name: string;
 	public readonly location: string;
 	public readonly price: number;
+	public readonly description: string;
 	public readonly coverImgUrl: string;
 	public readonly images: Image[];
 	public readonly latitude?: number;
@@ -48,6 +49,7 @@ export class Departamento {
 		images,
 		latitude,
 		longitude,
+		description
 	}: DepartamentoData) {
 		this.id = id;
 		this.name = name;
@@ -57,6 +59,7 @@ export class Departamento {
 		this.coverImgUrl = coverImgUrl ?? images[0]?.url ?? "";
 		this.latitude = latitude;
 		this.longitude = longitude;
+		this.description = description;
 	}
 
 	static fromDatabase(data: DepartamentoData): Departamento {

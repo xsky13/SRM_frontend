@@ -108,9 +108,9 @@ export default function DepartamentoDetallePage() {
 							{departamento.name} en {departamento.location}
 						</h1>
 
-						{/* <p className="mt-4 max-w-md text-base leading-7 text-[#4d5b55]">
-							Lorem ipsum{departamento.descrip}
-						</p> */}
+						 <p className="mt-4 max-w-md text-base leading-7 text-[#4d5b55]">
+							{departamento.description}
+						</p>
 
 						<div className="mt-8 rounded-[.8rem] border border-dashed border-[#c8c2b8] bg-[#f5f2ec] p-5">
 							<p className="text-xs font-bold uppercase tracking-[0.14em] text-[#e28b68]">Desde</p>
