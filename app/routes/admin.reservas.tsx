@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { RESERVATION_STATE_LABEL, type ReservationStateValue } from "~/types/reservationState";
-import type { Reserva } from "~/types/Reserva";
+import { RESERVATION_STATE_LABEL } from "~/types/reservationState";
+import { type Reserva, type ReservationState } from "~/types/Reserva";
 import AddPaymentModal from "~/components/admin/AddPaymentModal";
 import CancelReservationModal from "~/components/admin/CancelReservationModal";
 import CreateReservationModal from "~/components/admin/CreateReservationModal";
@@ -16,8 +16,9 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-function getReservationStateLabel(state: number) {
-  return RESERVATION_STATE_LABEL[Number(state) as ReservationStateValue] ?? "Desconocido";
+function getReservationStateLabel(state: ReservationState) {
+  // Usa el enum compartido para tipar el índice de las etiquetas de estado.
+  return RESERVATION_STATE_LABEL[state] ?? "Desconocido";
 }
 
 export default function AdminReservasPage() {
