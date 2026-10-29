@@ -116,11 +116,11 @@ export async function deleteApartment(id: string): Promise<void> {
 export async function createAdminReservation(
     reservation: AdminCreateReservationInput,
 ): Promise<void> {
-    await api.post('/api/booking/admin_create', reservation);
+    await api.post('/api/reservation/admin_create', reservation);
 }
 
 export async function getAdminReservations(): Promise<Reserva[]> {
-    const { data } = await api.get<Reserva[] | { reservations: Reserva[] }>('/api/booking');
+    const { data } = await api.get<Reserva[] | { reservations: Reserva[] }>('/api/reservation');
     const reservations = Array.isArray(data) ? data : data.reservations;
 
     if (!Array.isArray(reservations)) {
@@ -132,7 +132,7 @@ export async function getAdminReservations(): Promise<Reserva[]> {
 
 export async function cancelReservationAdmin(id: string): Promise<Reserva> {
     const { data } = await api.delete<Reserva>(
-        `/api/booking/${encodeURIComponent(id)}/admin`,
+        `/api/reservation/${encodeURIComponent(id)}/admin`,
     );
     return data;
 }
@@ -142,7 +142,7 @@ export async function addAdminReservationPayment(
     amount: number,
 ): Promise<unknown> {
     const { data } = await api.post(
-        `/api/booking/${encodeURIComponent(reservationId)}/add_payment_admin`,
+        `/api/reservation/${encodeURIComponent(reservationId)}/add_payment_admin`,
         { amount },
     );
     return data;
