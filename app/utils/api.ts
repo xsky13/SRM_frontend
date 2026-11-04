@@ -82,6 +82,10 @@ export async function updateUser(user: UpdateUserInput): Promise<void> {
     await api.put('/api/user', user);
 }
 
+export async function deleteUser(): Promise<void> {
+    await api.delete('/api/user');
+}
+
 export function resolveImageUrl(url: string | null | undefined): string {
     if (!url) return '';
     const baseUrl = import.meta.env.VITE_API_URL;

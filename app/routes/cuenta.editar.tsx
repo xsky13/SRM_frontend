@@ -1,9 +1,9 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
 import NavegacionUsuario, { useAuthentication } from "~/components/NavegacionUsuario";
-import { updateUser } from "~/utils/api";
+import { deleteUser, updateUser } from "~/utils/api";
 
 type AccountForm = {
   firstName: string;
@@ -26,8 +26,10 @@ export function meta() {
 
 export default function EditAccountRoute() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const authQuery = useAuthentication();
   const [form, setForm] = useState<AccountForm>(emptyForm);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   useEffect(() => {
     console.log(authQuery.data)
@@ -45,6 +47,15 @@ export default function EditAccountRoute() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["auth-user"] });
       toast.success("Tu cuenta se actualizó correctamente");
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteUser,
+    onSuccess: () => {
+      queryClient.setQueryData(["auth-user"], null);
+      toast.success("Tu cuenta se eliminó correctamente");
+      navigate("/");
     },
   });
 
@@ -115,6 +126,7 @@ export default function EditAccountRoute() {
               </Link>
             </div>
           ) : (
+            <>
             <form onSubmit={handleSubmit} className="mt-8 space-y-5">
               <div className="grid gap-5 sm:grid-cols-2">
                 <label className="block text-sm text-[#385347]" htmlFor="account-first-name">
@@ -196,6 +208,58 @@ export default function EditAccountRoute() {
                 </button>
               </div>
             </form>
+            <section className="mt-10 border-t border-[#e0ded5] pt-6">
+              <h3 className="text-lg font-semibold text-[#b74f3d]">Eliminar cuenta</h3>
+              <p className="mt-2 text-sm leading-6 text-[#68716a]">
+                Esta acción es permanente y no se puede deshacer. Se eliminará tu cuenta y
+                cerrarás tu sesión.
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsDeleteConfirmOpen(true)}
+                disabled={mutation.isPending || deleteMutation.isPending}
+                className="mt-4 rounded-md border border-[#b74f3d] px-4 py-2 text-sm font-semibold text-[#b74f3d] transition hover:bg-[#b74f3d] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Eliminar cuenta
+              </button>
+            </section>
+            {isDeleteConfirmOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+                <section
+                  role="alertdialog"
+                  aria-modal="true"
+                  aria-labelledby="delete-account-title"
+                  aria-describedby="delete-account-description"
+                  className="w-full max-w-md rounded-md border border-[#e0ded5] bg-[#fffdf9] p-6 shadow-[0_18px_45px_rgba(56,83,71,.12)]"
+                >
+                  <h3 id="delete-account-title" className="text-xl font-semibold text-[#202722]">
+                    ¿Eliminar tu cuenta?
+                  </h3>
+                  <p id="delete-account-description" className="mt-3 text-sm leading-6 text-[#68716a]">
+                    Esta acción es permanente. ¿Confirmás que querés eliminar tu cuenta?
+                  </p>
+                  <div className="mt-6 flex flex-col-reverse justify-end gap-3 sm:flex-row">
+                    <button
+                      type="button"
+                      onClick={() => setIsDeleteConfirmOpen(false)}
+                      disabled={deleteMutation.isPending}
+                      className="ui-button ui-button-md"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteMutation.mutate()}
+                      disabled={deleteMutation.isPending}
+                      className="rounded-md border border-[#b74f3d] bg-[#b74f3d] px-5 py-2.5 text-sm font-semibold text-white transition hover:border-[#963e31] hover:bg-[#963e31] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {deleteMutation.isPending ? "Eliminando..." : "Sí, eliminar cuenta"}
+                    </button>
+                  </div>
+                </section>
+              </div>
+            )}
+            </>
           )}
         </div>
       </section>
