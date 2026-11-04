@@ -18,6 +18,13 @@ export interface AdminCreateReservationInput {
     } | null;
 }
 
+export interface UpdateUserInput {
+    firstName: string;
+    lastName: string;
+    telefono: string;
+    email: string;
+}
+
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL,
     timeout: 10000,
@@ -69,6 +76,10 @@ api.interceptors.response.use(
 export async function getApartments(): Promise<DepartamentoData[]> {
     const { data } = await api.get<DepartamentoData[]>('/api/apartment');
     return data;
+}
+
+export async function updateUser(user: UpdateUserInput): Promise<void> {
+    await api.put('/api/user', user);
 }
 
 export function resolveImageUrl(url: string | null | undefined): string {

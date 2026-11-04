@@ -37,9 +37,12 @@ export default function NavegacionUsuario() {
 
   if (user) {
     return (
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center justify-end gap-3">
         <Link to="/reservas" className="ui-link">
           Mis reservas
+        </Link>
+        <Link to="/cuenta/editar" className="ui-link">
+          Editar cuenta
         </Link>
         {isAdmin && (
           <Link to="/admin/departamentos" className="ui-link">

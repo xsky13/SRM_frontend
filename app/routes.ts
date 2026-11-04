@@ -4,6 +4,7 @@ export default [
 	index("routes/home.tsx"),
 	route("login", "routes/login.tsx"),
 	route("register", "routes/register.tsx"),
+	route("cuenta/editar", "routes/cuenta.editar.tsx"),
 	route("logout", "routes/logout.tsx"),
 	route("reservas/:id", "routes/reserva.tsx"),
 	route("reservas", "routes/mis-reservas.tsx"),
