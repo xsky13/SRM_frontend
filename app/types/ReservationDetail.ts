@@ -1,4 +1,5 @@
 import type { ReservationState } from "~/types/Reserva";
+import type { UserType } from "~/types/User";
 
 export interface PaymentDto {
   id: string;
@@ -20,6 +21,16 @@ export interface ApartmentListingDto {
   price: number;
 }
 
+export interface UserListingDto {
+  id: string;
+  firstName?: string;
+  name?: string;
+  lastName: string;
+  email: string;
+  telefono: string;
+  usertype: UserType;
+}
+
 export interface ReservationDetail {
   reservationId: string;
   checkInDate: string;
@@ -29,7 +40,8 @@ export interface ReservationDetail {
   updatedAt: string;
   createdAt: string;
   appUserId: string;
+  appUser: UserListingDto | null;
   payments: PaymentDto[];
-  apartment: ApartmentListingDto;
+  apartment: ApartmentListingDto | null;
   fullCost: number;
 }

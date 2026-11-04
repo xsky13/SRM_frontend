@@ -21,7 +21,6 @@ const query = useQuery<Departamento[]>({
     queryFn: async () =>
       await api.get("/api/apartment").then((res) => res.data),
   });
-	console.log(query.data);
 	if (query.isPending) return 'Loading...'
 	return (
 		<main className="min-h-screen bg-[#f6f4ee] font-sans text-[#202722]">

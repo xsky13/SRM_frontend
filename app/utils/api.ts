@@ -3,6 +3,7 @@ import { ApiError } from '~/types/ApiError';
 import type { ApartmentCreateInput, DepartamentoData, ApartmentWriteInput } from '~/models/Departamento';
 import type { ImageData } from '~/types/images';
 import type { Reserva } from '~/types/Reserva';
+import type { ReservationDetail } from '~/types/ReservationDetail';
 
 export interface AdminCreateReservationInput {
     apartmentId: string;
@@ -134,8 +135,8 @@ export async function createAdminReservation(
     await api.post('/api/reservation/admin_create', reservation);
 }
 
-export async function getAdminReservations(): Promise<Reserva[]> {
-    const { data } = await api.get<Reserva[] | { reservations: Reserva[] }>('/api/reservation');
+export async function getAdminReservations(): Promise<ReservationDetail[]> {
+    const { data } = await api.get<ReservationDetail[] | { reservations: ReservationDetail[] }>('/api/reservation');
     const reservations = Array.isArray(data) ? data : data.reservations;
 
     if (!Array.isArray(reservations)) {

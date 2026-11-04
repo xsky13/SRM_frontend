@@ -315,7 +315,7 @@ export default function ReservaPage() {
 					<div>
 						<h1 className="font-serif text-5xl tracking-tighter text-[#202722]">Reserva</h1>
 						<p className="mt-2 text-sm text-[#68716a]">
-							{activeReservation.apartment.name}
+							{activeReservation.apartment?.name ?? "Departamento no disponible"}
 						</p>
 					</div>
 					<p className="text-2xl font-bold text-[#202722]">Monto total: {formatPrice(total)}</p>
@@ -324,7 +324,7 @@ export default function ReservaPage() {
 				<div className="mt-8 grid gap-4 rounded-md bg-[#e7e4dc] p-5 text-sm md:grid-cols-4">
 					<p>Inicio: {formatDate(activeReservation.checkInDate)}</p>
 					<p>Fin: {formatDate(activeReservation.checkOutDate)}</p>
-					<p>Ubicación: {activeReservation.apartment.name}</p>
+					<p>Ubicación: {activeReservation.apartment?.name ?? "Departamento no disponible"}</p>
 					<p>Estado: {getReservationStateLabel(reservationState)}</p>
 				</div>
 
