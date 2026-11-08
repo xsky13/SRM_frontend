@@ -70,6 +70,24 @@ export default function AdminReservasPage() {
   });
   const reservations = reservationsQuery.data ?? [];
 
+  function getDaysBetweenDates(date1: Date, date2: Date): number {
+    const utc1 = Date.UTC(date1.getFullYear(), date1.getMonth(), date1.getDate());
+    const utc2 = Date.UTC(date2.getFullYear(), date2.getMonth(), date2.getDate());
+
+    const msPerDay = 1000 * 60 * 60 * 24;
+
+    return Math.floor(Math.abs(utc2 - utc1) / msPerDay);
+}
+
+  const getReservationFullPrice = (checkInDate: string, checkOutDate: string, price: number) => {
+    const checkInDATE = new Date(checkInDate);
+    const checkOutDATE = new Date(checkOutDate);
+    const diff = getDaysBetweenDates(checkInDATE, checkOutDATE) + 1;
+    
+    return price * diff;
+  }
+
+
   return (
     <section>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -244,7 +262,7 @@ export default function AdminReservasPage() {
                       <p className="font-semibold text-[#385347]">
                         {formatCurrency(getPaymentsTotal(reservation.payments))}
                         <span className="ml-1 font-normal text-[#68716a]">
-                          / {formatCurrency(reservation.fullCost)}
+                          / {formatCurrency(getReservationFullPrice(reservation.checkInDate, reservation.checkOutDate, reservation.apartment?.price ?? 0))}
                         </span>
                       </p>
                       {reservation.payments.length > 0 ? (
