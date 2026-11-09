@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { RESERVATION_STATE_LABEL } from "~/types/reservationState";
 import { type ReservationState } from "~/types/Reserva";
 import { UserType } from "~/types/User";
-import type { PaymentDto, ReservationDetail } from "~/types/ReservationDetail";
+import { PaymentStatus, type PaymentDto, type ReservationDetail } from "~/types/ReservationDetail";
 import AddPaymentModal from "~/components/admin/AddPaymentModal";
 import CancelReservationModal from "~/components/admin/CancelReservationModal";
 import CreateReservationModal from "~/components/admin/CreateReservationModal";
@@ -28,6 +28,21 @@ function formatCurrency(value: number) {
 
 function getPaymentsTotal(payments: PaymentDto[]) {
   return payments.reduce((total, payment) => total + payment.amount, 0);
+}
+
+function getPaymentStatusLabel(status: PaymentStatus) {
+  const labels: Record<PaymentStatus, string> = {
+    [PaymentStatus.Pending]: "pendiente",
+    [PaymentStatus.Approved]: "aprobado",
+    [PaymentStatus.InProcess]: "en proceso",
+    [PaymentStatus.Rejected]: "rechazado",
+    [PaymentStatus.Cancelled]: "cancelado",
+    [PaymentStatus.Refunded]: "reembolsado",
+    [PaymentStatus.ChargedBack]: "contracargo",
+    [PaymentStatus.InMediation]: "en mediación",
+  };
+
+  return labels[status] ?? `Desconocido (${status})`;
 }
 
 function getReservationStateLabel(state: ReservationState) {
@@ -282,7 +297,7 @@ export default function AdminReservasPage() {
                                     {formatCurrency(payment.amount)}
                                   </span>
                                   <span className="text-[#68716a]">
-                                    Estado {payment.paymentStatus}
+                                    Estado {getPaymentStatusLabel(payment.paymentStatus)}
                                   </span>
                                 </div>
                                 <p className="mt-1 text-[#68716a]">

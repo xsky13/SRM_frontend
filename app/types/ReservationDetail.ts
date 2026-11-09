@@ -1,13 +1,24 @@
 import type { ReservationState } from "~/types/Reserva";
 import type { UserType } from "~/types/User";
 
+export enum PaymentStatus {
+  Pending = 1,
+  Approved = 2,
+  InProcess = 3,
+  Rejected = 4,
+  Cancelled = 5,
+  Refunded = 6,
+  ChargedBack = 7,
+  InMediation = 8,
+}
+
 export interface PaymentDto {
   id: string;
   amount: number;
   isManual: boolean;
   isSign: boolean;
   paymentDate: string;
-  paymentStatus: number;
+  paymentStatus: PaymentStatus;
   reservationId: string;
   appUserId: string;
   ticketId: string;
