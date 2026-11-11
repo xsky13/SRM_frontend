@@ -85,7 +85,7 @@ function isReserved(day: Date, reservas: Reserva[]): boolean {
     const end = dateKey(parseDate(reserva.checkOutDate));
     return (
       current >= start &&
-      current < end &&
+      current <= end &&
       (reserva.reservationState ===
         ReservationState.ConfirmedPaymentIncomplete ||
         reserva.reservationState ===
@@ -242,7 +242,7 @@ export default function CalendarioDisponibilidad({
           body: JSON.stringify({
             ...formData,
             checkInDate: utcDateTime(startDate),
-            checkOutDate: utcDateTime(addCalendarDays(endDate, 1)),
+            checkOutDate: utcDateTime(endDate),
             paymentOption,
           }),
         },
@@ -341,7 +341,7 @@ export default function CalendarioDisponibilidad({
       const response = await api.post("/api/reservation/with_auth", {
         apartmentId: apartmentId,
         checkInDate: utcDateTime(startDay),
-        checkOutDate: utcDateTime(addCalendarDays(endDay, 1)),
+        checkOutDate: utcDateTime(endDay),
       });
       return response.data;
     },
@@ -638,7 +638,7 @@ export default function CalendarioDisponibilidad({
                         apartmentLocation,
                         pricePerDay,
                         checkInDate: rangeStart ? utcDateTime(rangeStart) : undefined,
-                        checkOutDate: rangeEnd ? utcDateTime(addCalendarDays(rangeEnd, 1)) : undefined,
+                        checkOutDate: rangeEnd ? utcDateTime(rangeEnd) : undefined,
                       },
                     }}
                     className="font-semibold underline"
@@ -656,7 +656,7 @@ export default function CalendarioDisponibilidad({
                         apartmentLocation,
                         pricePerDay,
                         checkInDate: rangeStart ? utcDateTime(rangeStart) : undefined,
-                        checkOutDate: rangeEnd ? utcDateTime(addCalendarDays(rangeEnd, 1)) : undefined,
+                        checkOutDate: rangeEnd ? utcDateTime(rangeEnd) : undefined,
                       },
                     }}
                     className="font-semibold underline"

@@ -17,7 +17,6 @@ function formatDate(value: string | Date) {
   return new Intl.DateTimeFormat("es-AR", {
     day: "numeric",
     month: "long",
-    year: "numeric",
   }).format(date);
 }
 
@@ -52,10 +51,10 @@ function isBetween(day: Date, start?: Date, end?: Date): boolean {
   return day.getTime() >= Math.min(start.getTime(), end.getTime()) && day.getTime() <= Math.max(start.getTime(), end.getTime());
 }
 
-// Misma regla que el backend: noches = diferencia de fechas, mínimo 1
+// checkOutDate is the final night; count both the start and end dates.
 function nightsBetween(start: Date, end: Date): number {
   const diff = Math.abs(calendarDayDifference(start, end));
-  return Math.max(diff, 1);
+  return Math.max(diff + 1, 1);
 }
 
 function getReservationStateLabel(state: ReservationState) {
@@ -116,7 +115,7 @@ export default function MisReservasModificarPage() {
     if (!reservaQuery.data) return;
     const res = reservaQuery.data;
     setRangeStart(parseDate(res.checkInDate));
-    setRangeEnd(addCalendarDays(parseDate(res.checkOutDate), -1));
+    setRangeEnd(parseDate(res.checkOutDate));
   }, [reservaQuery.data]);
 
   const today = new Date();
@@ -186,16 +185,15 @@ export default function MisReservasModificarPage() {
       rangeStart &&
       rangeEnd &&
       dateKey(normalizeRange(rangeStart, rangeEnd).startDate) === dateKey(parseDate(reservation.checkInDate)) &&
-      dateKey(addCalendarDays(normalizeRange(rangeStart, rangeEnd).endDate, 1)) === dateKey(parseDate(reservation.checkOutDate)),
+      dateKey(normalizeRange(rangeStart, rangeEnd).endDate) === dateKey(parseDate(reservation.checkOutDate)),
   );
 
   const buildDatesBody = () => {
     if (!rangeStart || !rangeEnd) throw new Error("Faltan datos de la reserva.");
     const { startDate, endDate } = normalizeRange(rangeStart, rangeEnd);
-    const checkOutDate = addCalendarDays(endDate, 1);
     return {
       newStartDate: `${dateKey(startDate)}T00:00:00Z`,
-      newEndDate: `${dateKey(checkOutDate)}T00:00:00Z`,
+      newEndDate: `${dateKey(endDate)}T00:00:00Z`,
     };
   };
 
@@ -216,20 +214,28 @@ export default function MisReservasModificarPage() {
     onError: (error) => setPaymentError(getErrorMessage(error, "No se pudo modificar la reserva.")),
   });
 
-  const isReservedDay = (day: Date) => {
-    const current = dateKey(day);
-    return (availabilityQuery.data ?? []).some((r) => {
-      const start = dateKey(parseDate(r.checkInDate));
-      const end = dateKey(parseDate(r.checkOutDate));
-      return current >= start && current < end && (
-        r.id !== id && (
-          r.reservationState === ReservationState.ConfirmedPaymentIncomplete ||
-          r.reservationState === ReservationState.ConfirmedPaymentComplete ||
-          r.reservationState === ReservationState.PaymentPending
-        )
-      );
-    });
-  };
+  const sameId = (a?: string | null, b?: string | null) =>
+  Boolean(a && b) && String(a).toLowerCase() === String(b).toLowerCase();
+
+const isCurrentReservation = (r: Reserva) => {
+  const candidates = [r.id, (r as any).reservationId];
+  const mine = [id, reservation?.reservationId, (reservation as any)?.id];
+  return candidates.some((c) => mine.some((m) => sameId(c, m)));
+};
+
+const isReservedDay = (day: Date) => {
+  const current = dateKey(day);
+  return (availabilityQuery.data ?? []).some((r) => {
+    if (isCurrentReservation(r)) return false;
+    const start = dateKey(parseDate(r.checkInDate));
+    const end = dateKey(parseDate(r.checkOutDate));
+    return current >= start && current <= end && (
+      r.reservationState === ReservationState.ConfirmedPaymentIncomplete ||
+      r.reservationState === ReservationState.ConfirmedPaymentComplete ||
+      r.reservationState === ReservationState.PaymentPending
+    );
+  });
+};
 
   const rangeHasReservation = (start: Date, end: Date) => {
     const { startDate, endDate } = normalizeRange(start, end);
@@ -345,7 +351,7 @@ export default function MisReservasModificarPage() {
       : requiresPayment
         ? `Continuar al pago (${selectedNights} ${selectedNights === 1 ? "noche" : "noches"})`
         : `Confirmar cambio (${selectedNights} ${selectedNights === 1 ? "noche" : "noches"})`;
-
+console.log(availabilityQuery.data, id, reservation)
   return (
     <main className="min-h-screen bg-[#f6f4ee] text-[#202722]">
       <header className="mx-auto flex max-w-7xl items-center justify-between px-5 py-6 md:px-8">
@@ -368,7 +374,7 @@ export default function MisReservasModificarPage() {
 
         <div className="mb-6 rounded-md border border-dashed border-[#c8c2b8] bg-[#fffdf9] p-4 text-sm text-[#68716a]">
           <p>
-            Reserva actual: {formatDate(reservaQuery.data.checkInDate)} — {formatDate(reservaQuery.data.checkOutDate)} (salida {formatDate(new Date(new Date(reservaQuery.data.checkOutDate).setDate(new Date(reservaQuery.data.checkOutDate).getDate() + 2)))}) 
+            Reserva actual: {formatDate(reservaQuery.data.checkInDate)} — {formatDate(reservaQuery.data.checkOutDate)} (salida {formatDate(addCalendarDays(parseDate(reservaQuery.data.checkOutDate), 1))})
           </p>
           <p className="mt-1">Monto actual: {originalTotal == null ? "Precio a confirmar" : formatPrice(originalTotal)}</p>
           {/* TODO(G1+G3): habilitar la comparación de montos cuando el backend exponga el total */}
@@ -460,7 +466,7 @@ export default function MisReservasModificarPage() {
               <span className="inline-flex items-center gap-1.5"><CircleX size={14} className="text-[#c7765a]" /> Reservado</span>
               {rangeStart && rangeEnd && (
                 <span className="w-full text-[#385347]">
-                  Ingreso {formatDate(normalizeRange(rangeStart, rangeEnd).startDate)} · salida {formatDate(addCalendarDays(normalizeRange(rangeStart, rangeEnd).endDate, 1))} · {selectedNights} {selectedNights === 1 ? "noche" : "noches"}
+                  {formatDate(normalizeRange(rangeStart, rangeEnd).startDate)} · {formatDate(normalizeRange(rangeStart, rangeEnd).endDate)} (salida {formatDate(addCalendarDays(normalizeRange(rangeStart, rangeEnd).endDate, 1))} a la mañanana) · {selectedNights} {selectedNights === 1 ? "noche" : "noches"}
                 </span>
               )}
             </div>

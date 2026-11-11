@@ -11,11 +11,11 @@ import CreateReservationModal from "~/components/admin/CreateReservationModal";
 import { cancelReservationAdmin, getAdminReservations, resolveImageUrl } from "~/utils/api";
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat("es-AR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(new Date(value));
+  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
+	return new Intl.DateTimeFormat("es-AR", {
+		day: "numeric",
+		month: "long",
+	}).format(date);
 }
 
 function formatCurrency(value: number) {
@@ -166,7 +166,7 @@ export default function AdminReservasPage() {
                   <td className="whitespace-nowrap px-5 py-4">
                     <p className="font-medium">{formatDate(reservation.checkInDate)}</p>
                     <p className="mt-1 text-xs text-[#68716a]">
-                      hasta {formatDate(reservation.checkOutDate)}
+                      hasta {formatDate(reservation.checkOutDate)} (salida al día siguiente)
                     </p>
                   </td>
                   <td className="px-5 py-4">

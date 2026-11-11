@@ -62,7 +62,7 @@ function UserReservations({ userId }: { userId: string }) {
           <tr>
             <th scope="col" className="px-4 py-3 font-semibold">Departamento</th>
             <th scope="col" className="px-4 py-3 font-semibold">Check-in</th>
-            <th scope="col" className="px-4 py-3 font-semibold">Check-out</th>
+            <th scope="col" className="px-4 py-3 font-semibold">Última noche (salida al día siguiente)</th>
             <th scope="col" className="px-4 py-3 font-semibold">Estado</th>
           </tr>
         </thead>

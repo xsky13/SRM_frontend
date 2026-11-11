@@ -23,11 +23,11 @@ type ReservationListItem = {
 };
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat("es-AR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(new Date(value));
+  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
+	return new Intl.DateTimeFormat("es-AR", {
+		day: "numeric",
+		month: "long",
+	}).format(date);
 }
 
 function getReservationStateLabel(state: ReservationState) {
@@ -148,7 +148,7 @@ export default function MisReservasPage() {
                     </h2>
                     <p className="mt-2 text-sm text-[#68716a]">
                       {formatDate(reserva.checkInDate)} —{" "}
-                      {formatDate(reserva.checkOutDate)}
+                      {formatDate(reserva.checkOutDate)} (salida al día siguiente)
                     </p>
                   </div>
 

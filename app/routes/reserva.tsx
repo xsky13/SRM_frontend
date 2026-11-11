@@ -141,7 +141,7 @@ export default function ReservaPage() {
 		setPaymentApproved(false);
 	}
 
-	console.log(activeReservation)
+	console.log(reservationQuery.data)
 	function renderPaymentOptionCard({
 		title,
 		description,
