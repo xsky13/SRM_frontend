@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import type { Departamento } from "~/models/Departamento";
 import type { Reserva } from "~/types/Reserva";
+import ApartmentLocationMap from "~/components/ApartmentLocationMap";
 import CalendarioDisponibilidad from "~/components/CalendarioDisponibilidad";
 import api from "~/utils/api";
 import type { Route } from "./+types/departamento";
@@ -39,6 +40,24 @@ export default function DepartamentoDetallePage() {
 	}
 
 	const formattedPrice = `$${departamento.price.toLocaleString("es-AR")}`;
+<<<<<<< HEAD
+=======
+	const rawLatitude = departamento.latitude;
+	const rawLongitude = departamento.longitude;
+	const latitude = Number(rawLatitude);
+	const longitude = Number(rawLongitude);
+	const hasValidCoordinates =
+		rawLatitude != null &&
+		rawLongitude != null &&
+		String(rawLatitude).trim() !== "" &&
+		String(rawLongitude).trim() !== "" &&
+		Number.isFinite(latitude) &&
+		Number.isFinite(longitude) &&
+		latitude >= -90 &&
+		latitude <= 90 &&
+		longitude >= -180 &&
+		longitude <= 180;
+>>>>>>> 26650ab4df7b7d50f4334a36ebdc4f5eeb9353e9
 	const images = departamento.images ?? [];
 	const galleryImages =
 		images.length > 0
@@ -87,18 +106,18 @@ export default function DepartamentoDetallePage() {
 			</div>
 				<div className="grid items-start gap-16 lg:grid-cols-[0.95fr_1.35fr]">
 					<div className="flex flex-col justify-center">
-						<h1 className="font-serif text-5xl tracking-[-0.05em] text-[#202722] md:text-6xl">
+						<h1 className="font-serif text-5xl tracking-tighter text-[#202722] md:text-6xl">
 							{departamento.name} en {departamento.location}
 						</h1>
 
-						{/* <p className="mt-4 max-w-md text-base leading-7 text-[#4d5b55]">
-							Lorem ipsum{departamento.descrip}
-						</p> */}
+						 <p className="mt-4 max-w-md text-base leading-7 text-[#4d5b55]">
+							{departamento.description}
+						</p>
 
 						<div className="mt-8 rounded-[.8rem] border border-dashed border-[#c8c2b8] bg-[#f5f2ec] p-5">
 							<p className="text-xs font-bold uppercase tracking-[0.14em] text-[#e28b68]">Desde</p>
 							<div className="mt-3 flex items-end gap-2">
-								<span className="font-serif text-5xl tracking-[-0.05em] text-[#385347]">
+								<span className="font-serif text-5xl tracking-tighter text-[#385347]">
 									{formattedPrice}
 								</span>
 								<span className="pb-2 text-sm text-[#68716a]">la estadía por día</span>
@@ -121,8 +140,13 @@ export default function DepartamentoDetallePage() {
 						<div className="ui-border rounded-md bg-[#fffdf9] p-3">
 							<div className="ui-border overflow-hidden rounded-md bg-[#ede9dc]">
 								<img
+<<<<<<< HEAD
 									className="h-[400px] w-full object-cover"
 									src={departamento.coverImgUrl}
+=======
+									className="h-100 w-full object-cover"
+									src={resolveImageUrl(departamento.coverImgUrl)}
+>>>>>>> 26650ab4df7b7d50f4334a36ebdc4f5eeb9353e9
 									alt={`${departamento.name}, imagen de portada`}
 								/>
 							</div>
@@ -133,7 +157,7 @@ export default function DepartamentoDetallePage() {
 									key={image.id}
 									type="button"
 									onClick={() => setSelectedImageId(image.id)}
-									className={`aspect-[4/3] overflow-hidden rounded-md border-2 bg-[#ede9dc] transition ${
+									className={`aspect-4/3 overflow-hidden rounded-md border-2 bg-[#ede9dc] transition ${
 										selectedImage.id === image.id ? "border-[#e28b68]" : "border-transparent"
 									}`}
 									aria-label={`Mostrar imagen ${index + 1} de ${departamento.name}`}
@@ -150,6 +174,28 @@ export default function DepartamentoDetallePage() {
 				</div>
 			</section>
 
+<<<<<<< HEAD
+=======
+			<section className="mx-auto max-w-7xl px-5 pb-10 md:px-8">
+				<div className="rounded-md border border-[#e5e7eb] bg-[#fffdf9] p-5 md:p-6">
+					<h2 className="mb-4 font-serif text-3xl tracking-[-0.04em] text-[#385347]">Ubicación</h2>
+
+					{!hasValidCoordinates ? (
+						<p className="rounded-md bg-[#f5f2ec] px-4 py-6 text-sm text-[#68716a]">
+							Ubicación no disponible
+						</p>
+					) : (
+						<ApartmentLocationMap
+							latitude={latitude}
+							longitude={longitude}
+							apartmentName={departamento.name}
+							location={departamento.location}
+						/>
+					)}
+				</div>
+			</section>
+
+>>>>>>> 26650ab4df7b7d50f4334a36ebdc4f5eeb9353e9
 			{showCalendar && (
 				<CalendarioDisponibilidad
 					reservas={reservationsQuery.data ?? []}

@@ -51,7 +51,9 @@ h4 {
 
 
 
-
+.text-field {
+  @apply w-full rounded-md border border-[#d3d0c6] bg-[#fffdf9] px-3 py-2.5 text-[#202722] outline-none transition focus:border-[#e28b68];
+}
 
 
 

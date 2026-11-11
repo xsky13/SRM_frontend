@@ -9,7 +9,14 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+<<<<<<< HEAD
 import type { Reserva } from "~/types/Reserva";
+=======
+import { Link, useNavigate } from "react-router";
+import { ReservationState, type Reserva } from "~/types/Reserva";
+import api from "~/utils/api";
+import { useMutation } from "@tanstack/react-query";
+>>>>>>> 26650ab4df7b7d50f4334a36ebdc4f5eeb9353e9
 
 interface CalendarioDisponibilidadProps {
   reservas: Reserva[];
@@ -66,9 +73,17 @@ function isReserved(day: Date, reservas: Reserva[]): boolean {
     return (
       current >= start &&
       current <= end &&
+<<<<<<< HEAD
       (reserva.reservationState == 2 ||
         reserva.reservationState == 3 ||
         reserva.reservationState == 4)
+=======
+      (reserva.reservationState ===
+        ReservationState.ConfirmedPaymentIncomplete ||
+        reserva.reservationState ===
+          ReservationState.ConfirmedPaymentComplete ||
+        reserva.reservationState === ReservationState.PaymentPending)
+>>>>>>> 26650ab4df7b7d50f4334a36ebdc4f5eeb9353e9
     );
   });
 }
@@ -273,6 +288,91 @@ export default function CalendarioDisponibilidad({
   const formatPrice = (value: number) =>
     `$${value.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
 
+<<<<<<< HEAD
+=======
+  const createReservationMutation = useMutation({
+    mutationFn: async ({
+      startDay,
+      endDay,
+    }: {
+      startDay: Date;
+      endDay: Date;
+    }) => {
+      const response = await api.post("/api/reservation/with_auth", {
+        apartmentId: apartmentId,
+        checkInDate: new Date(startDay).toISOString(),
+        checkOutDate: new Date(endDay).toISOString(),
+      });
+      return response.data;
+    },
+    onSuccess: (data) => {
+      setIsCreatingReservation(false);
+      setReservationError(null);
+      toast.success("Reserva creada exitosamente.");
+      console.log(data);
+      navigate("/reservas/" + data.id);
+    },
+    onError: (error) => {
+      setIsCreatingReservation(false);
+      setReservationError(
+        error instanceof Error ? error.message : "No se pudo crear la reserva.",
+      );
+    },
+  });
+
+  function confirmDates() {
+    if (!rangeStart || !rangeEnd) return;
+
+    const { startDate, endDate } = normalizeRange(rangeStart, rangeEnd);
+
+    if (isAuthenticated) {
+      setIsCreatingReservation(true);
+      setReservationError(null);
+      createReservationMutation.mutate({
+        startDay: startDate,
+        endDay: endDate,
+      });
+      return;
+    }
+
+    setStep("payment");
+  }
+
+  //   async function confirmDates() {
+  //     if (!rangeStart || !rangeEnd || isCreatingReservation) return;
+  //
+  //     setIsCreatingReservation(true);
+  //     setReservationError(null);
+  //
+  //     try {
+  //       const checkInDate = rangeStart.toISOString();
+  //       const checkOutDate = rangeEnd.toISOString();
+  //       const { data } = await api.post("/api/reservation", {
+  //         apartmentId,
+  //         checkInDate,
+  //         checkOutDate,
+  //       });
+  //       const createdReservation = data?.reservation ?? data;
+  //       const reservationId =
+  //         createdReservation?.id ?? createdReservation?.reservationId;
+  //
+  //       if (!reservationId) {
+  //         throw new Error("El servidor no devolvió el ID de la reserva creada.");
+  //       }
+  //
+  //       toast.success("Reserva creada exitosamente.");
+  //       onClose();
+  //       navigate(`/reserva/${reservationId}`);
+  //     } catch (error) {
+  //       setReservationError(
+  //         error instanceof Error ? error.message : "No se pudo crear la reserva.",
+  //       );
+  //     } finally {
+  //       setIsCreatingReservation(false);
+  //     }
+  //   }
+
+>>>>>>> 26650ab4df7b7d50f4334a36ebdc4f5eeb9353e9
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#202722]/35 p-4"

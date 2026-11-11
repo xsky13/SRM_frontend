@@ -1,5 +1,33 @@
 import axios from 'axios';
 import { ApiError } from '~/types/ApiError';
+<<<<<<< HEAD
+=======
+import type { ApartmentCreateInput, DepartamentoData, ApartmentWriteInput } from '~/models/Departamento';
+import type { ImageData } from '~/types/images';
+import type { Reserva } from '~/types/Reserva';
+import type { ReservationDetail } from '~/types/ReservationDetail';
+
+export interface AdminCreateReservationInput {
+    apartmentId: string;
+    startDate: string;
+    endDate: string;
+    isRegisteredUser: boolean;
+    userId: string | null;
+    guestUserInfo: {
+        firstName: string;
+        lastName: string;
+        telefono: string;
+        email: string;
+    } | null;
+}
+
+export interface UpdateUserInput {
+    firstName: string;
+    lastName: string;
+    telefono: string;
+    email: string;
+}
+>>>>>>> 26650ab4df7b7d50f4334a36ebdc4f5eeb9353e9
 
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL,
@@ -26,7 +54,14 @@ api.interceptors.response.use(
             const status = error.response.status;
 
             // mensajes mas especificos
+<<<<<<< HEAD
             const backendMessage = error.response.data?.message;
+=======
+            //
+            console.log(error.response)
+
+            const backendMessage = error.response.data?.error ?? error.response.data?.message ?? error.response.data?.Error;
+>>>>>>> 26650ab4df7b7d50f4334a36ebdc4f5eeb9353e9
             const message = backendMessage || ERROR_MESSAGES[status] || ERROR_MESSAGES[400];
 
             /** CUANDO TENGAMOS AUTH, DESCOMENTAR */
@@ -45,4 +80,123 @@ api.interceptors.response.use(
         return Promise.reject(new ApiError('Error desconocido al realizar la solicitud', 0));
     }
 );
+<<<<<<< HEAD
+=======
+
+export async function getApartments(): Promise<DepartamentoData[]> {
+    const { data } = await api.get<DepartamentoData[]>('/api/apartment');
+    return data;
+}
+
+export async function updateUser(user: UpdateUserInput): Promise<void> {
+    await api.put('/api/user', user);
+}
+
+export async function deleteUser(): Promise<void> {
+    await api.delete('/api/user');
+}
+
+export function resolveImageUrl(url: string | null | undefined): string {
+    if (!url) return '';
+    const baseUrl = import.meta.env.VITE_API_URL;
+    if (!baseUrl) return url;
+    return new URL(url, `${baseUrl.replace(/\/+$/, '')}/`).toString();
+}
+
+export async function getApartmentById(id: string): Promise<DepartamentoData> {
+    const { data } = await api.get<DepartamentoData>(`/api/apartment/${id}`);
+    return data;
+}
+
+export async function createApartment(apartment: ApartmentCreateInput): Promise<DepartamentoData> {
+    const formData = new FormData();
+    formData.append('Name', apartment.name);
+    formData.append('Description', apartment.description);
+    formData.append('Price', String(apartment.price));
+    formData.append('Location', apartment.location);
+    apartment.images.forEach((image) => formData.append('Images', image));
+    formData.append('Latitude', String(apartment.latitude));
+    formData.append('Longitude', String(apartment.longitude));
+
+    const { data } = await api.post<DepartamentoData>(
+        '/api/apartment',
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+    return data;
+}
+
+export async function updateApartment(
+    id: string,
+    apartment: Partial<ApartmentWriteInput>,
+): Promise<DepartamentoData> {
+    const { data } = await api.put<DepartamentoData>(`/api/apartment/${id}`, apartment);
+    return data;
+}
+
+export async function deleteApartment(id: string): Promise<void> {
+    await api.delete(`/api/apartment/${id}`);
+}
+
+export async function createAdminReservation(
+    reservation: AdminCreateReservationInput,
+): Promise<void> {
+    await api.post('/api/reservation/admin_create', reservation);
+}
+
+export async function getAdminReservations(): Promise<ReservationDetail[]> {
+    const { data } = await api.get<ReservationDetail[] | { reservations: ReservationDetail[] }>('/api/reservation');
+    const reservations = Array.isArray(data) ? data : data.reservations;
+
+    if (!Array.isArray(reservations)) {
+        throw new Error('La respuesta del servidor no contiene una lista de reservas');
+    }
+
+    return reservations;
+}
+
+export async function cancelReservationAdmin(id: string): Promise<Reserva> {
+    const { data } = await api.delete<Reserva>(
+        `/api/reservation/${encodeURIComponent(id)}/admin`,
+    );
+    return data;
+}
+
+export async function addAdminReservationPayment(
+    reservationId: string,
+    amount: number,
+): Promise<unknown> {
+    const { data } = await api.post(
+        `/api/reservation/${encodeURIComponent(reservationId)}/add_payment_admin`,
+        { amount },
+    );
+    return data;
+}
+
+export async function addApartmentImages(
+    id: string,
+    images: File[],
+): Promise<ImageData[]> {
+    const formData = new FormData();
+    images.forEach((image) => formData.append('Images', image));
+    const { data } = await api.post<ImageData[]>(
+        `/api/apartment/${id}/images`,
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+    return data;
+}
+
+export async function removeImagesFromApartment(
+    id: string,
+    imageIds: string[],
+): Promise<void> {
+    await api.delete(`/api/apartment/${id}/images`, { data: { imageIds: imageIds } });
+}
+
+export async function deleteApartmentImages(id: string): Promise<void> {
+    await api.delete(`/api/apartment/${id}/images`);
+}
+
+>>>>>>> 26650ab4df7b7d50f4334a36ebdc4f5eeb9353e9
 export default api;
