@@ -7,6 +7,7 @@ export default [
 	route("cuenta/editar", "routes/cuenta.editar.tsx"),
 	route("logout", "routes/logout.tsx"),
 	route("reservas/:id", "routes/reserva.tsx"),
+	route("reservas/:id/modificar", "routes/mis-reservas-modificar.tsx"),
 	route("reservas", "routes/mis-reservas.tsx"),
 	route("departamento/:id", "routes/departamento.tsx"),
 	route("test", "routes/test.tsx"),
@@ -16,5 +17,6 @@ export default [
 		route("departamentos/nuevo", "routes/admin.departamentos.nuevo.tsx"),
 		route("departamentos/:id/editar", "routes/admin.departamentos.editar.tsx"),
 		route("reservas", "routes/admin.reservas.tsx"),
+		route("usuarios", "routes/admin.usuarios.tsx"),
 	])
 ] satisfies RouteConfig;

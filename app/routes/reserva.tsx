@@ -39,10 +39,11 @@ function isReservationState(value: unknown): value is ReservationState {
 }
 
 function formatDate(value: string) {
+	const date = new Date(`${value.slice(0, 10)}T00:00:00`);
 	return new Intl.DateTimeFormat("es-AR", {
 		day: "numeric",
 		month: "long",
-	}).format(new Date(value));
+	}).format(date);
 }
 
 function formatPrice(value: number) {
@@ -140,6 +141,7 @@ export default function ReservaPage() {
 		setPaymentApproved(false);
 	}
 
+	console.log(activeReservation)
 	function renderPaymentOptionCard({
 		title,
 		description,
@@ -323,9 +325,14 @@ export default function ReservaPage() {
 
 				<div className="mt-8 grid gap-4 rounded-md bg-[#e7e4dc] p-5 text-sm md:grid-cols-4">
 					<p>Inicio: {formatDate(activeReservation.checkInDate)}</p>
-					<p>Fin: {formatDate(activeReservation.checkOutDate)}</p>
-					<p>Ubicación: {activeReservation.apartment?.name ?? "Departamento no disponible"}</p>
+<p>Fin: {formatDate(activeReservation.checkOutDate)} (salida {formatDate(new Date(new Date(activeReservation.checkOutDate.slice(0, 10) + "T00:00:00").setDate(new Date(activeReservation.checkOutDate.slice(0, 10) + "T00:00:00").getDate() + 1)).toISOString())})</p>					<p>Ubicación: {activeReservation.apartment?.name ?? "Departamento no disponible"}</p>
 					<p>Estado: {getReservationStateLabel(reservationState)}</p>
+				</div>
+
+				<div className="mt-5 flex justify-end">
+					<Link to={`/reservas/${activeReservation.reservationId}/modificar`} className="ui-button ui-button-sm">
+						Editar reserva
+					</Link>
 				</div>
 
 				{showCompleteInfoOnly ? (

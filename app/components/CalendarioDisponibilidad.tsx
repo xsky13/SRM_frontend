@@ -30,6 +30,11 @@ const monthFormatter = new Intl.DateTimeFormat("es-AR", {
   year: "numeric",
 });
 const weekdayFormatter = new Intl.DateTimeFormat("es-AR", { weekday: "short" });
+const stayDateFormatter = new Intl.DateTimeFormat("es-AR", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
 const apiBaseUrl = import.meta.env.VITE_API_URL;
 
 const today = new Date();
@@ -60,6 +65,14 @@ function dateKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
+function addCalendarDays(date: Date, days: number): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
+}
+
+function utcDateTime(date: Date): string {
+  return `${dateKey(date)}T00:00:00Z`;
+}
+
 function parseDate(value: string): Date {
   const date = new Date(`${value.slice(0, 10)}T00:00:00`);
   return Number.isNaN(date.getTime()) ? new Date(0) : date;
@@ -70,10 +83,9 @@ function isReserved(day: Date, reservas: Reserva[]): boolean {
   return reservas.some((reserva) => {
     const start = dateKey(parseDate(reserva.checkInDate));
     const end = dateKey(parseDate(reserva.checkOutDate));
-    const state = Number(reserva.reservationState);
     return (
       current >= start &&
-      current <= end &&
+      current < end &&
       (reserva.reservationState ===
         ReservationState.ConfirmedPaymentIncomplete ||
         reserva.reservationState ===
@@ -229,8 +241,8 @@ export default function CalendarioDisponibilidad({
           credentials: "include",
           body: JSON.stringify({
             ...formData,
-            checkInDate: new Date(startDate).toISOString(),
-            checkOutDate: new Date(endDate).toISOString(),
+            checkInDate: utcDateTime(startDate),
+            checkOutDate: utcDateTime(addCalendarDays(endDate, 1)),
             paymentOption,
           }),
         },
@@ -298,13 +310,21 @@ export default function CalendarioDisponibilidad({
     }
   }
 
-  const selectedDays =
+  const selectedNights =
     rangeStart && rangeEnd
       ? Math.round(
-          Math.abs(rangeEnd.getTime() - rangeStart.getTime()) / 86_400_000,
+          Math.abs(
+            Date.UTC(rangeEnd.getFullYear(), rangeEnd.getMonth(), rangeEnd.getDate()) -
+              Date.UTC(rangeStart.getFullYear(), rangeStart.getMonth(), rangeStart.getDate()),
+          ) / 86_400_000,
         ) + 1
       : 0;
-  const total = selectedDays * pricePerDay;
+  const selectedRange =
+    rangeStart && rangeEnd ? normalizeRange(rangeStart, rangeEnd) : undefined;
+  const selectedCheckOut = selectedRange
+    ? addCalendarDays(selectedRange.endDate, 1)
+    : undefined;
+  const total = selectedNights * pricePerDay;
   const deposit = total * 0.1;
   const paymentAmount = paymentOption === "deposit" ? deposit : total;
   const formatPrice = (value: number) =>
@@ -320,8 +340,8 @@ export default function CalendarioDisponibilidad({
     }) => {
       const response = await api.post("/api/reservation/with_auth", {
         apartmentId: apartmentId,
-        checkInDate: new Date(startDay).toISOString(),
-        checkOutDate: new Date(endDay).toISOString(),
+        checkInDate: utcDateTime(startDay),
+        checkOutDate: utcDateTime(addCalendarDays(endDay, 1)),
       });
       return response.data;
     },
@@ -436,8 +456,11 @@ export default function CalendarioDisponibilidad({
 
         {step === "dates" ? (
           <>
+            <p className="mt-4 rounded-md bg-[#edf2e8] p-3 text-sm text-[#385347]">
+              Seleccioná las noches de alojamiento. El primer día es el ingreso y el checkout es la mañana siguiente a la última noche seleccionada.
+            </p>
             {/*navegacion de meses*/}
-            <div className="mt-4 flex items-center justify-between gap-2">
+            <div className="mt-3 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -534,9 +557,9 @@ export default function CalendarioDisponibilidad({
               <span className="inline-flex items-center gap-1.5">
                 <CircleX size={14} className="text-[#c7765a]" /> Reservado
               </span>
-              {rangeStart && rangeEnd && (
+              {selectedRange && selectedCheckOut && (
                 <span className="w-full text-[#385347]">
-                  {dateKey(rangeStart)} a {dateKey(rangeEnd)}
+                  Ingreso {stayDateFormatter.format(selectedRange.startDate)} · salida {stayDateFormatter.format(selectedCheckOut)} · {selectedNights} {selectedNights === 1 ? "noche" : "noches"}
                 </span>
               )}
             </div>
@@ -555,14 +578,19 @@ export default function CalendarioDisponibilidad({
               {isCreatingReservation
                 ? "Creando reserva..."
                 : rangeStart && rangeEnd
-                  ? `Reservar ${selectedDays} ${selectedDays === 1 ? "día" : "días"}`
-                  : "Reservar días"}
+                  ? `Reservar ${selectedNights} ${selectedNights === 1 ? "noche" : "noches"}`
+                  : "Reservar noches"}
             </button>
           </>
         ) : step == "payment" ? (
           <div className="mt-5">
             <p className="text-sm text-[#4d5b55]">
-              {selectedDays} {selectedDays === 1 ? "día" : "días"} · Total:{" "}
+              {selectedRange && selectedCheckOut && (
+                <span className="mb-1 block">
+                  Ingreso {stayDateFormatter.format(selectedRange.startDate)} — salida {stayDateFormatter.format(selectedCheckOut)} ({selectedNights} {selectedNights === 1 ? "noche" : "noches"})
+                </span>
+              )}
+              Total:{" "}
               <strong>{formatPrice(total)}</strong>
             </p>
 
@@ -609,8 +637,8 @@ export default function CalendarioDisponibilidad({
                         apartmentName,
                         apartmentLocation,
                         pricePerDay,
-                        checkInDate: rangeStart?.toISOString(),
-                        checkOutDate: rangeEnd?.toISOString(),
+                        checkInDate: rangeStart ? utcDateTime(rangeStart) : undefined,
+                        checkOutDate: rangeEnd ? utcDateTime(addCalendarDays(rangeEnd, 1)) : undefined,
                       },
                     }}
                     className="font-semibold underline"
@@ -627,8 +655,8 @@ export default function CalendarioDisponibilidad({
                         apartmentName,
                         apartmentLocation,
                         pricePerDay,
-                        checkInDate: rangeStart?.toISOString(),
-                        checkOutDate: rangeEnd?.toISOString(),
+                        checkInDate: rangeStart ? utcDateTime(rangeStart) : undefined,
+                        checkOutDate: rangeEnd ? utcDateTime(addCalendarDays(rangeEnd, 1)) : undefined,
                       },
                     }}
                     className="font-semibold underline"

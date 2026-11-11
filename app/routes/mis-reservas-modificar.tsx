@@ -1,31 +1,24 @@
 import { Link, useNavigate, useParams } from "react-router";
-import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { CardPayment, initMercadoPago } from "@mercadopago/sdk-react";
-import { CheckCircle2, ChevronLeft, ChevronRight, CircleCheck, CircleX, CreditCard, X } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, CircleCheck, CircleX, CreditCard } from "lucide-react";
 import api from "~/utils/api";
 import { useAuthentication } from "~/components/NavegacionUsuario";
-import { ReservationState } from "~/types/Reserva";
+import { ReservationState, type Reserva } from "~/types/Reserva";
 import type { ReservationDetail } from "~/types/ReservationDetail";
 import { RESERVATION_STATE_LABEL } from "~/types/reservationState";
 
-const apiBaseUrl = import.meta.env.VITE_API_URL;
 const monthFormatter = new Intl.DateTimeFormat("es-AR", { month: "long", year: "numeric" });
 const weekdayFormatter = new Intl.DateTimeFormat("es-AR", { weekday: "short" });
 
-type ReservationReservation = {
-  id: string;
-  checkInDate: string;
-  checkOutDate: string;
-  reservationState: ReservationState;
-};
-
-function formatDate(value: string) {
+function formatDate(value: string | Date) {
+  const date = value instanceof Date ? value : parseDate(value);
   return new Intl.DateTimeFormat("es-AR", {
     day: "numeric",
     month: "long",
     year: "numeric",
-  }).format(new Date(value));
+  }).format(date);
 }
 
 function dateKey(date: Date): string {
@@ -35,6 +28,16 @@ function dateKey(date: Date): string {
 function parseDate(value: string): Date {
   const date = new Date(`${value.slice(0, 10)}T00:00:00`);
   return Number.isNaN(date.getTime()) ? new Date(0) : date;
+}
+
+function addCalendarDays(date: Date, days: number): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
+}
+
+function calendarDayDifference(start: Date, end: Date): number {
+  const startUtc = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
+  const endUtc = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate());
+  return Math.round((endUtc - startUtc) / 86_400_000);
 }
 
 function isSelectableDay(day: Date): boolean {
@@ -49,8 +52,20 @@ function isBetween(day: Date, start?: Date, end?: Date): boolean {
   return day.getTime() >= Math.min(start.getTime(), end.getTime()) && day.getTime() <= Math.max(start.getTime(), end.getTime());
 }
 
+// Misma regla que el backend: noches = diferencia de fechas, mínimo 1
+function nightsBetween(start: Date, end: Date): number {
+  const diff = Math.abs(calendarDayDifference(start, end));
+  return Math.max(diff, 1);
+}
+
 function getReservationStateLabel(state: ReservationState) {
   return RESERVATION_STATE_LABEL[state] ?? "Desconocido";
+}
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  const data = (error as any)?.response?.data;
+  if (typeof data === "string" && data) return data;
+  return data?.message ?? data?.Message ?? data?.title ?? (error instanceof Error ? error.message : fallback);
 }
 
 export function meta() {
@@ -60,6 +75,7 @@ export function meta() {
 export default function MisReservasModificarPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const authQuery = useAuthentication();
 
   const reservaQuery = useQuery<ReservationDetail>({
@@ -67,6 +83,18 @@ export default function MisReservasModificarPage() {
     queryFn: async () => (await api.get(`/api/reservation/${id}`)).data,
     enabled: Boolean(authQuery.data) && Boolean(id),
     meta: { silent: true },
+  });
+
+  const availabilityQuery = useQuery<Reserva[]>({
+    queryKey: ["reservations", reservaQuery.data?.apartmentId],
+    queryFn: async () => {
+      const { data } = await api.get<Reserva[] | { reservations: Reserva[] }>(
+        `/api/reservation/apartment/${reservaQuery.data?.apartmentId}`,
+      );
+      return Array.isArray(data) ? data : data.reservations;
+    },
+    enabled: Boolean(reservaQuery.data?.apartmentId),
+    meta: { errorMessage: "No pudimos cargar la disponibilidad de este departamento" },
   });
 
   const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
@@ -78,9 +106,7 @@ export default function MisReservasModificarPage() {
   const [showCardForm, setShowCardForm] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
-  const [paymentStatus, setPaymentStatus] = useState<number | null>(null);
-  const [userEmail, setUserEmail] = useState("test@gmail.com");
-  const [existingReservations, setExistingReservations] = useState<ReservationDetail[]>([]);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
     initMercadoPago("TEST-440e66b5-54b5-49f2-9930-3dd2e1baed8e");
@@ -90,18 +116,8 @@ export default function MisReservasModificarPage() {
     if (!reservaQuery.data) return;
     const res = reservaQuery.data;
     setRangeStart(parseDate(res.checkInDate));
-    setRangeEnd(parseDate(res.checkOutDate));
+    setRangeEnd(addCalendarDays(parseDate(res.checkOutDate), -1));
   }, [reservaQuery.data]);
-
-  useEffect(() => {
-    if (!reservaQuery.data?.apartmentId) return;
-    api.get(`/api/reservation/apartment/${reservaQuery.data.apartmentId}`)
-      .then((response) => {
-        const list = Array.isArray(response.data) ? response.data : response.data.reservations ?? [];
-        setExistingReservations(list.filter((reservation: ReservationReservation) => reservation.id !== id));
-      })
-      .catch(() => setExistingReservations([]));
-  }, [reservaQuery.data, id]);
 
   const today = new Date();
   const firstAllowedMonth = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -117,15 +133,14 @@ export default function MisReservasModificarPage() {
     index < offset ? null : new Date(month.getFullYear(), month.getMonth(), index - offset + 1),
   );
 
-  const selectedDays = rangeStart && rangeEnd
-    ? Math.round(Math.abs(rangeEnd.getTime() - rangeStart.getTime()) / 86_400_000) + 1
+  const selectedNights = rangeStart && rangeEnd
+    ? Math.abs(calendarDayDifference(rangeStart, rangeEnd)) + 1
     : 0;
 
-  const originalTotal = reservaQuery.data ?
-    reservaQuery.data.fullCost : 0;
+  const originalTotal = reservaQuery.data ? reservaQuery.data.fullCost : 0;
 
   const newTotal = rangeStart && rangeEnd
-    ? Math.round(Math.abs(rangeEnd.getTime() - rangeStart.getTime()) / 86_400_000) + 1 * (reservaQuery.data?.apartment?.price ?? 0)
+    ? selectedNights * (reservaQuery.data?.apartment?.price ?? 0)
     : 0;
 
   const delta = originalTotal == null ? 0 : Math.max(0, newTotal - originalTotal);
@@ -140,21 +155,96 @@ export default function MisReservasModificarPage() {
       : { startDate: end, endDate: start };
   };
 
+  // ---------------------------------------------------------------------------
+  // Flujo de validación (ver diagrama "Validaciones de reserva básica")
+  //
+  // 1. ¿Cuánto tiempo tiene a comparación de la reserva actual?
+  //    - Menos (o igual)  -> PUT /api/reservation/{id}
+  //    - Más tiempo       -> 2. ¿El usuario hizo al menos un pago?
+  //        - No (NotConfirmed)  -> PUT /api/reservation/{id}
+  //        - Sí (confirmada)    -> PUT /api/reservation/{id}/full  (con objeto de MP)
+  // ---------------------------------------------------------------------------
+  const reservation = reservaQuery.data;
+
+  const hasPaid =
+    reservation?.state === ReservationState.ConfirmedPaymentIncomplete ||
+    reservation?.state === ReservationState.ConfirmedPaymentComplete;
+
+  const oldNights = reservation
+    ? nightsBetween(parseDate(reservation.checkInDate), parseDate(reservation.checkOutDate))
+    : 0;
+
+  const newNights = selectedNights;
+
+  const hasMoreTime = newNights > oldNights;
+
+  // Solo se paga cuando hay más tiempo Y la reserva ya tiene al menos un pago
+  const requiresPayment = hasMoreTime && hasPaid;
+
+  const datesUnchanged = Boolean(
+    reservation &&
+      rangeStart &&
+      rangeEnd &&
+      dateKey(normalizeRange(rangeStart, rangeEnd).startDate) === dateKey(parseDate(reservation.checkInDate)) &&
+      dateKey(addCalendarDays(normalizeRange(rangeStart, rangeEnd).endDate, 1)) === dateKey(parseDate(reservation.checkOutDate)),
+  );
+
+  const buildDatesBody = () => {
+    if (!rangeStart || !rangeEnd) throw new Error("Faltan datos de la reserva.");
+    const { startDate, endDate } = normalizeRange(rangeStart, rangeEnd);
+    const checkOutDate = addCalendarDays(endDate, 1);
+    return {
+      newStartDate: `${dateKey(startDate)}T00:00:00Z`,
+      newEndDate: `${dateKey(checkOutDate)}T00:00:00Z`,
+    };
+  };
+
+  const onEditSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ["reservations", reservation?.apartmentId] });
+    queryClient.invalidateQueries({ queryKey: ["my-reservation-detail", id] });
+    setStep("success");
+  };
+
+  // Caso sin pago: PUT /api/reservation/{reservationId}
+  const editWithoutPaymentMutation = useMutation({
+    mutationFn: async () => (await api.put(`/api/reservation/${id}`, buildDatesBody())).data,
+    onMutate: () => setPaymentError(null),
+    onSuccess: (data) => {
+      setUserEmail(data?.email ?? null);
+      onEditSuccess();
+    },
+    onError: (error) => setPaymentError(getErrorMessage(error, "No se pudo modificar la reserva.")),
+  });
+
   const isReservedDay = (day: Date) => {
     const current = dateKey(day);
-    return existingReservations.some((reservation) => {
-      const start = dateKey(parseDate(reservation.checkInDate));
-      const end = dateKey(parseDate(reservation.checkOutDate));
-      return current >= start && current <= end && (
-        reservation.state === ReservationState.ConfirmedPaymentIncomplete ||
-        reservation.state === ReservationState.ConfirmedPaymentComplete ||
-        reservation.state === ReservationState.PaymentPending
+    return (availabilityQuery.data ?? []).some((r) => {
+      const start = dateKey(parseDate(r.checkInDate));
+      const end = dateKey(parseDate(r.checkOutDate));
+      return current >= start && current < end && (
+        r.id !== id && (
+          r.reservationState === ReservationState.ConfirmedPaymentIncomplete ||
+          r.reservationState === ReservationState.ConfirmedPaymentComplete ||
+          r.reservationState === ReservationState.PaymentPending
+        )
       );
     });
   };
 
+  const rangeHasReservation = (start: Date, end: Date) => {
+    const { startDate, endDate } = normalizeRange(start, end);
+    for (const day = new Date(startDate); day <= endDate; day.setDate(day.getDate() + 1)) {
+      if (isReservedDay(day)) return true;
+    }
+    return false;
+  };
+
+  const availabilityUnavailable = availabilityQuery.isPending || availabilityQuery.isError;
+
+  const isCalendarConflict = (day: Date) => isReservedDay(day);
+
   const handleDayPointerDown = (day: Date) => {
-    if (!isSelectableDay(day)) return;
+    if (availabilityUnavailable || isCalendarConflict(day) || !isSelectableDay(day)) return;
     setIsDragging(true);
     if (!rangeStart || rangeEnd) {
       setRangeStart(day);
@@ -162,109 +252,75 @@ export default function MisReservasModificarPage() {
       return;
     }
     if (day.getTime() < rangeStart.getTime()) {
+      if (rangeHasReservation(day, rangeStart)) return;
       setRangeEnd(rangeStart);
       setRangeStart(day);
       return;
     }
+    if (rangeHasReservation(rangeStart, day)) return;
     setRangeEnd(day);
   };
 
   const handleDayPointerUp = (day: Date) => {
-    if (!rangeStart || !isSelectableDay(day)) return;
+    setIsDragging(false);
+    if (availabilityUnavailable || !rangeStart || isCalendarConflict(day) || !isSelectableDay(day)) return;
     if (day.getTime() < rangeStart.getTime()) {
+      if (rangeHasReservation(day, rangeStart)) return;
       setRangeEnd(rangeStart);
       setRangeStart(day);
     } else {
+      if (rangeHasReservation(rangeStart, day)) return;
       setRangeEnd(day);
     }
-    setIsDragging(false);
   };
 
-  const isCalendarConflict = (day: Date) => {
-    const current = dateKey(day);
-    if (rangeStart && rangeEnd) {
-      const start = new Date(Math.min(rangeStart.getTime(), rangeEnd.getTime()));
-      const end = new Date(Math.max(rangeStart.getTime(), rangeEnd.getTime()));
-      const isInsideSelected = day.getTime() >= start.getTime() && day.getTime() <= end.getTime();
-      if (isInsideSelected) return false;
+  // Botón "continuar" del paso de fechas: decide a dónde ir según el flujo
+  const handleContinue = () => {
+    if (!rangeStart || !rangeEnd) return;
+    if (availabilityUnavailable || rangeHasReservation(rangeStart, rangeEnd)) return;
+    setPaymentError(null);
+
+    if (requiresPayment) {
+      setStep("payment");
+      return;
     }
-    return isReservedDay(day);
+    editWithoutPaymentMutation.mutate();
   };
 
+  // Caso con pago: PUT /api/reservation/{reservationId}/full con el objeto de MP
   async function handlePaymentSubmit(formData: any): Promise<void> {
-    if (!rangeStart || !rangeEnd || !reservaQuery.data?.apartmentId) {
+    if (!rangeStart || !rangeEnd || !reservation?.apartmentId) {
       throw new Error("Faltan datos de la reserva.");
+    }
+    if (availabilityUnavailable) {
+      throw new Error("No se pudo verificar la disponibilidad. Intentá nuevamente.");
+    }
+    if (rangeHasReservation(rangeStart, rangeEnd)) {
+      throw new Error("Las fechas seleccionadas ya no están disponibles.");
     }
 
     setIsProcessingPayment(true);
     setPaymentError(null);
-    setPaymentStatus(null);
 
     try {
-      const { startDate, endDate } = normalizeRange(rangeStart, rangeEnd);
-      const response = await fetch(
-        `${apiBaseUrl.replace(/\/$/, "")}/api/Payment/process_card_payment/${reservaQuery.data.apartmentId}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            ...formData,
-            checkInDate: new Date(startDate).toISOString(),
-            checkOutDate: new Date(endDate).toISOString(),
-            paymentOption,
-            reservationId: reservaQuery.data.reservationId,
-            isModification: true,
-          }),
-        },
-      );
-
-      const rawText = await response.text();
-      let data: any = null;
-      if (rawText) {
-        try { data = JSON.parse(rawText); } catch { data = { message: rawText }; }
-      }
-
-      if (!response.ok) {
-        const message = data?.message ?? data?.error ?? data?.title ?? "No se pudo procesar el pago.";
-        throw new Error(message);
-      }
-
-      const normalizedStatus = Number(data?.paymentStatus ?? data?.status ?? data?.payment_status ?? 0);
-      setUserEmail(data.email);
-      setPaymentStatus(normalizedStatus);
-
-      if (normalizedStatus === 2) {
-        setStep("success");
-        return;
-      }
-      if (normalizedStatus === 1) {
-        throw new Error("Pago pendiente. Mercado Pago continuará el proceso y te avisará cuando se confirme.");
-      }
-      if (normalizedStatus === 4) {
-        throw new Error("El pago fue rechazado. Verificá los datos de tu tarjeta.");
-      }
-      if (normalizedStatus === 5) {
-        throw new Error("El pago fue cancelado.");
-      }
-
-      throw new Error("El backend respondió un estado de pago no reconocido.");
+      // EditOwnReservationRequestPaymentDto = MpPaymentObject + NewStartDate + NewEndDate
+      const { data } = await api.put(`/api/reservation/${id}/full`, {
+        ...formData, // token, payment_method_id, installments, transaction_amount, payer
+        ...buildDatesBody(),
+        reservationId: id,
+      });
+      setUserEmail(data?.email ?? null);
+      onEditSuccess();
     } catch (error) {
-      setPaymentError(error instanceof Error ? error.message : "Error al procesar el pago.");
-      throw error;
+      const message = getErrorMessage(error, "Error al procesar el pago.");
+      setPaymentError(message);
+      throw new Error(message);
     } finally {
       setIsProcessingPayment(false);
     }
   }
 
-  const paymentAmount = paymentOption === "deposit" ? Math.max(0, delta) : Math.max(0, delta);
-  const shouldShowPayment = Boolean(
-    reservaQuery.data &&
-      (reservaQuery.data.state === ReservationState.NotConfirmed ||
-        reservaQuery.data.state ===
-          ReservationState.ConfirmedPaymentIncomplete) &&
-      (delta > 0 || refund > 0),
-  );
+  const paymentAmount = paymentOption === "deposit" ? Math.max(0, delta) : Math.max(0, newTotal);
 
   if (authQuery.isPending) {
     return <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">Verificando sesión...</main>;
@@ -281,6 +337,14 @@ export default function MisReservasModificarPage() {
   if (!reservaQuery.data) {
     return <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">Reserva no encontrada.</main>;
   }
+
+  const continueLabel = !rangeStart || !rangeEnd
+    ? "Seleccioná fechas"
+    : editWithoutPaymentMutation.isPending
+      ? "Guardando..."
+      : requiresPayment
+        ? `Continuar al pago (${selectedNights} ${selectedNights === 1 ? "noche" : "noches"})`
+        : `Confirmar cambio (${selectedNights} ${selectedNights === 1 ? "noche" : "noches"})`;
 
   return (
     <main className="min-h-screen bg-[#f6f4ee] text-[#202722]">
@@ -303,13 +367,18 @@ export default function MisReservasModificarPage() {
         </div>
 
         <div className="mb-6 rounded-md border border-dashed border-[#c8c2b8] bg-[#fffdf9] p-4 text-sm text-[#68716a]">
-          <p>Reserva actual: {formatDate(reservaQuery.data.checkInDate)} — {formatDate(reservaQuery.data.checkOutDate)}</p>
+          <p>
+            Reserva actual: {formatDate(reservaQuery.data.checkInDate)} — {formatDate(reservaQuery.data.checkOutDate)} (salida {formatDate(new Date(new Date(reservaQuery.data.checkOutDate).setDate(new Date(reservaQuery.data.checkOutDate).getDate() + 2)))}) 
+          </p>
           <p className="mt-1">Monto actual: {originalTotal == null ? "Precio a confirmar" : formatPrice(originalTotal)}</p>
           {/* TODO(G1+G3): habilitar la comparación de montos cuando el backend exponga el total */}
         </div>
 
         {step === "dates" ? (
           <div className="rounded-md border border-[#d7d1c7] bg-[#fffdf9] p-4 shadow-sm">
+            <p className="mb-3 rounded-md bg-[#edf2e8] p-3 text-sm text-[#385347]">
+              Seleccioná las noches de alojamiento. El primer día es el ingreso y el checkout es la mañana siguiente a la última noche seleccionada.
+            </p>
             <div className="mt-4 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <button
@@ -334,6 +403,15 @@ export default function MisReservasModificarPage() {
               </div>
             </div>
 
+            {availabilityQuery.isPending && (
+              <p className="mt-3 text-sm text-[#68716a]" role="status">Cargando disponibilidad...</p>
+            )}
+            {availabilityQuery.isError && (
+              <p className="mt-3 text-sm text-[#b74f3d]" role="alert">
+                No se pudo cargar la disponibilidad. {availabilityQuery.error instanceof Error ? availabilityQuery.error.message : "Intentá nuevamente."}
+              </p>
+            )}
+
             <div className="mt-3 grid grid-cols-7 gap-1 text-center text-[11px] text-[#68716a]" onPointerUp={() => setIsDragging(false)} onPointerCancel={() => setIsDragging(false)}>
               {weekdays.map((day) => (
                 <div key={day} className="py-1 font-bold uppercase">{day}</div>
@@ -346,12 +424,21 @@ export default function MisReservasModificarPage() {
                     <button
                       key={dateKey(day)}
                       type="button"
-                      disabled={conflict || !isSelectableDay(day)}
+                      disabled={availabilityUnavailable || conflict || !isSelectableDay(day)}
                       onPointerDown={() => !conflict && handleDayPointerDown(day)}
-                      onPointerEnter={() => isDragging && !conflict && setRangeEnd(day)}
+                      onPointerEnter={() =>
+                        isDragging &&
+                        !availabilityUnavailable &&
+                        !conflict &&
+                        rangeStart &&
+                        !rangeHasReservation(rangeStart, day) &&
+                        setRangeEnd(day)
+                      }
                       onPointerUp={() => !conflict && handleDayPointerUp(day)}
                       className={`aspect-square rounded-sm border border-transparent p-0.5 transition ${
-                        conflict
+                        availabilityUnavailable
+                          ? "cursor-wait bg-[#f0efe9] text-[#a6a29a]"
+                          : conflict
                           ? "cursor-not-allowed bg-[#f3ddd3] text-[#a85c43]"
                           : !isSelectableDay(day)
                             ? "cursor-not-allowed bg-[#f0efe9] text-[#a6a29a]"
@@ -359,7 +446,7 @@ export default function MisReservasModificarPage() {
                               ? "bg-[#385347] text-white shadow-sm"
                               : "bg-[#edf2e8] text-[#385347] hover:bg-[#dce8d8]"
                       }`}
-                      aria-label={`${day.getDate()} de ${monthFormatter.format(month)}${conflict ? ", reservado" : ", disponible"}`}
+                      aria-label={`${day.getDate()} de ${monthFormatter.format(month)}${availabilityUnavailable ? ", disponibilidad no cargada" : conflict ? ", reservado" : ", disponible"}`}
                     >
                       <span className="flex h-full items-center justify-center text-xs font-semibold">{day.getDate()}</span>
                     </button>
@@ -371,24 +458,52 @@ export default function MisReservasModificarPage() {
             <div className="mt-4 flex flex-wrap gap-4 border-t border-[#ece7df] pt-3 text-xs text-[#4d5b55]">
               <span className="inline-flex items-center gap-1.5"><CircleCheck size={14} className="text-[#6b8b63]" /> Disponible</span>
               <span className="inline-flex items-center gap-1.5"><CircleX size={14} className="text-[#c7765a]" /> Reservado</span>
-              {rangeStart && rangeEnd && <span className="w-full text-[#385347]">{dateKey(rangeStart)} a {dateKey(rangeEnd)}</span>}
+              {rangeStart && rangeEnd && (
+                <span className="w-full text-[#385347]">
+                  Ingreso {formatDate(normalizeRange(rangeStart, rangeEnd).startDate)} · salida {formatDate(addCalendarDays(normalizeRange(rangeStart, rangeEnd).endDate, 1))} · {selectedNights} {selectedNights === 1 ? "noche" : "noches"}
+                </span>
+              )}
             </div>
+
+            {rangeStart && rangeEnd && hasMoreTime && !hasPaid && (
+              <p className="mt-3 text-xs text-[#68716a]">
+                Tu reserva todavía no tiene pagos, por lo que podés extender las fechas sin abonar ahora.
+              </p>
+            )}
+            {rangeStart && rangeEnd && requiresPayment && (
+              <p className="mt-3 text-xs text-[#68716a]">
+                Al extender una reserva ya confirmada, vas a tener que abonar el monto correspondiente.
+              </p>
+            )}
+
+            {paymentError && <p className="mt-3 text-sm text-[#b74f3d]" role="alert">{paymentError}</p>}
 
             <button
               type="button"
-              disabled={!rangeStart || !rangeEnd}
-              onClick={() => setStep("payment")}
+              disabled={
+                !rangeStart ||
+                !rangeEnd ||
+                datesUnchanged ||
+                availabilityUnavailable ||
+                editWithoutPaymentMutation.isPending ||
+                rangeHasReservation(rangeStart, rangeEnd)
+              }
+              onClick={handleContinue}
               className="ui-button ui-button-md ui-button-block mt-4"
             >
-              {rangeStart && rangeEnd ? `Continuar con ${selectedDays} ${selectedDays === 1 ? "día" : "días"}` : "Seleccioná fechas"}
+              {continueLabel}
             </button>
           </div>
         ) : step === "payment" ? (
           <div className="rounded-md border border-[#d7d1c7] bg-[#fffdf9] p-5 shadow-sm">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-sm text-[#68716a]">Fechas nuevas</p>
-                <p className="font-medium text-[#202722]">{rangeStart && rangeEnd ? `${formatDate(rangeStart.toISOString())} — ${formatDate(rangeEnd.toISOString())}` : "Sin fechas"}</p>
+                <p className="text-sm text-[#68716a]">Estadía nueva</p>
+                <p className="font-medium text-[#202722]">
+                  {rangeStart && rangeEnd
+                    ? `Ingreso ${formatDate(normalizeRange(rangeStart, rangeEnd).startDate)} — salida ${formatDate(addCalendarDays(normalizeRange(rangeStart, rangeEnd).endDate, 1))} (${selectedNights} ${selectedNights === 1 ? "noche" : "noches"})`
+                    : "Sin fechas"}
+                </p>
               </div>
               <div className="text-right">
                 <p className="text-sm text-[#68716a]">Monto nuevo</p>
@@ -399,12 +514,6 @@ export default function MisReservasModificarPage() {
             {delta > 0 && (
               <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
                 Se suma {formatPrice(delta)} respecto a la reserva actual.
-              </div>
-            )}
-
-            {refund > 0 && (
-              <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-                Se devuelve {formatPrice(refund)} respecto a la reserva actual.
               </div>
             )}
 
@@ -451,8 +560,9 @@ export default function MisReservasModificarPage() {
                 Continuar al pago
               </button>
             ) : (
-              <div className="mt-4 max-h-[55vh] overflow-y-auto rounded-md border border-[#e0ded5] bg-[#f8f4ef] p-3">
+              <div className="relative mt-4 max-h-[55vh] overflow-y-auto rounded-md border border-[#e0ded5] bg-[#f8f4ef] p-3">
                 <CardPayment
+                  key={paymentAmount}
                   initialization={{ amount: paymentAmount || Math.max(0, newTotal) }}
                   onReady={() => undefined}
                   onSubmit={(formData: any) => handlePaymentSubmit(formData)}
@@ -470,7 +580,17 @@ export default function MisReservasModificarPage() {
             )}
 
             <div className="mt-4 flex gap-3">
-              <button type="button" onClick={() => setStep("dates")} className="ui-link">Volver a fechas</button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCardForm(false);
+                  setPaymentError(null);
+                  setStep("dates");
+                }}
+                className="ui-link"
+              >
+                Volver a fechas
+              </button>
               <button type="button" onClick={() => navigate(`/reservas/${id}`)} className="ui-button ui-button-sm">Cancelar</button>
             </div>
           </div>
@@ -478,7 +598,9 @@ export default function MisReservasModificarPage() {
           <div className="rounded-md border border-[#d7d1c7] bg-[#fffdf9] p-6 text-center">
             <CheckCircle2 className="mx-auto mb-4 h-14 w-14 text-[#2d6a4f]" />
             <p className="text-lg text-[#202722]">Tu reserva fue modificada correctamente.</p>
-            <p className="mt-2 text-sm text-[#68716a]">Se envió la confirmación al correo {userEmail}</p>
+            {userEmail && (
+              <p className="mt-2 text-sm text-[#68716a]">Se envió la confirmación al correo {userEmail}</p>
+            )}
             <button type="button" onClick={() => navigate(`/reservas/${id}`)} className="ui-button ui-button-md mt-5">
               Volver al detalle
             </button>

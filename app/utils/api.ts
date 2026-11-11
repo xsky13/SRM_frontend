@@ -3,7 +3,8 @@ import { ApiError } from '~/types/ApiError';
 import type { ApartmentCreateInput, DepartamentoData, ApartmentWriteInput } from '~/models/Departamento';
 import type { ImageData } from '~/types/images';
 import type { Reserva } from '~/types/Reserva';
-import type { ReservationDetail } from '~/types/ReservationDetail';
+import type { ReservationDetail, ReservationListingDto } from '~/types/ReservationDetail';
+import type { User } from '~/types/User';
 
 export interface AdminCreateReservationInput {
     apartmentId: string;
@@ -144,6 +145,30 @@ export async function getAdminReservations(): Promise<ReservationDetail[]> {
     }
 
     return reservations;
+}
+
+export async function getAdminUsers(pageNumber: number, pageSize: number): Promise<User[]> {
+    const { data } = await api.get<User[]>('/api/user/list', {
+        params: { PageNumber: pageNumber, PageSize: pageSize },
+    });
+
+    if (!Array.isArray(data)) {
+        throw new Error('La respuesta del servidor no contiene una lista de usuarios');
+    }
+
+    return data;
+}
+
+export async function getAdminUserReservations(userId: string): Promise<ReservationListingDto[]> {
+    const { data } = await api.get<ReservationListingDto[]>(
+        `/api/reservation/user/${encodeURIComponent(userId)}`,
+    );
+
+    if (!Array.isArray(data)) {
+        throw new Error('La respuesta del servidor no contiene una lista de reservas');
+    }
+
+    return data;
 }
 
 export async function cancelReservationAdmin(id: string): Promise<Reserva> {

@@ -56,3 +56,12 @@ export interface ReservationDetail {
   apartment: ApartmentListingDto | null;
   fullCost: number;
 }
+
+export interface ReservationListingDto {
+  id: string;
+  checkInDate: string;
+  checkOutDate: string;
+  apartmentId: string;
+  apartmentName: string;
+  reservationState: ReservationState;
+}
