@@ -3,6 +3,7 @@ import { ApiError } from '~/types/ApiError';
 import type { ApartmentCreateInput, DepartamentoData, ApartmentWriteInput } from '~/models/Departamento';
 import type { ImageData } from '~/types/images';
 import type { Reserva } from '~/types/Reserva';
+import type { ReservationDetail } from '~/types/ReservationDetail';
 
 export interface AdminCreateReservationInput {
     apartmentId: string;
@@ -16,6 +17,13 @@ export interface AdminCreateReservationInput {
         telefono: string;
         email: string;
     } | null;
+}
+
+export interface UpdateUserInput {
+    firstName: string;
+    lastName: string;
+    telefono: string;
+    email: string;
 }
 
 const api = axios.create({
@@ -71,6 +79,14 @@ export async function getApartments(): Promise<DepartamentoData[]> {
     return data;
 }
 
+export async function updateUser(user: UpdateUserInput): Promise<void> {
+    await api.put('/api/user', user);
+}
+
+export async function deleteUser(): Promise<void> {
+    await api.delete('/api/user');
+}
+
 export function resolveImageUrl(url: string | null | undefined): string {
     if (!url) return '';
     const baseUrl = import.meta.env.VITE_API_URL;
@@ -119,8 +135,8 @@ export async function createAdminReservation(
     await api.post('/api/reservation/admin_create', reservation);
 }
 
-export async function getAdminReservations(): Promise<Reserva[]> {
-    const { data } = await api.get<Reserva[] | { reservations: Reserva[] }>('/api/reservation');
+export async function getAdminReservations(): Promise<ReservationDetail[]> {
+    const { data } = await api.get<ReservationDetail[] | { reservations: ReservationDetail[] }>('/api/reservation');
     const reservations = Array.isArray(data) ? data : data.reservations;
 
     if (!Array.isArray(reservations)) {
