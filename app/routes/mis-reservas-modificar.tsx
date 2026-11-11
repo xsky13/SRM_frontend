@@ -84,7 +84,10 @@ export default function MisReservasModificarPage() {
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<number | null>(null);
   const [userEmail, setUserEmail] = useState("test@gmail.com");
-  const [existingReservations, setExistingReservations] = useState<ReservationDetail[]>([]);
+  const [existingReservations, setExistingReservations] = useState<ReservationReservation[]>([]);
+  const [isLoadingAvailability, setIsLoadingAvailability] = useState(true);
+  const [availabilityError, setAvailabilityError] = useState<string | null>(null);
+  const [dateSelectionError, setDateSelectionError] = useState<string | null>(null);
 
   useEffect(() => {
     initMercadoPago("TEST-440e66b5-54b5-49f2-9930-3dd2e1baed8e");
@@ -98,13 +101,40 @@ export default function MisReservasModificarPage() {
   }, [reservaQuery.data]);
 
   useEffect(() => {
-    if (!reservaQuery.data?.apartmentId) return;
+    if (!reservaQuery.data) return;
+    if (!reservaQuery.data.apartmentId) {
+      setIsLoadingAvailability(false);
+      setAvailabilityError("No se pudo verificar la disponibilidad de la propiedad.");
+      return;
+    }
+
+    let isCancelled = false;
+    setIsLoadingAvailability(true);
+    setAvailabilityError(null);
+
     api.get(`/api/reservation/apartment/${reservaQuery.data.apartmentId}`)
       .then((response) => {
-        const list = Array.isArray(response.data) ? response.data : response.data.reservations ?? [];
-        setExistingReservations(list.filter((reservation: ReservationReservation) => reservation.id !== id));
+        const list = Array.isArray(response.data) ? response.data : response.data?.reservations;
+        if (!Array.isArray(list)) {
+          throw new Error("La respuesta de disponibilidad no tiene un formato válido.");
+        }
+        if (!isCancelled) {
+          setExistingReservations(list.filter((reservation: ReservationReservation) => reservation.id !== id));
+        }
       })
-      .catch(() => setExistingReservations([]));
+      .catch(() => {
+        if (!isCancelled) {
+          setExistingReservations([]);
+          setAvailabilityError("No se pudo verificar la disponibilidad. Intentá nuevamente más tarde.");
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) setIsLoadingAvailability(false);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
   }, [reservaQuery.data, id]);
 
   const today = new Date();
@@ -148,31 +178,50 @@ export default function MisReservasModificarPage() {
       const start = dateKey(parseDate(reservation.checkInDate));
       const end = dateKey(parseDate(reservation.checkOutDate));
       return current >= start && current <= end && (
-        reservation.state === ReservationState.ConfirmedPaymentIncomplete ||
-        reservation.state === ReservationState.ConfirmedPaymentComplete ||
-        reservation.state === ReservationState.PaymentPending
+        reservation.reservationState === ReservationState.ConfirmedPaymentIncomplete ||
+        reservation.reservationState === ReservationState.ConfirmedPaymentComplete ||
+        reservation.reservationState === ReservationState.PaymentPending
       );
     });
   };
 
+  const rangeHasReservedDay = (start: Date, end: Date) => {
+    const { startDate, endDate } = normalizeRange(start, end);
+    for (const day = new Date(startDate); day <= endDate; day.setDate(day.getDate() + 1)) {
+      if (isReservedDay(day)) return true;
+    }
+    return false;
+  };
+
   const handleDayPointerDown = (day: Date) => {
-    if (!isSelectableDay(day)) return;
+    if (!isSelectableDay(day) || isReservedDay(day)) return;
     setIsDragging(true);
     if (!rangeStart || rangeEnd) {
+      setDateSelectionError(null);
       setRangeStart(day);
       setRangeEnd(undefined);
       return;
     }
-    if (day.getTime() < rangeStart.getTime()) {
-      setRangeEnd(rangeStart);
-      setRangeStart(day);
+
+    if (rangeHasReservedDay(rangeStart, day)) {
+      setDateSelectionError("El rango seleccionado incluye días que ya están reservados.");
       return;
     }
+
+    setDateSelectionError(null);
+    if (day.getTime() < rangeStart.getTime()) setRangeStart(day);
     setRangeEnd(day);
   };
 
   const handleDayPointerUp = (day: Date) => {
-    if (!rangeStart || !isSelectableDay(day)) return;
+    if (!rangeStart || !isSelectableDay(day) || isReservedDay(day)) return;
+    if (rangeHasReservedDay(rangeStart, day)) {
+      setDateSelectionError("El rango seleccionado incluye días que ya están reservados.");
+      setIsDragging(false);
+      return;
+    }
+
+    setDateSelectionError(null);
     if (day.getTime() < rangeStart.getTime()) {
       setRangeEnd(rangeStart);
       setRangeStart(day);
@@ -183,19 +232,29 @@ export default function MisReservasModificarPage() {
   };
 
   const isCalendarConflict = (day: Date) => {
-    const current = dateKey(day);
-    if (rangeStart && rangeEnd) {
-      const start = new Date(Math.min(rangeStart.getTime(), rangeEnd.getTime()));
-      const end = new Date(Math.max(rangeStart.getTime(), rangeEnd.getTime()));
-      const isInsideSelected = day.getTime() >= start.getTime() && day.getTime() <= end.getTime();
-      if (isInsideSelected) return false;
-    }
     return isReservedDay(day);
+  };
+
+  const handleDayPointerEnter = (day: Date) => {
+    if (!isDragging || !rangeStart || isCalendarConflict(day)) return;
+    if (rangeHasReservedDay(rangeStart, day)) {
+      setDateSelectionError("El rango seleccionado incluye días que ya están reservados.");
+      return;
+    }
+
+    setDateSelectionError(null);
+    setRangeEnd(day);
   };
 
   async function handlePaymentSubmit(formData: any): Promise<void> {
     if (!rangeStart || !rangeEnd || !reservaQuery.data?.apartmentId) {
       throw new Error("Faltan datos de la reserva.");
+    }
+    if (isLoadingAvailability || availabilityError) {
+      throw new Error(availabilityError ?? "Esperá a que se verifique la disponibilidad.");
+    }
+    if (rangeHasReservedDay(rangeStart, rangeEnd)) {
+      throw new Error("El rango seleccionado incluye días que ya están reservados.");
     }
 
     setIsProcessingPayment(true);
@@ -260,6 +319,14 @@ export default function MisReservasModificarPage() {
   async function handleSaveDates(): Promise<void> {
     if (!rangeStart || !rangeEnd || !reservaQuery.data) {
       setPaymentError("Faltan datos de la reserva.");
+      return;
+    }
+    if (isLoadingAvailability || availabilityError) {
+      setPaymentError(availabilityError ?? "Esperá a que se verifique la disponibilidad.");
+      return;
+    }
+    if (rangeHasReservedDay(rangeStart, rangeEnd)) {
+      setPaymentError("El rango seleccionado incluye días que ya están reservados.");
       return;
     }
 
@@ -412,11 +479,11 @@ export default function MisReservasModificarPage() {
                       type="button"
                       disabled={conflict || !isSelectableDay(day)}
                       onPointerDown={() => !conflict && handleDayPointerDown(day)}
-                      onPointerEnter={() => isDragging && !conflict && setRangeEnd(day)}
+                      onPointerEnter={() => handleDayPointerEnter(day)}
                       onPointerUp={() => !conflict && handleDayPointerUp(day)}
                       className={`aspect-square rounded-sm border border-transparent p-0.5 transition ${
                         conflict
-                          ? "cursor-not-allowed bg-[#f3ddd3] text-[#a85c43]"
+                          ? "cursor-not-allowed border-[#e7a4a4] bg-[#fde2e2] text-[#b42318]"
                           : !isSelectableDay(day)
                             ? "cursor-not-allowed bg-[#f0efe9] text-[#a6a29a]"
                             : selected
@@ -438,9 +505,19 @@ export default function MisReservasModificarPage() {
               {rangeStart && rangeEnd && <span className="w-full text-[#385347]">{dateKey(rangeStart)} a {dateKey(rangeEnd)}</span>}
             </div>
 
+            {isLoadingAvailability && <p className="mt-3 text-sm text-[#68716a]" role="status">Verificando disponibilidad...</p>}
+            {availabilityError && <p className="mt-3 text-sm text-[#b42318]" role="alert">{availabilityError}</p>}
+            {dateSelectionError && <p className="mt-3 text-sm text-[#b42318]" role="alert">{dateSelectionError}</p>}
+
             <button
               type="button"
-              disabled={!rangeStart || !rangeEnd}
+              disabled={
+                !rangeStart ||
+                !rangeEnd ||
+                isLoadingAvailability ||
+                Boolean(availabilityError) ||
+                rangeHasReservedDay(rangeStart, rangeEnd)
+              }
               onClick={() => setStep("payment")}
               className="ui-button ui-button-md ui-button-block mt-4"
             >
