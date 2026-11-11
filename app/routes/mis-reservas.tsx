@@ -23,11 +23,13 @@ type ReservationListItem = {
 };
 
 function formatDate(value: string) {
+  const [year, month, day] = value.slice(0, 10).split("-").map(Number);
+  const date = new Date(year, month - 1, day);
   return new Intl.DateTimeFormat("es-AR", {
     day: "numeric",
     month: "long",
     year: "numeric",
-  }).format(new Date(value));
+  }).format(date);
 }
 
 function getReservationStateLabel(state: ReservationState) {

@@ -20,12 +20,12 @@ type ReservationReservation = {
   reservationState: ReservationState;
 };
 
-function formatDate(value: string) {
+function formatDate(value: string | Date) {
   return new Intl.DateTimeFormat("es-AR", {
     day: "numeric",
     month: "long",
     year: "numeric",
-  }).format(new Date(value));
+  }).format(typeof value === "string" ? parseDate(value) : value);
 }
 
 function dateKey(date: Date): string {
@@ -35,6 +35,10 @@ function dateKey(date: Date): string {
 function parseDate(value: string): Date {
   const date = new Date(`${value.slice(0, 10)}T00:00:00`);
   return Number.isNaN(date.getTime()) ? new Date(0) : date;
+}
+
+function serializeDate(date: Date): string {
+  return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())).toISOString();
 }
 
 function isSelectableDay(day: Date): boolean {
@@ -208,8 +212,8 @@ export default function MisReservasModificarPage() {
           credentials: "include",
           body: JSON.stringify({
             ...formData,
-            NewStartDate: startDate.toISOString(),
-            NewEndDate: endDate.toISOString(),
+            NewStartDate: serializeDate(startDate),
+            NewEndDate: serializeDate(endDate),
             ReservationId: reservaQuery.data.reservationId,
           }),
         },
@@ -271,8 +275,8 @@ export default function MisReservasModificarPage() {
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({
-            NewStartDate: startDate.toISOString(),
-            NewEndDate: endDate.toISOString(),
+            NewStartDate: serializeDate(startDate),
+            NewEndDate: serializeDate(endDate),
           }),
         },
       );
@@ -448,7 +452,7 @@ export default function MisReservasModificarPage() {
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-sm text-[#68716a]">Fechas nuevas</p>
-                <p className="font-medium text-[#202722]">{rangeStart && rangeEnd ? `${formatDate(rangeStart.toISOString())} — ${formatDate(rangeEnd.toISOString())}` : "Sin fechas"}</p>
+                <p className="font-medium text-[#202722]">{rangeStart && rangeEnd ? `${formatDate(rangeStart)} — ${formatDate(rangeEnd)}` : "Sin fechas"}</p>
               </div>
               <div className="text-right">
                 <p className="text-sm text-[#68716a]">Monto nuevo</p>

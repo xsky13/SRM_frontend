@@ -65,6 +65,12 @@ function parseDate(value: string): Date {
   return Number.isNaN(date.getTime()) ? new Date(0) : date;
 }
 
+function serializeDate(date: Date): string {
+  return new Date(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
+  ).toISOString();
+}
+
 function isReserved(day: Date, reservas: Reserva[]): boolean {
   const current = dateKey(day);
   return reservas.some((reserva) => {
@@ -229,8 +235,8 @@ export default function CalendarioDisponibilidad({
           credentials: "include",
           body: JSON.stringify({
             ...formData,
-            checkInDate: new Date(startDate).toISOString(),
-            checkOutDate: new Date(endDate).toISOString(),
+            checkInDate: serializeDate(startDate),
+            checkOutDate: serializeDate(endDate),
             paymentOption,
           }),
         },
@@ -320,8 +326,8 @@ export default function CalendarioDisponibilidad({
     }) => {
       const response = await api.post("/api/reservation/with_auth", {
         apartmentId: apartmentId,
-        checkInDate: new Date(startDay).toISOString(),
-        checkOutDate: new Date(endDay).toISOString(),
+        checkInDate: serializeDate(startDay),
+        checkOutDate: serializeDate(endDay),
       });
       return response.data;
     },
@@ -609,8 +615,8 @@ export default function CalendarioDisponibilidad({
                         apartmentName,
                         apartmentLocation,
                         pricePerDay,
-                        checkInDate: rangeStart?.toISOString(),
-                        checkOutDate: rangeEnd?.toISOString(),
+                        checkInDate: rangeStart ? serializeDate(rangeStart) : undefined,
+                        checkOutDate: rangeEnd ? serializeDate(rangeEnd) : undefined,
                       },
                     }}
                     className="font-semibold underline"
@@ -627,8 +633,8 @@ export default function CalendarioDisponibilidad({
                         apartmentName,
                         apartmentLocation,
                         pricePerDay,
-                        checkInDate: rangeStart?.toISOString(),
-                        checkOutDate: rangeEnd?.toISOString(),
+                        checkInDate: rangeStart ? serializeDate(rangeStart) : undefined,
+                        checkOutDate: rangeEnd ? serializeDate(rangeEnd) : undefined,
                       },
                     }}
                     className="font-semibold underline"

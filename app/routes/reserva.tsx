@@ -39,10 +39,12 @@ function isReservationState(value: unknown): value is ReservationState {
 }
 
 function formatDate(value: string) {
+	const [year, month, day] = value.slice(0, 10).split("-").map(Number);
+	const date = new Date(year, month - 1, day);
 	return new Intl.DateTimeFormat("es-AR", {
 		day: "numeric",
 		month: "long",
-	}).format(new Date(value));
+	}).format(date);
 }
 
 function formatPrice(value: number) {
