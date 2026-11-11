@@ -39,10 +39,12 @@ function isReservationState(value: unknown): value is ReservationState {
 }
 
 function formatDate(value: string) {
+	const [year, month, day] = value.slice(0, 10).split("-").map(Number);
+	const date = new Date(year, month - 1, day);
 	return new Intl.DateTimeFormat("es-AR", {
 		day: "numeric",
 		month: "long",
-	}).format(new Date(value));
+	}).format(date);
 }
 
 function formatPrice(value: number) {
@@ -382,19 +384,24 @@ export default function ReservaPage() {
 				{paymentApproved && (
 					<p className="mt-4 text-sm font-semibold text-[#2d6a4f]">Pago aprobado correctamente.</p>
 				)}
-				{canPayDeposit || canPayFull ? (
-					<div className="mt-6 flex flex-wrap items-center justify-between gap-4">
-						<div className="flex w-full justify-end">
-							<button
-								type="button"
-								onClick={() => navigate(`/departamento/${activeReservation.apartmentId}`)}
-								className="ui-button ui-button-sm bg-[#a90000] text-white"
-							>
-								Cancelar reserva
-							</button>
-						</div>
-					</div>
-				) : null}
+				<div className="mt-6 flex justify-end gap-3">
+					<button
+						type="button"
+						onClick={() => navigate(`/reservas/${id}/modificar`)}
+						className="ui-button ui-button-md min-w-44 bg-[#385347] text-white"
+					>
+						Modificar reserva
+					</button>
+					{canPayDeposit || canPayFull ? (
+						<button
+							type="button"
+							onClick={() => navigate(`/departamento/${activeReservation.apartmentId}`)}
+							className="ui-button ui-button-md min-w-44 bg-[#a90000] text-white"
+						>
+							Cancelar reserva
+						</button>
+					) : null}
+				</div>
 			</section>
 		</main>
 	);

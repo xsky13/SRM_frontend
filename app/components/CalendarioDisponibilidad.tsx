@@ -13,7 +13,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { ReservationState, type Reserva } from "~/types/Reserva";
 import api from "~/utils/api";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
 interface CalendarioDisponibilidadProps {
   reservas: Reserva[];
@@ -21,6 +21,7 @@ interface CalendarioDisponibilidadProps {
   apartmentId: string;
   apartmentName?: string;
   apartmentLocation?: string;
+  userId?: string;
   isAuthenticated: boolean;
   onClose: () => void;
 }
@@ -65,6 +66,12 @@ function parseDate(value: string): Date {
   return Number.isNaN(date.getTime()) ? new Date(0) : date;
 }
 
+function serializeDate(date: Date): string {
+  return new Date(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
+  ).toISOString();
+}
+
 function isReserved(day: Date, reservas: Reserva[]): boolean {
   const current = dateKey(day);
   return reservas.some((reserva) => {
@@ -74,11 +81,22 @@ function isReserved(day: Date, reservas: Reserva[]): boolean {
     return (
       current >= start &&
       current <= end &&
-      (reserva.reservationState ===
-        ReservationState.ConfirmedPaymentIncomplete ||
-        reserva.reservationState ===
-          ReservationState.ConfirmedPaymentComplete ||
-        reserva.reservationState === ReservationState.PaymentPending)
+      (state === ReservationState.ConfirmedPaymentIncomplete ||
+        state === ReservationState.ConfirmedPaymentComplete ||
+        state === ReservationState.PaymentPending)
+    );
+  });
+}
+
+function isPendingForUser(day: Date, reservas: Reserva[]): boolean {
+  const current = dateKey(day);
+  return reservas.some((reserva) => {
+    const start = dateKey(parseDate(reserva.checkInDate));
+    const end = dateKey(parseDate(reserva.checkOutDate));
+    return (
+      Number(reserva.reservationState) === ReservationState.NotConfirmed &&
+      current >= start &&
+      current <= end
     );
   });
 }
@@ -96,6 +114,7 @@ function rangeHasReservation(
   start: Date,
   end: Date,
   reservas: Reserva[],
+  userPendingReservations: Reserva[] = [],
 ): boolean {
   const first = new Date(Math.min(start.getTime(), end.getTime()));
   const last = new Date(Math.max(start.getTime(), end.getTime()));
@@ -105,7 +124,10 @@ function rangeHasReservation(
     day <= last;
     day.setDate(day.getDate() + 1)
   ) {
-    if (isReserved(day, reservas)) return true;
+    if (
+      isReserved(day, reservas) ||
+      isPendingForUser(day, userPendingReservations)
+    ) return true;
   }
 
   return false;
@@ -117,10 +139,31 @@ export default function CalendarioDisponibilidad({
   apartmentId,
   apartmentName,
   apartmentLocation,
+  userId,
   isAuthenticated,
   onClose,
 }: CalendarioDisponibilidadProps) {
   const navigate = useNavigate();
+  const userReservationsQuery = useQuery<Reserva[]>({
+    queryKey: ["my-reservations", userId],
+    queryFn: async () => {
+      const { data } = await api.get(`/api/reservation/user/${userId}`);
+      const reservations = Array.isArray(data) ? data : data?.reservations;
+      if (!Array.isArray(reservations)) {
+        throw new Error("La respuesta de reservas del usuario no tiene un formato válido.");
+      }
+      return reservations;
+    },
+    enabled: Boolean(userId),
+    meta: { errorMessage: "No pudimos verificar tus reservas pendientes." },
+  });
+  const userPendingReservations = (userReservationsQuery.data ?? []).filter(
+    (reservation) =>
+      reservation.apartmentId === apartmentId &&
+      Number(reservation.reservationState) === ReservationState.NotConfirmed,
+  );
+  const isVerifyingUserReservations = Boolean(userId) && userReservationsQuery.isFetching;
+  const userReservationsError = Boolean(userId) && userReservationsQuery.isError;
 
   useEffect(() => {
     initMercadoPago("TEST-440e66b5-54b5-49f2-9930-3dd2e1baed8e");
@@ -173,7 +216,7 @@ export default function CalendarioDisponibilidad({
 
     const { startDate, endDate } = normalizeRange(rangeStart, day);
 
-    if (rangeHasReservation(startDate, endDate, reservas)) return;
+    if (rangeHasReservation(startDate, endDate, reservas, userPendingReservations)) return;
 
     if (rangeStart.getTime() <= day.getTime()) {
       setRangeEnd(day);
@@ -185,7 +228,11 @@ export default function CalendarioDisponibilidad({
   }
 
   function handleDayPointerDown(day: Date) {
-    if (!isSelectableDay(day)) return;
+    if (
+      !isSelectableDay(day) ||
+      isReserved(day, reservas) ||
+      isPendingForUser(day, userPendingReservations)
+    ) return;
 
     setIsDragging(true);
     if (!rangeStart || rangeEnd) {
@@ -198,7 +245,12 @@ export default function CalendarioDisponibilidad({
   }
 
   function handleDayPointerUp(day: Date) {
-    if (!rangeStart || !isSelectableDay(day)) return;
+    if (
+      !rangeStart ||
+      !isSelectableDay(day) ||
+      isReserved(day, reservas) ||
+      isPendingForUser(day, userPendingReservations)
+    ) return;
     updateRangeEnd(day);
     setIsDragging(false);
   }
@@ -212,6 +264,9 @@ export default function CalendarioDisponibilidad({
         "La opción de abonar la seña es solo para usuarios logueados.",
       );
     }
+    if (isVerifyingUserReservations || userReservationsError) {
+      throw new Error("No se pudieron verificar tus reservas pendientes.");
+    }
 
     setIsProcessingPayment(true);
     setPaymentError(null);
@@ -219,6 +274,9 @@ export default function CalendarioDisponibilidad({
 
     try {
       const { startDate, endDate } = normalizeRange(rangeStart, rangeEnd);
+      if (rangeHasReservation(startDate, endDate, reservas, userPendingReservations)) {
+        throw new Error("El rango seleccionado incluye fechas que no están disponibles para vos.");
+      }
       const response = await fetch(
         `${apiBaseUrl.replace(/\/$/, "")}/api/Payment/process_card_payment/${apartmentId}`,
         {
@@ -229,8 +287,8 @@ export default function CalendarioDisponibilidad({
           credentials: "include",
           body: JSON.stringify({
             ...formData,
-            checkInDate: new Date(startDate).toISOString(),
-            checkOutDate: new Date(endDate).toISOString(),
+            checkInDate: serializeDate(startDate),
+            checkOutDate: serializeDate(endDate),
             paymentOption,
           }),
         },
@@ -320,8 +378,8 @@ export default function CalendarioDisponibilidad({
     }) => {
       const response = await api.post("/api/reservation/with_auth", {
         apartmentId: apartmentId,
-        checkInDate: new Date(startDay).toISOString(),
-        checkOutDate: new Date(endDay).toISOString(),
+        checkInDate: serializeDate(startDay),
+        checkOutDate: serializeDate(endDay),
       });
       return response.data;
     },
@@ -342,8 +400,16 @@ export default function CalendarioDisponibilidad({
 
   function confirmDates() {
     if (!rangeStart || !rangeEnd) return;
+    if (isVerifyingUserReservations || userReservationsError) {
+      setReservationError("No se pudieron verificar tus reservas pendientes. Intentá nuevamente.");
+      return;
+    }
 
     const { startDate, endDate } = normalizeRange(rangeStart, rangeEnd);
+    if (rangeHasReservation(startDate, endDate, reservas, userPendingReservations)) {
+      setReservationError("El rango seleccionado incluye fechas que no están disponibles para vos.");
+      return;
+    }
 
     if (isAuthenticated) {
       setIsCreatingReservation(true);
@@ -488,6 +554,8 @@ export default function CalendarioDisponibilidad({
                 day ? (
                   (() => {
                     const reserved = isReserved(day, reservas);
+                    const pendingForUser = isPendingForUser(day, userPendingReservations);
+                    const unavailable = reserved || pendingForUser;
                     const selected =
                       isBetween(day, rangeStart, rangeEnd) ||
                       Boolean(
@@ -497,23 +565,35 @@ export default function CalendarioDisponibilidad({
                       <button
                         key={dateKey(day)}
                         type="button"
-                        title={reserved ? "Fecha reservada" : ""}
-                        disabled={reserved || !isSelectableDay(day)}
-                        onPointerDown={() =>
-                          !reserved && handleDayPointerDown(day)
+                        title={
+                          reserved
+                            ? "Fecha reservada"
+                            : pendingForUser
+                              ? "Tenés una reserva pendiente para esta fecha"
+                              : ""
                         }
-                        onPointerEnter={() => isDragging && updateRangeEnd(day)}
-                        onPointerUp={() => !reserved && handleDayPointerUp(day)}
+                        disabled={unavailable || !isSelectableDay(day)}
+                        onPointerDown={() =>
+                          !unavailable && handleDayPointerDown(day)
+                        }
+                        onPointerEnter={() =>
+                          isDragging && !unavailable && updateRangeEnd(day)
+                        }
+                        onPointerUp={() =>
+                          !unavailable && handleDayPointerUp(day)
+                        }
                         className={`aspect-square rounded-sm border border-transparent p-0.5 transition ${
                           reserved
                             ? "cursor-not-allowed bg-[#f3ddd3] text-[#a85c43]"
-                            : !isSelectableDay(day)
-                              ? "cursor-not-allowed bg-[#f0efe9] text-[#a6a29a]"
-                              : selected
-                                ? "bg-[#385347] text-white shadow-sm"
-                                : "bg-[#edf2e8] text-[#385347] hover:bg-[#dce8d8]"
+                            : pendingForUser
+                              ? "cursor-not-allowed bg-[#fff1bf] text-[#8a5a00]"
+                              : !isSelectableDay(day)
+                                ? "cursor-not-allowed bg-[#f0efe9] text-[#a6a29a]"
+                                : selected
+                                  ? "bg-[#385347] text-white shadow-sm"
+                                  : "bg-[#edf2e8] text-[#385347] hover:bg-[#dce8d8]"
                         }`}
-                        aria-label={`${day.getDate()} de ${monthFormatter.format(month)}${reserved ? ", reservado" : ", disponible"}`}
+                        aria-label={`${day.getDate()} de ${monthFormatter.format(month)}${reserved ? ", reservado" : pendingForUser ? ", tu reserva está pendiente" : ", disponible"}`}
                       >
                         <span className="flex h-full items-center justify-center text-xs font-semibold">
                           {day.getDate()}
@@ -534,6 +614,12 @@ export default function CalendarioDisponibilidad({
               <span className="inline-flex items-center gap-1.5">
                 <CircleX size={14} className="text-[#c7765a]" /> Reservado
               </span>
+              {userId && (
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-3.5 w-3.5 rounded-sm bg-[#fff1bf]" />
+                  Tu reserva pendiente
+                </span>
+              )}
               {rangeStart && rangeEnd && (
                 <span className="w-full text-[#385347]">
                   {dateKey(rangeStart)} a {dateKey(rangeEnd)}
@@ -541,6 +627,26 @@ export default function CalendarioDisponibilidad({
               )}
             </div>
 
+            {isVerifyingUserReservations && (
+              <p className="mt-3 text-sm text-[#68716a]" role="status">
+                Verificando tus reservas pendientes...
+              </p>
+            )}
+            {userReservationsError && (
+              <div
+                className="mt-3 flex items-center justify-between gap-3 text-sm text-[#b74f3d]"
+                role="alert"
+              >
+                <span>No se pudieron verificar tus reservas pendientes.</span>
+                <button
+                  type="button"
+                  onClick={() => void userReservationsQuery.refetch()}
+                  className="font-semibold underline"
+                >
+                  Reintentar
+                </button>
+              </div>
+            )}
             {reservationError && (
               <p className="mt-3 text-sm text-[#b74f3d]" role="alert">
                 {reservationError}
@@ -548,7 +654,21 @@ export default function CalendarioDisponibilidad({
             )}
             <button
               type="button"
-              disabled={!rangeStart || !rangeEnd || isCreatingReservation}
+              disabled={
+                !rangeStart ||
+                !rangeEnd ||
+                isCreatingReservation ||
+                isVerifyingUserReservations ||
+                userReservationsError ||
+                (rangeStart &&
+                  rangeEnd &&
+                  rangeHasReservation(
+                    rangeStart,
+                    rangeEnd,
+                    reservas,
+                    userPendingReservations,
+                  ))
+              }
               onClick={confirmDates}
               className="ui-button ui-button-md ui-button-block mt-4"
             >
@@ -609,8 +729,8 @@ export default function CalendarioDisponibilidad({
                         apartmentName,
                         apartmentLocation,
                         pricePerDay,
-                        checkInDate: rangeStart?.toISOString(),
-                        checkOutDate: rangeEnd?.toISOString(),
+                        checkInDate: rangeStart ? serializeDate(rangeStart) : undefined,
+                        checkOutDate: rangeEnd ? serializeDate(rangeEnd) : undefined,
                       },
                     }}
                     className="font-semibold underline"
@@ -627,8 +747,8 @@ export default function CalendarioDisponibilidad({
                         apartmentName,
                         apartmentLocation,
                         pricePerDay,
-                        checkInDate: rangeStart?.toISOString(),
-                        checkOutDate: rangeEnd?.toISOString(),
+                        checkInDate: rangeStart ? serializeDate(rangeStart) : undefined,
+                        checkOutDate: rangeEnd ? serializeDate(rangeEnd) : undefined,
                       },
                     }}
                     className="font-semibold underline"

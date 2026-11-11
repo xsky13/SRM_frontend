@@ -7,6 +7,7 @@ export default [
 	route("cuenta/editar", "routes/cuenta.editar.tsx"),
 	route("logout", "routes/logout.tsx"),
 	route("reservas/:id", "routes/reserva.tsx"),
+	route("reservas/:id/modificar", "routes/mis-reservas-modificar.tsx"),
 	route("reservas", "routes/mis-reservas.tsx"),
 	route("departamento/:id", "routes/departamento.tsx"),
 	route("test", "routes/test.tsx"),
