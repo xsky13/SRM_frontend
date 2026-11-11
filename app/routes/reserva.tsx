@@ -376,7 +376,7 @@ export default function ReservaPage() {
 								title: "Pagar resto",
 								description: "Completar el pago pendiente de la reserva",
 								option: "rest",
-								amount: total,
+								amount: remaining,
 							})}
 					</div>
 				) : (
