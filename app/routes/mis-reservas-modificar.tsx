@@ -124,9 +124,7 @@ export default function MisReservasModificarPage() {
   const originalTotal = reservaQuery.data ?
     reservaQuery.data.fullCost : 0;
 
-  const newTotal = rangeStart && rangeEnd
-    ? Math.round(Math.abs(rangeEnd.getTime() - rangeStart.getTime()) / 86_400_000) + 1 * (reservaQuery.data?.apartment.price ?? 0)
-    : 0;
+  const newTotal = selectedDays * (reservaQuery.data?.apartment.price ?? 0);
 
   const delta = originalTotal == null ? 0 : Math.max(0, newTotal - originalTotal);
   const refund = originalTotal == null ? 0 : Math.max(0, originalTotal - newTotal);
@@ -203,18 +201,16 @@ export default function MisReservasModificarPage() {
     try {
       const { startDate, endDate } = normalizeRange(rangeStart, rangeEnd);
       const response = await fetch(
-        `${apiBaseUrl.replace(/\/$/, "")}/api/Payment/process_card_payment/${reservaQuery.data.apartmentId}`,
+        `${apiBaseUrl.replace(/\/$/, "")}/api/reservation/${reservaQuery.data.reservationId}/full`,
         {
-          method: "POST",
+          method: "PUT",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({
             ...formData,
-            checkInDate: new Date(startDate).toISOString(),
-            checkOutDate: new Date(endDate).toISOString(),
-            paymentOption,
-            reservationId: reservaQuery.data.reservationId,
-            isModification: true,
+            NewStartDate: startDate.toISOString(),
+            NewEndDate: endDate.toISOString(),
+            ReservationId: reservaQuery.data.reservationId,
           }),
         },
       );
@@ -231,10 +227,10 @@ export default function MisReservasModificarPage() {
       }
 
       const normalizedStatus = Number(data?.paymentStatus ?? data?.status ?? data?.payment_status ?? 0);
-      setUserEmail(data.email);
+      setUserEmail(data.email ?? authQuery.data?.email ?? "tu correo");
       setPaymentStatus(normalizedStatus);
 
-      if (normalizedStatus === 2) {
+      if (normalizedStatus === 2 || (response.ok && !normalizedStatus)) {
         setStep("success");
         return;
       }
@@ -257,7 +253,71 @@ export default function MisReservasModificarPage() {
     }
   }
 
+  async function handleSaveDates(): Promise<void> {
+    if (!rangeStart || !rangeEnd || !reservaQuery.data) {
+      setPaymentError("Faltan datos de la reserva.");
+      return;
+    }
+
+    const { startDate, endDate } = normalizeRange(rangeStart, rangeEnd);
+    setIsProcessingPayment(true);
+    setPaymentError(null);
+
+    try {
+      const response = await fetch(
+        `${apiBaseUrl.replace(/\/$/, "")}/api/reservation/${reservaQuery.data.reservationId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            NewStartDate: startDate.toISOString(),
+            NewEndDate: endDate.toISOString(),
+          }),
+        },
+      );
+
+      const rawText = await response.text();
+      let data: any = null;
+      if (rawText) {
+        try {
+          data = JSON.parse(rawText);
+        } catch {
+          data = { message: rawText };
+        }
+      }
+
+      if (!response.ok) {
+        throw new Error(data?.message ?? data?.error ?? data?.title ?? "No se pudo modificar la reserva.");
+      }
+
+      setStep("success");
+      await reservaQuery.refetch();
+    } catch (error) {
+      setPaymentError(error instanceof Error ? error.message : "No se pudo modificar la reserva.");
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  }
+
   const paymentAmount = paymentOption === "deposit" ? Math.max(0, delta) : Math.max(0, delta);
+  const oldReservationDays = reservaQuery.data
+    ? Math.max(
+        1,
+        Math.round(
+          Math.abs(parseDate(reservaQuery.data.checkOutDate).getTime() - parseDate(reservaQuery.data.checkInDate).getTime())
+            / 86_400_000,
+        ),
+      )
+    : 0;
+  const requiresPaidModification = Boolean(
+    reservaQuery.data &&
+      Math.max(1, selectedDays - 1) > oldReservationDays &&
+      (
+        reservaQuery.data.state === ReservationState.ConfirmedPaymentIncomplete ||
+        reservaQuery.data.state === ReservationState.ConfirmedPaymentComplete
+      ),
+  );
   const shouldShowPayment = Boolean(
     reservaQuery.data &&
       (reservaQuery.data.state === ReservationState.NotConfirmed ||
@@ -447,8 +507,13 @@ export default function MisReservasModificarPage() {
             {paymentError && <p className="mt-3 text-sm text-[#b74f3d]">{paymentError}</p>}
 
             {!showCardForm ? (
-              <button type="button" onClick={() => setShowCardForm(true)} disabled={isProcessingPayment} className="ui-button ui-button-md ui-button-block mt-4">
-                Continuar al pago
+              <button
+                type="button"
+                onClick={requiresPaidModification ? () => setShowCardForm(true) : handleSaveDates}
+                disabled={isProcessingPayment}
+                className="ui-button ui-button-md ui-button-block mt-4"
+              >
+                {requiresPaidModification ? "Continuar al pago" : "Guardar modificación"}
               </button>
             ) : (
               <div className="mt-4 max-h-[55vh] overflow-y-auto rounded-md border border-[#e0ded5] bg-[#f8f4ef] p-3">
