@@ -8,10 +8,12 @@ export interface DepartamentoData {
 	price: number;
 	coverImgUrl?: string;
 	images: Image[];
+	isDeleted?: boolean;
+	latitude?: number;
+	longitude?: number;
+	[key: string]: unknown;
 }
 
-<<<<<<< HEAD
-=======
 export type ApartmentCreateInput = {
 	name: string;
 	description: string;
@@ -27,7 +29,6 @@ export type ApartmentWriteInput = Omit<
 	"id" | "images" | "isDeleted"
 >;
 
->>>>>>> 26650ab4df7b7d50f4334a36ebdc4f5eeb9353e9
 export class Departamento {
 	public readonly id: string;
 	public readonly name: string;
@@ -36,10 +37,9 @@ export class Departamento {
 	public readonly description: string;
 	public readonly coverImgUrl: string;
 	public readonly images: Image[];
+	public readonly latitude?: number;
+	public readonly longitude?: number;
 
-<<<<<<< HEAD
-	constructor({ id, name, location, price, coverImgUrl, images }: DepartamentoData) {
-=======
 	constructor({
 		id,
 		name,
@@ -49,21 +49,17 @@ export class Departamento {
 		images,
 		latitude,
 		longitude,
-		description
+		description,
 	}: DepartamentoData) {
->>>>>>> 26650ab4df7b7d50f4334a36ebdc4f5eeb9353e9
 		this.id = id;
 		this.name = name;
 		this.location = location;
 		this.price = price;
 		this.images = images;
 		this.coverImgUrl = coverImgUrl ?? images[0]?.url ?? "";
-<<<<<<< HEAD
-=======
 		this.latitude = latitude;
 		this.longitude = longitude;
 		this.description = description;
->>>>>>> 26650ab4df7b7d50f4334a36ebdc4f5eeb9353e9
 	}
 
 	static fromDatabase(data: DepartamentoData): Departamento {

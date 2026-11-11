@@ -1,7 +1,5 @@
 import axios from 'axios';
 import { ApiError } from '~/types/ApiError';
-<<<<<<< HEAD
-=======
 import type { ApartmentCreateInput, DepartamentoData, ApartmentWriteInput } from '~/models/Departamento';
 import type { ImageData } from '~/types/images';
 import type { Reserva } from '~/types/Reserva';
@@ -27,7 +25,6 @@ export interface UpdateUserInput {
     telefono: string;
     email: string;
 }
->>>>>>> 26650ab4df7b7d50f4334a36ebdc4f5eeb9353e9
 
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL,
@@ -54,14 +51,7 @@ api.interceptors.response.use(
             const status = error.response.status;
 
             // mensajes mas especificos
-<<<<<<< HEAD
-            const backendMessage = error.response.data?.message;
-=======
-            //
-            console.log(error.response)
-
             const backendMessage = error.response.data?.error ?? error.response.data?.message ?? error.response.data?.Error;
->>>>>>> 26650ab4df7b7d50f4334a36ebdc4f5eeb9353e9
             const message = backendMessage || ERROR_MESSAGES[status] || ERROR_MESSAGES[400];
 
             /** CUANDO TENGAMOS AUTH, DESCOMENTAR */
@@ -80,8 +70,6 @@ api.interceptors.response.use(
         return Promise.reject(new ApiError('Error desconocido al realizar la solicitud', 0));
     }
 );
-<<<<<<< HEAD
-=======
 
 export async function getApartments(): Promise<DepartamentoData[]> {
     const { data } = await api.get<DepartamentoData[]>('/api/apartment');
@@ -198,5 +186,4 @@ export async function deleteApartmentImages(id: string): Promise<void> {
     await api.delete(`/api/apartment/${id}/images`);
 }
 
->>>>>>> 26650ab4df7b7d50f4334a36ebdc4f5eeb9353e9
 export default api;

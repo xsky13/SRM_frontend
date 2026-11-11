@@ -1,17 +1,26 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import type { Departamento } from "~/models/Departamento";
 import type { Reserva } from "~/types/Reserva";
 import ApartmentLocationMap from "~/components/ApartmentLocationMap";
 import CalendarioDisponibilidad from "~/components/CalendarioDisponibilidad";
-import api from "~/utils/api";
+import NavegacionUsuario, { useAuthentication } from "~/components/NavegacionUsuario";
+import api, { resolveImageUrl } from "~/utils/api";
 import type { Route } from "./+types/departamento";
 
 export default function DepartamentoDetallePage() {
 	const { id } = useParams<Route.ComponentProps["params"]>();
+	const location = useLocation();
+	const navigate = useNavigate();
 	const [selectedImageId, setSelectedImageId] = useState<string>();
 	const [showCalendar, setShowCalendar] = useState(false);
+	const authQuery = useAuthentication();
+
+	function closeCalendar() {
+		setShowCalendar(false);
+		navigate(location.pathname, { replace: true, state: null });
+	}
 
 	const query = useQuery<Departamento>({
 		queryKey: ["apartment", id],
@@ -40,8 +49,6 @@ export default function DepartamentoDetallePage() {
 	}
 
 	const formattedPrice = `$${departamento.price.toLocaleString("es-AR")}`;
-<<<<<<< HEAD
-=======
 	const rawLatitude = departamento.latitude;
 	const rawLongitude = departamento.longitude;
 	const latitude = Number(rawLatitude);
@@ -57,7 +64,6 @@ export default function DepartamentoDetallePage() {
 		latitude <= 90 &&
 		longitude >= -180 &&
 		longitude <= 180;
->>>>>>> 26650ab4df7b7d50f4334a36ebdc4f5eeb9353e9
 	const images = departamento.images ?? [];
 	const galleryImages =
 		images.length > 0
@@ -80,18 +86,7 @@ export default function DepartamentoDetallePage() {
 				</div>
 
 				<div className="flex items-center gap-4 text-sm text-[#385347]">
-					<Link to="/" className="ui-link">
-						Legal
-					</Link>
-					<Link to="/" className="ui-link">
-						Crear cuenta
-					</Link>
-					<button
-						type="button"
-						className="ui-button ui-button-sm"
-					>
-						Iniciar sesión
-					</button>
+					<NavegacionUsuario />
 				</div>
 			</header>
 
@@ -140,13 +135,8 @@ export default function DepartamentoDetallePage() {
 						<div className="ui-border rounded-md bg-[#fffdf9] p-3">
 							<div className="ui-border overflow-hidden rounded-md bg-[#ede9dc]">
 								<img
-<<<<<<< HEAD
 									className="h-[400px] w-full object-cover"
-									src={departamento.coverImgUrl}
-=======
-									className="h-100 w-full object-cover"
 									src={resolveImageUrl(departamento.coverImgUrl)}
->>>>>>> 26650ab4df7b7d50f4334a36ebdc4f5eeb9353e9
 									alt={`${departamento.name}, imagen de portada`}
 								/>
 							</div>
@@ -164,7 +154,7 @@ export default function DepartamentoDetallePage() {
 								>
 									<img
 										className="h-full w-full object-cover"
-										src={image.url}
+										src={resolveImageUrl(image.url)}
 										alt={`${departamento.name}, vista ${index + 1}`}
 									/>
 								</button>
@@ -174,8 +164,6 @@ export default function DepartamentoDetallePage() {
 				</div>
 			</section>
 
-<<<<<<< HEAD
-=======
 			<section className="mx-auto max-w-7xl px-5 pb-10 md:px-8">
 				<div className="rounded-md border border-[#e5e7eb] bg-[#fffdf9] p-5 md:p-6">
 					<h2 className="mb-4 font-serif text-3xl tracking-[-0.04em] text-[#385347]">Ubicación</h2>
@@ -195,13 +183,15 @@ export default function DepartamentoDetallePage() {
 				</div>
 			</section>
 
->>>>>>> 26650ab4df7b7d50f4334a36ebdc4f5eeb9353e9
 			{showCalendar && (
 				<CalendarioDisponibilidad
 					reservas={reservationsQuery.data ?? []}
 					pricePerDay={departamento.price}
 					apartmentId={departamento.id}
-					onClose={() => setShowCalendar(false)}
+					apartmentName={departamento.name}
+					apartmentLocation={departamento.location}
+					isAuthenticated={authQuery.data != null}
+					onClose={closeCalendar}
 				/>
 			)}
 		</main>

@@ -19,18 +19,6 @@ const query = useQuery<Departamento[]>({
     queryFn: async () =>
       await api.get("/api/apartment").then((res) => res.data),
   });
-<<<<<<< HEAD
-	console.log(query.data);
-		// const apartments = [
-	// 	new Departamento({ name: "Limonero", location: "Libertador San Martín", price: 42000, image: "/fuap.jpg" }),
-	// 	new Departamento({ name: "La Estación", location: "A 3 cuadras del centro", price: 28500, image: "/fuap.jpg" }),
-	// 	new Departamento({ name: "El Jacarandá", location: "Barrio Norte", price: 58000, image: "/fuap.jpg" }),
-	// 	new Departamento({ name: "Patio Verde", location: "Zona residencial", price: 39000, image: "/fuap.jpg" }),
-	// 	new Departamento({ name: "El Mirador", location: "Vista al parque", price: 46000, image: "/fuap.jpg" }),
-	// 	new Departamento({ name: "Los Tilos", location: "Cerca de la universidad", price: 30000, image: "/fuap.jpg" }),
-	// ];
-=======
->>>>>>> 26650ab4df7b7d50f4334a36ebdc4f5eeb9353e9
 	if (query.isPending) return 'Loading...'
 	return (
 		<main className="min-h-screen bg-[#f6f4ee] font-sans text-[#202722]">
