@@ -463,7 +463,7 @@ export default function CalendarioDisponibilidad({
 
   return (
     <div
-      className="fixed inset-0 z-[999] flex items-center justify-center overflow-y-auto bg-[#202722]/35 p-4"
+      className="fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto bg-[#202722]/35 p-4"
       onClick={onClose}
     >
       <section

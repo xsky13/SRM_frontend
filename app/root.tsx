@@ -101,7 +101,7 @@ export default function App() {
 	return (
 		<>
 			<AppLoadingIndicator />
-			<div className="fixed w-full z-50">
+			<div className="fixed w-full z-[1500]">
 				<NavegacionUsuario />
 			</div>
 			<div className="pt-20">
