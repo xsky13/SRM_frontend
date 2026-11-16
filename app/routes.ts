@@ -17,5 +17,6 @@ export default [
 		route("departamentos/nuevo", "routes/admin.departamentos.nuevo.tsx"),
 		route("departamentos/:id/editar", "routes/admin.departamentos.editar.tsx"),
 		route("reservas", "routes/admin.reservas.tsx"),
+		route("usuarios", "routes/admin.usuarios.tsx"),
 	])
 ] satisfies RouteConfig;
