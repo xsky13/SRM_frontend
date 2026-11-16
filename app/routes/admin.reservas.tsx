@@ -30,6 +30,13 @@ function getPaymentsTotal(payments: PaymentDto[]) {
   return payments.reduce((total, payment) => total + payment.amount, 0);
 }
 
+function getPendingRefunds(payments: PaymentDto[]) {
+  return payments.filter(
+    (payment) =>
+      payment.isRefund && payment.paymentStatus !== PaymentStatus.Refunded,
+  );
+}
+
 function getPaymentStatusLabel(status: PaymentStatus) {
   const labels: Record<PaymentStatus, string> = {
     [PaymentStatus.Pending]: "pendiente",
@@ -280,6 +287,20 @@ export default function AdminReservasPage() {
                           / {formatCurrency(getReservationFullPrice(reservation.checkInDate, reservation.checkOutDate, reservation.apartment?.price ?? 0))}
                         </span>
                       </p>
+                      {/* {getPendingRefunds(reservation.payments).length > 0 && (
+                        <p
+                          role="status"
+                          className="mt-2 inline-flex rounded-full bg-[#fff0e8] px-2.5 py-1 text-xs font-semibold text-[#a13c22]"
+                        >
+                          Devolución:{" "}
+                          {formatCurrency(
+                            getPendingRefunds(reservation.payments).reduce(
+                              (total, payment) => total + payment.amount,
+                              0,
+                            ),
+                          )}
+                        </p>
+                      )} */}
                       {reservation.payments.length > 0 ? (
                         <details className="mt-2">
                           <summary className="cursor-pointer text-xs font-medium text-[#385347] underline decoration-[#d3d0c6] underline-offset-2">
@@ -304,6 +325,7 @@ export default function AdminReservasPage() {
                                   {formatDate(payment.paymentDate)} ·{" "}
                                   {payment.isManual ? "Manual" : "En línea"}
                                   {payment.isSign ? " · Seña" : ""}
+                                  {payment.isRefund ? " · Reembolso": ""}
                                 </p>
                               </li>
                             ))}

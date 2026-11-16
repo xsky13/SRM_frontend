@@ -413,6 +413,9 @@ export default function MisReservasModificarPage() {
     return <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">Reserva no encontrada.</main>;
   }
 
+  const payed = reservaQuery.data.payments.reduce((acc, r) => acc + r.amount, 0);
+  console.log(payed)
+
   return (
     <main className="min-h-screen bg-[#f6f4ee] text-[#202722]">
       <header className="mx-auto flex max-w-7xl items-center justify-between px-5 py-6 md:px-8">
@@ -532,8 +535,8 @@ export default function MisReservasModificarPage() {
                 <p className="font-medium text-[#202722]">{rangeStart && rangeEnd ? `${formatDate(rangeStart)} — ${formatDate(rangeEnd)}` : "Sin fechas"}</p>
               </div>
               <div className="text-right">
-                <p className="text-sm text-[#68716a]">Monto nuevo</p>
-                <p className="text-xl font-semibold text-[#202722]">{formatPrice(newTotal)}</p>
+                <p className="text-sm text-[#68716a]">Monto a pagar:</p>
+                <p className="text-xl font-semibold text-[#202722]">{formatPrice((reservaQuery.data.fullCost - payed) + delta)}</p>
               </div>
             </div>
 
