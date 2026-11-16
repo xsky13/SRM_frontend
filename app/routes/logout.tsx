@@ -19,5 +19,12 @@ export default function LogoutRoute() {
 
 	useEffect(() => { mutation.mutate(); }, []);
 
-	return <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#385347]">Cerrando sesión...</main>;
+	return (
+		<main className="flex min-h-screen items-center justify-center bg-[#f6f4ee] p-8 text-[#385347]">
+			<div role="status" className="inline-flex items-center gap-3 rounded-md border border-[#e0ded5] bg-[#fffdf9] px-5 py-4">
+				<span aria-hidden="true" className="size-5 animate-spin rounded-full border-2 border-[#385347] border-t-transparent" />
+				Cerrando sesión...
+			</div>
+		</main>
+	);
 }

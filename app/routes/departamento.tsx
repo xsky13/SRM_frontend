@@ -8,6 +8,7 @@ import CalendarioDisponibilidad from "~/components/CalendarioDisponibilidad";
 import NavegacionUsuario, { useAuthentication } from "~/components/NavegacionUsuario";
 import api, { resolveImageUrl } from "~/utils/api";
 import type { Route } from "./+types/departamento";
+import { LoadingState, QueryErrorState, Skeleton } from "~/components/LoadingFeedback";
 
 export default function DepartamentoDetallePage() {
 	const { id } = useParams<Route.ComponentProps["params"]>();
@@ -41,7 +42,43 @@ export default function DepartamentoDetallePage() {
 	const departamento = query.data;
 
 	if (query.isPending) {
-		return <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">Cargando...</main>;
+		return (
+			<main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">
+				<LoadingState label="Cargando departamento">
+					<div className="mx-auto max-w-7xl space-y-8" aria-hidden="true">
+						<div className="grid gap-12 lg:grid-cols-[0.95fr_1.35fr]">
+							<div className="space-y-5">
+								<Skeleton className="h-14 w-4/5" />
+								<Skeleton className="h-24 w-full" />
+								<Skeleton className="h-32 w-full" />
+								<Skeleton className="h-12 w-full" />
+							</div>
+							<div className="space-y-4">
+								<Skeleton className="h-[400px] w-full" />
+								<div className="grid grid-cols-3 gap-3">
+									<Skeleton className="aspect-4/3" />
+									<Skeleton className="aspect-4/3" />
+									<Skeleton className="aspect-4/3" />
+								</div>
+							</div>
+						</div>
+					</div>
+				</LoadingState>
+			</main>
+		);
+	}
+
+	if (query.isError) {
+		return (
+			<main className="min-h-screen bg-[#f6f4ee] p-8">
+				<div className="mx-auto max-w-xl">
+					<QueryErrorState
+						message="No pudimos cargar el departamento."
+						onRetry={() => void query.refetch()}
+					/>
+				</div>
+			</main>
+		);
 	}
 
 	if (!departamento) {
@@ -183,7 +220,33 @@ export default function DepartamentoDetallePage() {
 				</div>
 			</section>
 
-			{showCalendar && (
+			{showCalendar && reservationsQuery.isPending && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+					<div className="w-full max-w-xl rounded-xl bg-[#fffdf9] p-6 shadow-xl">
+						<LoadingState label="Cargando disponibilidad">
+							<div className="space-y-4" aria-hidden="true">
+								<Skeleton className="h-8 w-2/3" />
+								<Skeleton className="h-64 w-full" />
+								<Skeleton className="h-10 w-full" />
+							</div>
+						</LoadingState>
+					</div>
+				</div>
+			)}
+			{showCalendar && reservationsQuery.isError && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+					<div className="w-full max-w-xl rounded-xl bg-[#fffdf9] p-6 shadow-xl">
+						<QueryErrorState
+							message="No pudimos cargar la disponibilidad de este departamento."
+							onRetry={() => void reservationsQuery.refetch()}
+						/>
+						<button type="button" onClick={closeCalendar} className="ui-button ui-button-sm mt-4">
+							Cerrar
+						</button>
+					</div>
+				</div>
+			)}
+			{showCalendar && !reservationsQuery.isPending && !reservationsQuery.isError && (
 				<CalendarioDisponibilidad
 					reservas={reservationsQuery.data ?? []}
 					pricePerDay={departamento.price}

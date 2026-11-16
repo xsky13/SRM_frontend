@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { DepartamentoData } from "~/models/Departamento";
 import { createAdminReservation, getApartments } from "~/utils/api";
+import { QueryErrorState } from "~/components/LoadingFeedback";
 
 type CreateReservationModalProps = {
   isOpen: boolean;
@@ -129,18 +130,18 @@ export default function CreateReservationModal({
                 disabled={apartmentsQuery.isLoading || apartmentsQuery.isError}
                 className="mt-1.5 w-full rounded-lg border border-[#d8d5cd] bg-white px-3 py-2.5 font-normal"
               >
-                <option value="">
-                  {apartmentsQuery.isLoading ? "Cargando departamentos..." : "Seleccioná un departamento"}
-                </option>
+                <option value="">Seleccioná un departamento</option>
                 {apartmentsQuery.data?.map((apartment) => (
                   <option key={apartment.id} value={apartment.id}>
                     {apartment.name}
                   </option>
                 ))}
               </select>
-              {apartmentsQuery.isError && (
-                <span className="mt-1 block font-normal text-red-700">
-                  No se pudieron cargar los departamentos.
+              {apartmentsQuery.isLoading && (
+                <span role="status" aria-label="Cargando departamentos" className="mt-2 flex items-center gap-2">
+                  <span aria-hidden="true" className="size-4 animate-spin rounded-full border-2 border-[#385347] border-t-transparent" />
+                  <span className="sr-only">Cargando departamentos...</span>
+                  <span aria-hidden="true" className="h-3 w-32 animate-pulse rounded bg-gray-200" />
                 </span>
               )}
               {apartmentsQuery.data?.length === 0 && (
@@ -149,6 +150,13 @@ export default function CreateReservationModal({
                 </span>
               )}
             </label>
+            {apartmentsQuery.isError && (
+              <QueryErrorState
+                className="sm:col-span-3"
+                message="No se pudieron cargar los departamentos."
+                onRetry={() => void apartmentsQuery.refetch()}
+              />
+            )}
 
             <label className="block text-sm font-medium text-[#424a44]">
               Fecha de ingreso

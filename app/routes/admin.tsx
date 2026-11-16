@@ -2,6 +2,7 @@
 import { Link, Navigate, NavLink, Outlet } from "react-router";
 import { useAuthentication } from "~/components/NavegacionUsuario";
 import { UserType } from "~/types/User";
+import { QueryErrorState, Skeleton } from "~/components/LoadingFeedback";
 
 export default function AdminLayout() {
   const authQuery = useAuthentication();
@@ -10,7 +11,24 @@ export default function AdminLayout() {
   if (authQuery.isPending) {
     return (
       <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">
-        Verificando sesión...
+        <div role="status" aria-label="Verificando sesión" className="mx-auto max-w-7xl space-y-5">
+          <Skeleton className="h-10 w-64" />
+          <Skeleton className="h-14 w-full" />
+          <Skeleton className="h-52 w-full" />
+        </div>
+      </main>
+    );
+  }
+
+  if (authQuery.isError) {
+    return (
+      <main className="min-h-screen bg-[#f6f4ee] p-8">
+        <div className="mx-auto max-w-xl">
+          <QueryErrorState
+            message="No pudimos verificar tu acceso al panel de administración."
+            onRetry={() => void authQuery.refetch()}
+          />
+        </div>
       </main>
     );
   }

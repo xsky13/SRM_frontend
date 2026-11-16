@@ -1,4 +1,5 @@
 import { useEffect, useState, type ComponentType } from "react";
+import { Skeleton } from "~/components/LoadingFeedback";
 
 export type Coordinates = {
 	latitude: number;
@@ -40,7 +41,13 @@ export function LocationPicker(props: LocationPickerProps) {
 	}
 
 	if (!LeafletPicker) {
-		return <p className="text-sm text-[#68716a]">Cargando el mapa...</p>;
+		return (
+			<div role="status" aria-label="Cargando el selector de ubicación" className="space-y-2">
+				<span className="sr-only">Cargando el mapa...</span>
+				<Skeleton className="h-64 w-full" />
+				<Skeleton className="h-4 w-48" />
+			</div>
+		);
 	}
 
 	return <LeafletPicker {...props} />;

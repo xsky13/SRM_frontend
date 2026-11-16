@@ -8,6 +8,7 @@ import { useAuthentication } from "~/components/NavegacionUsuario";
 import { ReservationState } from "~/types/Reserva";
 import type { ReservationDetail } from "~/types/ReservationDetail";
 import { RESERVATION_STATE_LABEL } from "~/types/reservationState";
+import { QueryErrorState, Skeleton } from "~/components/LoadingFeedback";
 
 const apiBaseUrl = import.meta.env.VITE_API_URL;
 const monthFormatter = new Intl.DateTimeFormat("es-AR", { month: "long", year: "numeric" });
@@ -387,7 +388,27 @@ export default function MisReservasModificarPage() {
   );
 
   if (authQuery.isPending) {
-    return <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">Verificando sesión...</main>;
+    return (
+      <main className="min-h-screen bg-[#f6f4ee] p-8">
+        <div role="status" aria-label="Verificando sesión" className="mx-auto max-w-6xl space-y-5">
+          <Skeleton className="h-10 w-48" />
+          <Skeleton className="h-6 w-72" />
+        </div>
+      </main>
+    );
+  }
+
+  if (authQuery.isError) {
+    return (
+      <main className="min-h-screen bg-[#f6f4ee] p-8">
+        <div className="mx-auto max-w-xl">
+          <QueryErrorState
+            message="No pudimos verificar tu sesión para modificar la reserva."
+            onRetry={() => void authQuery.refetch()}
+          />
+        </div>
+      </main>
+    );
   }
 
   if (!authQuery.data) {
@@ -395,7 +416,28 @@ export default function MisReservasModificarPage() {
   }
 
   if (reservaQuery.isPending) {
-    return <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">Cargando reserva...</main>;
+    return (
+      <main className="min-h-screen bg-[#f6f4ee] p-8">
+        <div role="status" aria-label="Cargando reserva" className="mx-auto max-w-6xl space-y-6">
+          <Skeleton className="h-12 w-2/3" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-80 w-full" />
+        </div>
+      </main>
+    );
+  }
+
+  if (reservaQuery.isError) {
+    return (
+      <main className="min-h-screen bg-[#f6f4ee] p-8">
+        <div className="mx-auto max-w-xl">
+          <QueryErrorState
+            message="No se pudo cargar la reserva que querés modificar."
+            onRetry={() => void reservaQuery.refetch()}
+          />
+        </div>
+      </main>
+    );
   }
 
   if (!reservaQuery.data) {

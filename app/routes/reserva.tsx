@@ -6,6 +6,7 @@ import { RESERVATION_STATE_LABEL } from "~/types/reservationState";
 import api from "~/utils/api";
 import { ReservationState } from "~/types/Reserva";
 import { PaymentStatus, type ReservationDetail } from "~/types/ReservationDetail";
+import { QueryErrorState, Skeleton } from "~/components/LoadingFeedback";
 
 const apiBaseUrl = import.meta.env.VITE_API_URL;
 const paymentEndpoints = {
@@ -127,7 +128,21 @@ export default function ReservaPage() {
 	if (reservationQuery.isPending) {
 		return (
 			<main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">
-				Cargando reserva...
+				<div role="status" aria-label="Cargando reserva" className="mx-auto max-w-7xl space-y-8" aria-hidden="false">
+					<div className="flex flex-wrap items-end justify-between gap-5">
+						<div className="space-y-3">
+							<Skeleton className="h-12 w-48" />
+							<Skeleton className="h-5 w-64" />
+						</div>
+						<Skeleton className="h-8 w-56" />
+					</div>
+					<Skeleton className="h-24 w-full" />
+					<div className="grid gap-8 md:grid-cols-2">
+						<Skeleton className="h-80 w-full" />
+						<Skeleton className="h-80 w-full" />
+					</div>
+					<Skeleton className="h-48 w-full" />
+				</div>
 			</main>
 		);
 	}
@@ -135,10 +150,15 @@ export default function ReservaPage() {
 	if (reservationQuery.isError || !reservation) {
 		return (
 			<main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">
-				<p>No se pudo cargar la reserva.</p>
+				<div className="mx-auto max-w-xl">
+					<QueryErrorState
+						message="No se pudo cargar la reserva."
+						onRetry={() => void reservationQuery.refetch()}
+					/>
 				<Link className="ui-text-link" to="/reservas">
 					Volver a mis reservas
 				</Link>
+				</div>
 			</main>
 		);
 	}

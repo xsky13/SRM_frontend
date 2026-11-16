@@ -5,6 +5,7 @@ import api from "~/utils/api";
 import { useAuthentication } from "~/components/NavegacionUsuario";
 import { ReservationState } from "~/types/Reserva";
 import { RESERVATION_STATE_LABEL } from "~/types/reservationState";
+import { LoadingState, QueryErrorState, Skeleton } from "~/components/LoadingFeedback";
 
 export function meta() {
   return [{ title: "Mis reservas | Reservas Moreno" }];
@@ -58,7 +59,25 @@ export default function MisReservasPage() {
   if (authQuery.isPending) {
     return (
       <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">
-        Verificando sesión...
+        <LoadingState label="Verificando sesión">
+          <div className="mx-auto max-w-7xl space-y-5" aria-hidden="true">
+            <Skeleton className="h-10 w-48" />
+            <Skeleton className="h-6 w-72" />
+          </div>
+        </LoadingState>
+      </main>
+    );
+  }
+
+  if (authQuery.isError) {
+    return (
+      <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">
+        <div className="mx-auto max-w-xl">
+          <QueryErrorState
+            message="No pudimos verificar tu sesión. Revisá tu conexión e intentá nuevamente."
+            onRetry={() => void authQuery.refetch()}
+          />
+        </div>
       </main>
     );
   }
@@ -87,7 +106,18 @@ export default function MisReservasPage() {
   if (reservasQuery.isPending) {
     return (
       <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">
-        Cargando reservas...
+        <LoadingState label="Cargando reservas">
+          <div className="mx-auto max-w-7xl space-y-5" aria-hidden="true">
+            <Skeleton className="h-10 w-52" />
+            {Array.from({ length: 3 }, (_, index) => (
+              <div key={index} className="rounded-md border border-[#d7d1c7] bg-[#fffdf9] p-5">
+                <Skeleton className="h-4 w-1/4" />
+                <Skeleton className="mt-3 h-8 w-2/5" />
+                <Skeleton className="mt-3 h-4 w-1/3" />
+              </div>
+            ))}
+          </div>
+        </LoadingState>
       </main>
     );
   }
@@ -95,7 +125,12 @@ export default function MisReservasPage() {
   if (reservasQuery.isError) {
     return (
       <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">
-        Ocurrio un error: {JSON.stringify(reservasQuery.error)}
+        <div className="mx-auto max-w-xl">
+          <QueryErrorState
+            message="No pudimos cargar tus reservas. Intentá nuevamente."
+            onRetry={() => void reservasQuery.refetch()}
+          />
+        </div>
       </main>
     );
   }

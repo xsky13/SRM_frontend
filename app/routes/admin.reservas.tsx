@@ -3,11 +3,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { RESERVATION_STATE_LABEL } from "~/types/reservationState";
 import { type ReservationState } from "~/types/Reserva";
-import type { ReservationDetail } from "~/types/ReservationDetail";
+import { PaymentStatus, type PaymentDto, type ReservationDetail } from "~/types/ReservationDetail";
+import { UserType } from "~/types/User";
 import AddPaymentModal from "~/components/admin/AddPaymentModal";
 import CancelReservationModal from "~/components/admin/CancelReservationModal";
 import CreateReservationModal from "~/components/admin/CreateReservationModal";
-import { cancelReservationAdmin, getAdminReservations } from "~/utils/api";
+import { QueryErrorState, Skeleton } from "~/components/LoadingFeedback";
+import { cancelReservationAdmin, getAdminReservations, resolveImageUrl } from "~/utils/api";
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("es-AR", {
@@ -17,8 +19,6 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-<<<<<<< HEAD
-=======
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("es-AR", {
     style: "currency",
@@ -53,10 +53,20 @@ function getPaymentStatusLabel(status: PaymentStatus) {
   return labels[status] ?? `Desconocido (${status})`;
 }
 
->>>>>>> b6371964998be6f1d71834f84e0900703a496e50
 function getReservationStateLabel(state: ReservationState) {
   // Usa el enum compartido para tipar el índice de las etiquetas de estado.
   return RESERVATION_STATE_LABEL[state] ?? "Desconocido";
+}
+
+function getUserTypeLabel(userType: UserType) {
+  switch (userType) {
+    case UserType.Admin:
+      return "Administrador";
+    case UserType.User:
+      return "Usuario";
+    case UserType.Guest:
+      return "Guest";
+  }
 }
 
 export default function AdminReservasPage() {
@@ -83,6 +93,22 @@ export default function AdminReservasPage() {
   });
   const reservations = reservationsQuery.data ?? [];
 
+  function getDaysBetweenDates(date1: Date, date2: Date): number {
+    const utc1 = Date.UTC(date1.getFullYear(), date1.getMonth(), date1.getDate());
+    const utc2 = Date.UTC(date2.getFullYear(), date2.getMonth(), date2.getDate());
+
+    return Math.floor(Math.abs(utc2 - utc1) / (1000 * 60 * 60 * 24));
+  }
+
+  function getReservationFullPrice(
+    checkInDate: string,
+    checkOutDate: string,
+    price: number,
+  ) {
+    const days = getDaysBetweenDates(new Date(checkInDate), new Date(checkOutDate)) + 1;
+    return price * days;
+  }
+
   return (
     <section>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -101,48 +127,55 @@ export default function AdminReservasPage() {
       </div>
 
       <div className="overflow-x-auto rounded-md border border-[#e0ded5] bg-[#fffdf9]">
-        <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+        <table className="w-full min-w-[1180px] border-collapse text-left text-sm">
           <thead className="bg-[#edf2e8] text-[#385347]">
             <tr>
-              <th scope="col" className="px-5 py-4 font-semibold">ID</th>
-              <th scope="col" className="px-5 py-4 font-semibold">Fecha Inicio</th>
-              <th scope="col" className="px-5 py-4 font-semibold">Fecha Fin</th>
+              <th scope="col" className="px-5 py-4 font-semibold">Estadía</th>
+              <th scope="col" className="px-5 py-4 font-semibold">Departamento</th>
+              <th scope="col" className="px-5 py-4 font-semibold">Usuario</th>
+              <th scope="col" className="px-5 py-4 font-semibold">Pagos</th>
               <th scope="col" className="px-5 py-4 font-semibold">Estado</th>
               <th scope="col" className="px-5 py-4 font-semibold">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#ece7df] text-[#202722]">
             {reservationsQuery.isLoading ? (
-              <tr>
-                <td colSpan={5} className="px-5 py-8 text-center text-[#68716a]">
-                  Cargando reservas...
-                </td>
-              </tr>
+              Array.from({ length: 5 }, (_, rowIndex) => (
+                <tr key={rowIndex} aria-hidden="true">
+                  {Array.from({ length: 6 }, (_, columnIndex) => (
+                    <td key={columnIndex} className="px-5 py-5">
+                      <Skeleton className={columnIndex === 1 ? "h-14 w-44" : "h-4 w-3/4"} />
+                    </td>
+                  ))}
+                </tr>
+              ))
             ) : reservationsQuery.isError ? (
               <tr>
-                <td colSpan={5} className="px-5 py-8 text-center text-red-700">
-                  No se pudieron cargar las reservas:{" "}
-                  {reservationsQuery.error instanceof Error
-                    ? reservationsQuery.error.message
-                    : "Error desconocido"}
+                <td colSpan={6} className="px-5 py-6">
+                  <QueryErrorState
+                    message={reservationsQuery.error instanceof Error
+                      ? reservationsQuery.error.message
+                      : "No se pudieron cargar las reservas."}
+                    onRetry={() => void reservationsQuery.refetch()}
+                  />
                 </td>
               </tr>
             ) : reservations.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-5 py-8 text-center text-[#68716a]">
+                <td colSpan={6} className="px-5 py-8 text-center text-[#68716a]">
                   No hay reservas registradas
                 </td>
               </tr>
             ) : (
               reservations.map((reservation) => (
-                <tr key={reservation.reservationId}>
-                  <td className="px-5 py-4">{reservation.reservationId}</td>
-                  <td className="px-5 py-4">{formatDate(reservation.checkInDate)}</td>
-                  <td className="px-5 py-4">{formatDate(reservation.checkOutDate)}</td>
+                <tr key={reservation.reservationId} className="align-top">
+                  <td className="whitespace-nowrap px-5 py-4">
+                    <p className="font-medium">{formatDate(reservation.checkInDate)}</p>
+                    <p className="mt-1 text-xs text-[#68716a]">
+                      hasta {formatDate(reservation.checkOutDate)}
+                    </p>
+                  </td>
                   <td className="px-5 py-4">
-<<<<<<< HEAD
-                    {getReservationStateLabel(reservation.state)}
-=======
                     {reservation.apartment ? (
                       <div className="flex min-w-52 items-center gap-3">
                         {reservation.apartment.coverImgUrl ? (
@@ -306,7 +339,6 @@ export default function AdminReservasPage() {
                     <span className="inline-flex whitespace-nowrap rounded-full bg-[#edf2e8] px-2.5 py-1 text-xs font-semibold text-[#385347]">
                       {getReservationStateLabel(reservation.state)}
                     </span>
->>>>>>> b6371964998be6f1d71834f84e0900703a496e50
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex flex-wrap gap-2">

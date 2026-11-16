@@ -14,6 +14,7 @@ import { Link, useNavigate } from "react-router";
 import { ReservationState, type Reserva } from "~/types/Reserva";
 import api from "~/utils/api";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { LoadingState, QueryErrorState } from "~/components/LoadingFeedback";
 
 interface CalendarioDisponibilidadProps {
   reservas: Reserva[];
@@ -77,6 +78,7 @@ function isReserved(day: Date, reservas: Reserva[]): boolean {
   return reservas.some((reserva) => {
     const start = dateKey(parseDate(reserva.checkInDate));
     const end = dateKey(parseDate(reserva.checkOutDate));
+    const state = Number(reserva.reservationState);
     return (
       current >= start &&
       current <= end &&
@@ -213,12 +215,7 @@ export default function CalendarioDisponibilidad({
     if (!rangeStart || !isSelectableDay(day)) return;
 
     const { startDate, endDate } = normalizeRange(rangeStart, day);
-<<<<<<< HEAD
-    if (rangeHasReservation(startDate, endDate, reservas)) return;
-=======
-
     if (rangeHasReservation(startDate, endDate, reservas, userPendingReservations)) return;
->>>>>>> b6371964998be6f1d71834f84e0900703a496e50
 
     if (rangeStart.getTime() <= day.getTime()) {
       setRangeEnd(day);
@@ -378,20 +375,14 @@ export default function CalendarioDisponibilidad({
       startDay: Date;
       endDay: Date;
     }) => {
-<<<<<<< HEAD
       const { data } = await api.post<{ id?: string; reservationId?: string }>(
         "/api/reservation/with_auth",
         {
-        apartmentId,
-        checkInDate: new Date(startDay).toISOString(),
-        checkOutDate: new Date(endDay).toISOString(),
-=======
-      const response = await api.post("/api/reservation/with_auth", {
-        apartmentId: apartmentId,
+          apartmentId,
         checkInDate: serializeDate(startDay),
         checkOutDate: serializeDate(endDay),
->>>>>>> b6371964998be6f1d71834f84e0900703a496e50
-      });
+        },
+      );
       const id = data.id ?? data.reservationId;
       if (!id) {
         throw new Error("El servidor no devolvió el ID de la reserva creada.");
@@ -605,24 +596,14 @@ export default function CalendarioDisponibilidad({
             </div>
 
             {isVerifyingUserReservations && (
-              <p className="mt-3 text-sm text-[#68716a]" role="status">
-                Verificando tus reservas pendientes...
-              </p>
+              <LoadingState label="Verificando tus reservas pendientes" />
             )}
             {userReservationsError && (
-              <div
-                className="mt-3 flex items-center justify-between gap-3 text-sm text-[#b74f3d]"
-                role="alert"
-              >
-                <span>No se pudieron verificar tus reservas pendientes.</span>
-                <button
-                  type="button"
-                  onClick={() => void userReservationsQuery.refetch()}
-                  className="font-semibold underline"
-                >
-                  Reintentar
-                </button>
-              </div>
+              <QueryErrorState
+                className="mt-3"
+                message="No se pudieron verificar tus reservas pendientes."
+                onRetry={() => void userReservationsQuery.refetch()}
+              />
             )}
             {reservationError && (
               <p className="mt-3 text-sm text-[#b74f3d]" role="alert">

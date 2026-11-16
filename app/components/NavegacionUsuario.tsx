@@ -32,7 +32,27 @@ export default function NavegacionUsuario() {
   const isAdmin = user?.usertype === UserType.Admin;
 
   if (authQuery.isPending) {
-    return <span className="text-sm text-[#68716a]">Verificando sesión...</span>;
+    return (
+      <span role="status" className="inline-flex items-center gap-2 text-sm text-[#68716a]">
+        <span aria-hidden="true" className="size-4 animate-spin rounded-full border-2 border-[#385347] border-t-transparent" />
+        Verificando sesión...
+      </span>
+    );
+  }
+
+  if (authQuery.isError) {
+    return (
+      <span className="inline-flex items-center gap-2 text-sm text-[#b74f3d]">
+        No se pudo verificar la sesión
+        <button
+          type="button"
+          onClick={() => void authQuery.refetch()}
+          className="font-semibold underline underline-offset-2"
+        >
+          Reintentar
+        </button>
+      </span>
+    );
   }
 
   if (user) {

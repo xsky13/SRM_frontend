@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { toast } from "sonner";
 import type { DepartamentoData } from "~/models/Departamento";
 import DeleteApartmentModal from "~/components/admin/DeleteApartmentModal";
+import { QueryErrorState, Skeleton } from "~/components/LoadingFeedback";
 import { deleteApartment, getApartments, resolveImageUrl } from "~/utils/api";
 
 const excludedColumns = new Set([
@@ -45,7 +46,9 @@ export default function ApartmentTable() {
   const columns = [
     ...new Set(apartments.flatMap((apartment) => Object.keys(apartment))),
   ].filter((key) => !excludedColumns.has(key));
-  const orderedColumns = columns.includes("coverImgUrl")
+  const orderedColumns = query.isPending
+    ? ["coverImgUrl", "name", "location", "price", "description"]
+    : columns.includes("coverImgUrl")
     ? ["coverImgUrl", ...columns.filter((key) => key !== "coverImgUrl")]
     : columns;
 
@@ -65,16 +68,23 @@ export default function ApartmentTable() {
           </thead>
           <tbody className="divide-y divide-[#ece7df] text-[#202722]">
             {query.isLoading ? (
-              <tr>
-                <td colSpan={orderedColumns.length + 1} className="px-5 py-8 text-center text-[#68716a]">
-                  Cargando departamentos...
-                </td>
-              </tr>
+              Array.from({ length: 5 }, (_, rowIndex) => (
+                <tr key={rowIndex} aria-hidden="true">
+                  {orderedColumns.map((column, columnIndex) => (
+                    <td key={column} className="px-5 py-4">
+                      <Skeleton className={columnIndex === 0 ? "h-12 w-16" : "h-4 w-3/4"} />
+                    </td>
+                  ))}
+                  <td className="px-5 py-4"><Skeleton className="h-8 w-24" /></td>
+                </tr>
+              ))
             ) : query.isError ? (
               <tr>
-                <td colSpan={orderedColumns.length + 1} className="px-5 py-8 text-center text-red-700">
-                  No se pudieron cargar los departamentos:{" "}
-                  {query.error instanceof Error ? query.error.message : "Error desconocido"}
+                <td colSpan={orderedColumns.length + 1} className="px-5 py-6">
+                  <QueryErrorState
+                    message={query.error instanceof Error ? query.error.message : "No se pudieron cargar los departamentos."}
+                    onRetry={() => void query.refetch()}
+                  />
                 </td>
               </tr>
             ) : apartments.length === 0 ? (

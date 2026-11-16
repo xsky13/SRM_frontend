@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
 import NavegacionUsuario, { useAuthentication } from "~/components/NavegacionUsuario";
 import { deleteUser, updateUser } from "~/utils/api";
+import { QueryErrorState, Skeleton } from "~/components/LoadingFeedback";
 
 type AccountForm = {
   firstName: string;
@@ -100,22 +101,17 @@ export default function EditAccountRoute() {
           </p>
 
           {authQuery.isPending ? (
-            <p role="status" className="mt-8 text-sm text-[#68716a]">
-              Cargando tus datos...
-            </p>
-          ) : authQuery.isError ? (
-            <div className="mt-8">
-              <p className="text-sm text-[#b74f3d]">
-                No se pudieron cargar los datos de tu cuenta.
-              </p>
-              <button
-                type="button"
-                onClick={() => void authQuery.refetch()}
-                className="ui-button ui-button-sm mt-4"
-              >
-                Intentar de nuevo
-              </button>
+            <div role="status" aria-label="Cargando tus datos" className="mt-8 space-y-4">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-2/3" />
             </div>
+          ) : authQuery.isError ? (
+            <QueryErrorState
+              className="mt-8"
+              message="No se pudieron cargar los datos de tu cuenta."
+              onRetry={() => void authQuery.refetch()}
+            />
           ) : !authQuery.data ? (
             <div className="mt-8">
               <p className="text-sm text-[#68716a]">
