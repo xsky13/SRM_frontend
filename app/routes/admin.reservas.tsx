@@ -17,6 +17,43 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
+<<<<<<< HEAD
+=======
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function getPaymentsTotal(payments: PaymentDto[]) {
+  return payments.reduce((total, payment) => total + payment.amount, 0);
+}
+
+function getPendingRefunds(payments: PaymentDto[]) {
+  return payments.filter(
+    (payment) =>
+      payment.isRefund && payment.paymentStatus !== PaymentStatus.Refunded,
+  );
+}
+
+function getPaymentStatusLabel(status: PaymentStatus) {
+  const labels: Record<PaymentStatus, string> = {
+    [PaymentStatus.Pending]: "pendiente",
+    [PaymentStatus.Approved]: "aprobado",
+    [PaymentStatus.InProcess]: "en proceso",
+    [PaymentStatus.Rejected]: "rechazado",
+    [PaymentStatus.Cancelled]: "cancelado",
+    [PaymentStatus.Refunded]: "reembolsado",
+    [PaymentStatus.ChargedBack]: "contracargo",
+    [PaymentStatus.InMediation]: "en mediación",
+  };
+
+  return labels[status] ?? `Desconocido (${status})`;
+}
+
+>>>>>>> b6371964998be6f1d71834f84e0900703a496e50
 function getReservationStateLabel(state: ReservationState) {
   // Usa el enum compartido para tipar el índice de las etiquetas de estado.
   return RESERVATION_STATE_LABEL[state] ?? "Desconocido";
@@ -103,7 +140,173 @@ export default function AdminReservasPage() {
                   <td className="px-5 py-4">{formatDate(reservation.checkInDate)}</td>
                   <td className="px-5 py-4">{formatDate(reservation.checkOutDate)}</td>
                   <td className="px-5 py-4">
+<<<<<<< HEAD
                     {getReservationStateLabel(reservation.state)}
+=======
+                    {reservation.apartment ? (
+                      <div className="flex min-w-52 items-center gap-3">
+                        {reservation.apartment.coverImgUrl ? (
+                          <img
+                            src={resolveImageUrl(reservation.apartment.coverImgUrl)}
+                            alt=""
+                            className="h-14 w-16 shrink-0 rounded object-cover"
+                          />
+                        ) : (
+                          <div
+                            aria-hidden="true"
+                            className="flex h-14 w-16 shrink-0 items-center justify-center rounded bg-[#edf2e8] text-xs text-[#68716a]"
+                          >
+                            Sin foto
+                          </div>
+                        )}
+                        <div>
+                          <p className="font-semibold text-[#385347]">
+                            {reservation.apartment.name}
+                          </p>
+                          <p className="mt-1 text-xs text-[#68716a]">
+                            {reservation.apartment.location}
+                          </p>
+                          <p className="mt-1 text-xs text-[#68716a]">
+                            {formatCurrency(reservation.apartment.price)} / noche
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="min-w-52">
+                        <p className="font-medium text-[#68716a]">Departamento no disponible</p>
+                        <p className="mt-1 break-all font-mono text-xs text-[#68716a]">
+                          {reservation.apartmentId}
+                        </p>
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-5 py-4">
+                    {reservation.appUser ? (
+                      <div className="min-w-44">
+                        <p className="text-[#385347]">
+                          {
+                            reservation.appUser.usertype == UserType.Guest ?
+                            <i>Usuario Guest</i>
+                            :
+                            <span className="font-semibold">
+                            {reservation.appUser.firstName ?? reservation.appUser.name}{" "}
+                            {reservation.appUser.lastName}
+                            </span>
+                          }
+                        </p>
+                        <details className="mt-1">
+                          <summary className="cursor-pointer text-xs font-medium text-[#385347] underline decoration-[#d3d0c6] underline-offset-2">
+                            Ver detalles
+                          </summary>
+                          <dl className="mt-2 space-y-1.5 text-xs">
+                            <div>
+                              <dt className="inline font-medium text-[#424a44]">Email: </dt>
+                              <dd className="inline">
+                                <a
+                                  href={`mailto:${reservation.appUser.email}`}
+                                  className="text-[#68716a] underline decoration-[#d3d0c6] underline-offset-2"
+                                >
+                                  {reservation.appUser.email}
+                                </a>
+                              </dd>
+                            </div>
+                            <div>
+                              <dt className="inline font-medium text-[#424a44]">Teléfono: </dt>
+                              <dd className="inline">
+                                <a
+                                  href={`tel:${reservation.appUser.telefono}`}
+                                  className="text-[#68716a] underline decoration-[#d3d0c6] underline-offset-2"
+                                >
+                                  {reservation.appUser.telefono}
+                                </a>
+                              </dd>
+                            </div>
+                            <div className="break-all">
+                              <dt className="inline font-medium text-[#424a44]">ID: </dt>
+                              <dd className="inline font-mono text-[#68716a]">
+                                {reservation.appUser.id}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt className="inline font-medium text-[#424a44]">Tipo: </dt>
+                              <dd className="inline text-[#68716a]">
+                                {getUserTypeLabel(reservation.appUser.usertype)}
+                              </dd>
+                            </div>
+                          </dl>
+                        </details>
+                      </div>
+                    ) : (
+                      <div className="min-w-44">
+                        <p className="font-medium text-[#68716a]">Usuario no disponible</p>
+                        <p className="mt-1 break-all font-mono text-xs text-[#68716a]">
+                          {reservation.appUserId}
+                        </p>
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-5 py-4">
+                    <div className="min-w-48">
+                      <p className="font-semibold text-[#385347]">
+                        {formatCurrency(getPaymentsTotal(reservation.payments))}
+                        <span className="ml-1 font-normal text-[#68716a]">
+                          / {formatCurrency(getReservationFullPrice(reservation.checkInDate, reservation.checkOutDate, reservation.apartment?.price ?? 0))}
+                        </span>
+                      </p>
+                      {/* {getPendingRefunds(reservation.payments).length > 0 && (
+                        <p
+                          role="status"
+                          className="mt-2 inline-flex rounded-full bg-[#fff0e8] px-2.5 py-1 text-xs font-semibold text-[#a13c22]"
+                        >
+                          Devolución:{" "}
+                          {formatCurrency(
+                            getPendingRefunds(reservation.payments).reduce(
+                              (total, payment) => total + payment.amount,
+                              0,
+                            ),
+                          )}
+                        </p>
+                      )} */}
+                      {reservation.payments.length > 0 ? (
+                        <details className="mt-2">
+                          <summary className="cursor-pointer text-xs font-medium text-[#385347] underline decoration-[#d3d0c6] underline-offset-2">
+                            Ver {reservation.payments.length}{" "}
+                            {reservation.payments.length === 1 ? "pago" : "pagos"}
+                          </summary>
+                          <ul className="mt-2 space-y-2">
+                            {reservation.payments.map((payment) => (
+                              <li
+                                key={payment.id}
+                                className="rounded border border-[#ece7df] bg-white px-2.5 py-2 text-xs"
+                              >
+                                <div className="flex items-center justify-between gap-3">
+                                  <span className="font-semibold text-[#202722]">
+                                    {formatCurrency(payment.amount)}
+                                  </span>
+                                  <span className="text-[#68716a]">
+                                    Estado {getPaymentStatusLabel(payment.paymentStatus)}
+                                  </span>
+                                </div>
+                                <p className="mt-1 text-[#68716a]">
+                                  {formatDate(payment.paymentDate)} ·{" "}
+                                  {payment.isManual ? "Manual" : "En línea"}
+                                  {payment.isSign ? " · Seña" : ""}
+                                  {payment.isRefund ? " · Reembolso": ""}
+                                </p>
+                              </li>
+                            ))}
+                          </ul>
+                        </details>
+                      ) : (
+                        <p className="mt-1 text-xs text-[#68716a]">Sin pagos registrados</p>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-5 py-4">
+                    <span className="inline-flex whitespace-nowrap rounded-full bg-[#edf2e8] px-2.5 py-1 text-xs font-semibold text-[#385347]">
+                      {getReservationStateLabel(reservation.state)}
+                    </span>
+>>>>>>> b6371964998be6f1d71834f84e0900703a496e50
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex flex-wrap gap-2">

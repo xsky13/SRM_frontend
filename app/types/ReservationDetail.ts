@@ -17,11 +17,12 @@ export interface PaymentDto {
   amount: number;
   isManual: boolean;
   isSign: boolean;
+  isRefund: boolean;
   paymentDate: string;
   paymentStatus: PaymentStatus;
   reservationId: string;
   appUserId: string;
-  ticketId: string;
+  ticketId: string | null;
 }
 
 export interface ApartmentListingDto {

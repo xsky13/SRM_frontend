@@ -5,7 +5,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import { RESERVATION_STATE_LABEL } from "~/types/reservationState";
 import api from "~/utils/api";
 import { ReservationState } from "~/types/Reserva";
-import type { ReservationDetail } from "~/types/ReservationDetail";
+import { PaymentStatus, type ReservationDetail } from "~/types/ReservationDetail";
 
 const apiBaseUrl = import.meta.env.VITE_API_URL;
 const paymentEndpoints = {
@@ -39,14 +39,41 @@ function isReservationState(value: unknown): value is ReservationState {
 }
 
 function formatDate(value: string) {
+	const [year, month, day] = value.slice(0, 10).split("-").map(Number);
+	const date = new Date(year, month - 1, day);
 	return new Intl.DateTimeFormat("es-AR", {
 		day: "numeric",
 		month: "long",
-	}).format(new Date(value));
+	}).format(date);
 }
 
 function formatPrice(value: number) {
 	return `$${value.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
+}
+
+function formatPaymentDate(value: string) {
+	return new Intl.DateTimeFormat("es-AR", {
+		day: "numeric",
+		month: "long",
+		year: "numeric",
+		hour: "2-digit",
+		minute: "2-digit",
+	}).format(new Date(value));
+}
+
+function getPaymentStatusLabel(status: PaymentStatus) {
+	const labels: Record<PaymentStatus, string> = {
+		[PaymentStatus.Pending]: "Pendiente",
+		[PaymentStatus.Approved]: "Aprobado",
+		[PaymentStatus.InProcess]: "En proceso",
+		[PaymentStatus.Rejected]: "Rechazado",
+		[PaymentStatus.Cancelled]: "Cancelado",
+		[PaymentStatus.Refunded]: "Reembolsado",
+		[PaymentStatus.ChargedBack]: "Contracargo",
+		[PaymentStatus.InMediation]: "En mediación",
+	};
+
+	return labels[status] ?? `Desconocido (${status})`;
 }
 
 function getReservationStateLabel(state?: ReservationState) {
@@ -382,20 +409,75 @@ export default function ReservaPage() {
 				{paymentApproved && (
 					<p className="mt-4 text-sm font-semibold text-[#2d6a4f]">Pago aprobado correctamente.</p>
 				)}
-				{canPayDeposit || canPayFull ? (
-					<div className="mt-6 flex flex-wrap items-center justify-between gap-4">
-						<div className="flex w-full justify-end">
-							<button
-								type="button"
-								onClick={() => navigate(`/departamento/${activeReservation.apartmentId}`)}
-								className="ui-button ui-button-sm bg-[#a90000] text-white"
-							>
-								Cancelar reserva
-							</button>
-						</div>
+				<div className="mt-6 flex justify-end gap-3">
+					<button
+						type="button"
+						onClick={() => navigate(`/reservas/${id}/modificar`)}
+						className="ui-button ui-button-md min-w-44 bg-[#385347] text-white"
+					>
+						Modificar reserva
+					</button>
+					{canPayDeposit || canPayFull ? (
+						<button
+							type="button"
+							onClick={() => navigate(`/departamento/${activeReservation.apartmentId}`)}
+							className="ui-button ui-button-md min-w-44 bg-[#a90000] text-white"
+						>
+							Cancelar reserva
+						</button>
+					) : null}
+				</div>
+
+				<section
+					aria-labelledby="reservation-payments-title"
+					className="mt-8 rounded-md border border-[#e0ded5] bg-[#fffdf9] p-6"
+				>
+					<div className="flex flex-wrap items-baseline justify-between gap-3">
+						<h2
+							id="reservation-payments-title"
+							className="font-serif text-3xl text-[#385347]"
+						>
+							Pagos hechos
+						</h2>
+						<p className="text-sm text-[#68716a]">
+							{activeReservation.payments.length}{" "}
+							{activeReservation.payments.length === 1 ? "pago registrado" : "pagos registrados"}
+						</p>
 					</div>
-				) : null}
+					{activeReservation.payments.length > 0 ? (
+						<ul className="mt-5 space-y-3">
+							{activeReservation.payments.map((payment) => (
+								<li
+									key={payment.id}
+									className="flex flex-wrap items-start justify-between gap-4 rounded-md border border-[#ece7df] bg-white p-4"
+								>
+									<div>
+										<p className="font-semibold text-[#202722]">
+											{formatPrice(payment.amount)}
+										</p>
+										<p className="mt-1 text-sm text-[#68716a]">
+											{formatPaymentDate(payment.paymentDate)}
+										</p>
+										<p className="mt-1 text-sm text-[#68716a]">
+											{payment.isManual ? "Pago manual" : "Pago en línea"}
+											{payment.isSign ? " · Seña" : ""}
+											{payment.isRefund ? " · Reembolso" : ""}
+										</p>
+									</div>
+									<span className="rounded-full bg-[#edf2e8] px-3 py-1 text-sm font-medium text-[#385347]">
+										{getPaymentStatusLabel(payment.paymentStatus)}
+									</span>
+								</li>
+							))}
+						</ul>
+					) : (
+						<p className="mt-4 text-sm text-[#68716a]">
+							Todavía no hay pagos registrados para esta reserva.
+						</p>
+					)}
+				</section>
 			</section>
+			
 		</main>
 	);
 }
