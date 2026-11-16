@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "react-router";
 import api from "~/utils/api";
+import LoadingState from "~/components/LoadingState";
 import { ApiError } from "~/types/ApiError";
 import { UserType, type User } from "~/types/User";
 
@@ -46,9 +47,7 @@ export default function NavegacionUsuario() {
           className="flex flex-wrap items-center justify-end gap-3 text-sm"
         >
           {authQuery.isPending ? (
-            <span className="text-[#68716a]" role="status">
-              Verificando sesión...
-            </span>
+            <LoadingState variant="inline" label="Verificando sesión..." />
           ) : user ? (
             <>
               <Link to="/reservas" className="ui-link">

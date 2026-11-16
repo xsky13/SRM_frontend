@@ -5,6 +5,7 @@ import { RESERVATION_STATE_LABEL } from "~/types/reservationState";
 import { type ReservationState } from "~/types/Reserva";
 import { UserType } from "~/types/User";
 import { PaymentStatus, type PaymentDto, type ReservationDetail } from "~/types/ReservationDetail";
+import LoadingState from "~/components/LoadingState";
 import AddPaymentModal from "~/components/admin/AddPaymentModal";
 import CancelReservationModal from "~/components/admin/CancelReservationModal";
 import CreateReservationModal from "~/components/admin/CreateReservationModal";
@@ -147,8 +148,12 @@ export default function AdminReservasPage() {
           <tbody className="divide-y divide-[#ece7df] text-[#202722]">
             {reservationsQuery.isLoading ? (
               <tr>
-                <td colSpan={7} className="px-5 py-8 text-center text-[#68716a]">
-                  Cargando reservas...
+                <td colSpan={7} className="px-5 py-8 text-center">
+                  <LoadingState
+                    variant="inline"
+                    label="Cargando reservas..."
+                    className="w-full"
+                  />
                 </td>
               </tr>
             ) : reservationsQuery.isError ? (

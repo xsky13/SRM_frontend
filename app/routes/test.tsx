@@ -3,6 +3,7 @@ import type { Route } from "./+types/test";
 
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import LoadingState from "~/components/LoadingState";
 import api from "~/utils/api";
 
 export function meta({ }: Route.MetaArgs) {
@@ -23,7 +24,7 @@ export default function Test() {
         console.log(query.data)
     }, [query])
 
-    if (query.isPending) return 'Loading...'
+    if (query.isPending) return <LoadingState label="Cargando..." />;
 
     if (query.isError) return JSON.stringify(query.error)
 

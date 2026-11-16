@@ -1,4 +1,5 @@
 import { useEffect, useState, type ComponentType } from "react";
+import LoadingState from "~/components/LoadingState";
 
 export type Coordinates = {
 	latitude: number;
@@ -40,7 +41,13 @@ export function LocationPicker(props: LocationPickerProps) {
 	}
 
 	if (!LeafletPicker) {
-		return <p className="text-sm text-[#68716a]">Cargando el mapa...</p>;
+		return (
+			<LoadingState
+				variant="inline"
+				label="Cargando el mapa..."
+				className="py-2"
+			/>
+		);
 	}
 
 	return <LeafletPicker {...props} />;

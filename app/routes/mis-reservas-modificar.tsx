@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CardPayment, initMercadoPago } from "@mercadopago/sdk-react";
 import { CheckCircle2, ChevronLeft, ChevronRight, CircleCheck, CircleX, CreditCard, X } from "lucide-react";
 import api from "~/utils/api";
+import LoadingState from "~/components/LoadingState";
 import { useAuthentication } from "~/components/NavegacionUsuario";
 import { ReservationState } from "~/types/Reserva";
 import type { ReservationDetail } from "~/types/ReservationDetail";
@@ -398,7 +399,7 @@ export default function MisReservasModificarPage() {
   );
 
   if (authQuery.isPending) {
-    return <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">Verificando sesión...</main>;
+    return <LoadingState label="Verificando sesión..." />;
   }
 
   if (!authQuery.data) {
@@ -406,7 +407,7 @@ export default function MisReservasModificarPage() {
   }
 
   if (reservaQuery.isPending) {
-    return <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">Cargando reserva...</main>;
+    return <LoadingState label="Cargando reserva..." />;
   }
 
   if (!reservaQuery.data) {
@@ -509,7 +510,13 @@ export default function MisReservasModificarPage() {
               {rangeStart && rangeEnd && <span className="w-full text-[#385347]">{dateKey(rangeStart)} a {dateKey(rangeEnd)} (salida el {dateKey(new Date(rangeEnd.setUTCDate(rangeEnd.getUTCDate() + 1)))})</span>}
             </div>
 
-            {isLoadingAvailability && <p className="mt-3 text-sm text-[#68716a]" role="status">Verificando disponibilidad...</p>}
+            {isLoadingAvailability && (
+              <LoadingState
+                variant="inline"
+                label="Verificando disponibilidad..."
+                className="mt-3"
+              />
+            )}
             {availabilityError && <p className="mt-3 text-sm text-[#b42318]" role="alert">{availabilityError}</p>}
             {dateSelectionError && <p className="mt-3 text-sm text-[#b42318]" role="alert">{dateSelectionError}</p>}
 

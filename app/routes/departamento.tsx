@@ -5,6 +5,7 @@ import type { Departamento } from "~/models/Departamento";
 import type { Reserva } from "~/types/Reserva";
 import ApartmentLocationMap from "~/components/ApartmentLocationMap";
 import CalendarioDisponibilidad from "~/components/CalendarioDisponibilidad";
+import LoadingState from "~/components/LoadingState";
 import { useAuthentication } from "~/components/NavegacionUsuario";
 import api, { resolveImageUrl } from "~/utils/api";
 import type { Route } from "./+types/departamento";
@@ -45,7 +46,7 @@ export default function DepartamentoDetallePage() {
 	const departamento = query.data;
 
 	if (query.isPending) {
-		return <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">Cargando...</main>;
+		return <LoadingState label="Cargando departamento..." />;
 	}
 
 	if (!departamento) {

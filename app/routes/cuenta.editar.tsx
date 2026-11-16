@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
+import LoadingState from "~/components/LoadingState";
 import { useAuthentication } from "~/components/NavegacionUsuario";
 import { deleteUser, updateUser } from "~/utils/api";
 
@@ -88,9 +89,11 @@ export default function EditAccountRoute() {
           </p>
 
           {authQuery.isPending ? (
-            <p role="status" className="mt-8 text-sm text-[#68716a]">
-              Cargando tus datos...
-            </p>
+            <LoadingState
+              variant="inline"
+              label="Cargando tus datos..."
+              className="mt-8"
+            />
           ) : authQuery.isError ? (
             <div className="mt-8">
               <p className="text-sm text-[#b74f3d]">

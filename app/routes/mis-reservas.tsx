@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import api from "~/utils/api";
+import LoadingState from "~/components/LoadingState";
 import { useAuthentication } from "~/components/NavegacionUsuario";
 import { ReservationState } from "~/types/Reserva";
 import { RESERVATION_STATE_LABEL } from "~/types/reservationState";
@@ -56,11 +57,7 @@ export default function MisReservasPage() {
   });
 
   if (authQuery.isPending) {
-    return (
-      <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">
-        Verificando sesión...
-      </main>
-    );
+    return <LoadingState label="Verificando sesión..." />;
   }
 
   if (!authQuery.data) {
@@ -85,11 +82,7 @@ export default function MisReservasPage() {
   }
 
   if (reservasQuery.isPending) {
-    return (
-      <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">
-        Cargando reservas...
-      </main>
-    );
+    return <LoadingState label="Cargando reservas..." />;
   }
 
   if (reservasQuery.isError) {

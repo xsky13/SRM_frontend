@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import LoadingState from "~/components/LoadingState";
 import api from "~/utils/api";
 
 export function meta() {
@@ -23,5 +24,5 @@ export default function LogoutRoute() {
 
 	useEffect(() => { mutation.mutate(); }, []);
 
-	return <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#385347]">Cerrando sesión...</main>;
+	return <LoadingState label="Cerrando sesión..." />;
 }

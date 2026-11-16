@@ -17,6 +17,7 @@ import { toast, Toaster } from 'sonner';
 import type { Route } from "./+types/root";
 import "./app.css";
 import { ApiError } from "./types/ApiError";
+import AppLoadingIndicator from "./components/AppLoadingIndicator";
 import NavegacionUsuario from "./components/NavegacionUsuario";
 
 export const links: Route.LinksFunction = () => [
@@ -99,6 +100,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App() {
 	return (
 		<>
+			<AppLoadingIndicator />
 			<div className="fixed w-full z-50">
 				<NavegacionUsuario />
 			</div>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import ConfirmReservationCancellationModal from "~/components/ConfirmReservationCancellationModal";
+import LoadingState from "~/components/LoadingState";
 import { RESERVATION_STATE_LABEL } from "~/types/reservationState";
 import api, { cancelReservation } from "~/utils/api";
 import { ReservationState } from "~/types/Reserva";
@@ -148,11 +149,7 @@ export default function ReservaPage() {
 	}
 
 	if (reservationQuery.isPending) {
-		return (
-			<main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">
-				Cargando reserva...
-			</main>
-		);
+		return <LoadingState label="Cargando reserva..." />;
 	}
 
 	if (reservationQuery.isError || !reservation) {
@@ -426,13 +423,16 @@ export default function ReservaPage() {
 					<p className="mt-4 text-sm font-semibold text-[#2d6a4f]">Pago aprobado correctamente.</p>
 				)}
 				<div className="mt-6 flex justify-end gap-3">
-					<button
-						type="button"
-						onClick={() => navigate(`/reservas/${id}/modificar`)}
-						className="ui-button ui-button-md min-w-44 bg-[#385347] text-white"
-					>
-						Modificar reserva
-					</button>
+					{
+						reservation.state != ReservationState.Cancelled &&
+						<button
+							type="button"
+							onClick={() => navigate(`/reservas/${id}/modificar`)}
+							className="ui-button ui-button-md min-w-44 bg-[#385347] text-white"
+						>
+							Modificar reserva
+						</button>
+					}
 					{canPayDeposit || canPayFull ? (
 						<button
 							type="button"

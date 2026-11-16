@@ -26,6 +26,19 @@ body {
   }*/
 }
 
+@keyframes app-loading-indicator {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+
+.app-loading-indicator__bar {
+  animation: app-loading-indicator 1.2s ease-in-out infinite;
+}
+
 
 /* ------------BASE------------ */
 

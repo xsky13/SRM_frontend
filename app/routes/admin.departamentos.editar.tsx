@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router";
 import ApartmentForm from "~/components/admin/forms/ApartmentForm";
+import LoadingState from "~/components/LoadingState";
 import { getApartmentById } from "~/utils/api";
 
 export function meta() {
@@ -23,7 +24,13 @@ export default function EditApartmentPage() {
 	}
 
 	if (apartmentQuery.isPending) {
-		return <p className="mx-auto max-w-3xl text-sm text-[#68716a]">Cargando departamento...</p>;
+		return (
+			<LoadingState
+				variant="inline"
+				label="Cargando departamento..."
+				className="mx-auto w-full max-w-3xl py-4"
+			/>
+		);
 	}
 
 	if (apartmentQuery.isError) {

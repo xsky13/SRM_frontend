@@ -1,5 +1,6 @@
 // NUEVO: Layout del área de administración, protegido por el rol del usuario.
 import { Navigate, NavLink, Outlet } from "react-router";
+import LoadingState from "~/components/LoadingState";
 import { useAuthentication } from "~/components/NavegacionUsuario";
 import { UserType } from "~/types/User";
 
@@ -12,11 +13,7 @@ export default function AdminLayout() {
   const isAdmin = authQuery.data?.usertype === UserType.Admin;
 
   if (authQuery.isPending) {
-    return (
-      <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">
-        Verificando sesión...
-      </main>
-    );
+    return <LoadingState label="Verificando sesión..." />;
   }
 
   if (!authQuery.data || !isAdmin) {

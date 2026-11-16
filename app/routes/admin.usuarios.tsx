@@ -2,6 +2,7 @@ import { Fragment, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { RESERVATION_STATE_LABEL } from "~/types/reservationState";
 import type { ReservationListingDto } from "~/types/ReservationDetail";
+import LoadingState from "~/components/LoadingState";
 
 import { UserType, type User } from "~/types/User";
 import { getAdminUserReservations, getAdminUsers } from "~/utils/api";
@@ -42,7 +43,13 @@ function UserReservations({ userId }: { userId: string }) {
   const reservations: ReservationListingDto[] = reservationsQuery.data ?? [];
 
   if (reservationsQuery.isLoading) {
-    return <p className="py-4 text-center text-[#68716a]">Cargando reservas...</p>;
+    return (
+      <LoadingState
+        variant="inline"
+        label="Cargando reservas..."
+        className="w-full py-4"
+      />
+    );
   }
 
   if (reservationsQuery.isError) {
@@ -143,8 +150,12 @@ export default function AdminUsuariosPage() {
           <tbody className="divide-y divide-[#ece7df] text-[#202722]">
             {usersQuery.isLoading ? (
               <tr>
-                <td colSpan={7} className="px-5 py-8 text-center text-[#68716a]">
-                  Cargando usuarios...
+                <td colSpan={7} className="px-5 py-8 text-center">
+                  <LoadingState
+                    variant="inline"
+                    label="Cargando usuarios..."
+                    className="w-full"
+                  />
                 </td>
               </tr>
             ) : usersQuery.isError ? (

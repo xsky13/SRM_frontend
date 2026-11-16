@@ -1,4 +1,5 @@
 import { useState } from "react";
+import LoadingState from "~/components/LoadingState";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { toast } from "sonner";
@@ -66,8 +67,12 @@ export default function ApartmentTable() {
           <tbody className="divide-y divide-[#ece7df] text-[#202722]">
             {query.isLoading ? (
               <tr>
-                <td colSpan={orderedColumns.length + 1} className="px-5 py-8 text-center text-[#68716a]">
-                  Cargando departamentos...
+                <td colSpan={orderedColumns.length + 1} className="px-5 py-8 text-center">
+                  <LoadingState
+                    variant="inline"
+                    label="Cargando departamentos..."
+                    className="w-full"
+                  />
                 </td>
               </tr>
             ) : query.isError ? (
