@@ -178,6 +178,10 @@ export async function cancelReservationAdmin(id: string): Promise<Reserva> {
     return data;
 }
 
+export async function cancelReservation(id: string): Promise<void> {
+    await api.post(`/api/reservation/cancel/${encodeURIComponent(id)}`);
+}
+
 export async function addAdminReservationPayment(
     reservationId: string,
     amount: number,

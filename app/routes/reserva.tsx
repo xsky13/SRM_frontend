@@ -1,9 +1,11 @@
 import { CardPayment, initMercadoPago } from "@mercadopago/sdk-react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
+import { toast } from "sonner";
+import ConfirmReservationCancellationModal from "~/components/ConfirmReservationCancellationModal";
 import { RESERVATION_STATE_LABEL } from "~/types/reservationState";
-import api from "~/utils/api";
+import api, { cancelReservation } from "~/utils/api";
 import { ReservationState } from "~/types/Reserva";
 import { PaymentStatus, type ReservationDetail } from "~/types/ReservationDetail";
 
@@ -86,8 +88,10 @@ export function meta() {
 
 export default function ReservaPage() {
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 	const { id } = useParams();
 	const [paymentOption, setPaymentOption] = useState<"deposit" | "full" | "rest">("full");
+	const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
 	const [showCardForm, setShowCardForm] = useState(false);
 	const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 	const [paymentError, setPaymentError] = useState<string | null>(null);
@@ -105,6 +109,25 @@ export default function ReservaPage() {
 		enabled: Boolean(id),
 		retry: 2,
 		retryDelay: (attempt) => (attempt + 1) * 500,
+	});
+	const cancelMutation = useMutation({
+		mutationFn: cancelReservation,
+		meta: { silent: true },
+		onSuccess: async () => {
+			setIsCancelDialogOpen(false);
+			toast.success("La reserva se canceló correctamente.");
+			await Promise.all([
+				queryClient.invalidateQueries({ queryKey: ["my-reservations"] }),
+				queryClient.invalidateQueries({ queryKey: ["reservation-detail", id] }),
+			]);
+		},
+		onError: (error) => {
+			toast.error(
+				error instanceof Error
+					? error.message
+					: "No se pudo cancelar la reserva.",
+			);
+		},
 	});
 
 	const reservation = reservationQuery.data;
@@ -413,7 +436,8 @@ export default function ReservaPage() {
 					{canPayDeposit || canPayFull ? (
 						<button
 							type="button"
-							onClick={() => navigate(`/departamento/${activeReservation.apartmentId}`)}
+							onClick={() => setIsCancelDialogOpen(true)}
+							disabled={cancelMutation.isPending}
 							className="ui-button ui-button-md min-w-44 bg-[#a90000] text-white"
 						>
 							Cancelar reserva
@@ -469,6 +493,12 @@ export default function ReservaPage() {
 						</p>
 					)}
 				</section>
+				<ConfirmReservationCancellationModal
+					isOpen={isCancelDialogOpen}
+					isPending={cancelMutation.isPending}
+					onClose={() => setIsCancelDialogOpen(false)}
+					onConfirm={() => cancelMutation.mutate(activeReservation.reservationId)}
+				/>
 			</section>
 			
 		</main>
