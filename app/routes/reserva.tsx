@@ -240,7 +240,7 @@ export default function ReservaPage() {
 						}}
 						className="ui-button ui-button-sm mt-auto self-center"
 					>
-						Confirmar reserva
+						{option == "rest" ? "Completar pago" : "Confirmar reserva"}
 					</button>
 				)}
 			</article>
@@ -343,6 +343,10 @@ export default function ReservaPage() {
 					<p>Ubicación: {activeReservation.apartment?.name ?? "Departamento no disponible"}</p>
 					<p>Estado: {getReservationStateLabel(reservationState)}</p>
 				</div>
+				<p className="my-3">
+					La entrada al departamento es el {formatDate(activeReservation.checkInDate)} a la tarde, y la salida salida el {formatDate(new Date(new Date(activeReservation.checkOutDate).setUTCDate(new Date(activeReservation.checkOutDate).getUTCDate() + 1)).toISOString())} a la mañana. 
+					{activeReservation.state == ReservationState.NotConfirmed && <strong> Mientras que su reserva no este confirmada, otra persona puede hacer una reserva en el mismo plazo que usted.</strong>}
+				</p>
 
 				{showCompleteInfoOnly ? (
 					<div className="mt-8 rounded-md border border-dashed border-[#c8c2b8] bg-[#fffdf9] p-6 text-[#202722]">
@@ -390,7 +394,7 @@ export default function ReservaPage() {
 					</div>
 				) : (
 					<div className="mt-8 rounded-md border border-dashed border-[#c8c2b8] bg-[#fffdf9] p-6 text-sm text-[#68716a]">
-						No hay pagos disponibles para esta reserva.
+						No hay forma de pago disponible para esta reserva.
 					</div>
 				)}
 

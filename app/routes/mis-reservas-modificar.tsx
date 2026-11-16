@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { CardPayment, initMercadoPago } from "@mercadopago/sdk-react";
@@ -29,7 +29,7 @@ function formatDate(value: string | Date) {
 }
 
 function dateKey(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  return `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}/${date.getFullYear()}`;
 }
 
 function parseDate(value: string): Date {
@@ -169,6 +169,17 @@ export default function MisReservasModificarPage() {
       ? { startDate: start, endDate: end }
       : { startDate: end, endDate: start };
   };
+
+  const selectedRange =
+    rangeStart && rangeEnd ? normalizeRange(rangeStart, rangeEnd) : undefined;
+  const isUnchangedDateRange = Boolean(
+    reservaQuery.data &&
+      selectedRange &&
+      dateKey(selectedRange.startDate) ===
+        dateKey(parseDate(reservaQuery.data.checkInDate)) &&
+      dateKey(selectedRange.endDate) ===
+        dateKey(parseDate(reservaQuery.data.checkOutDate)),
+  );
 
   const isReservedDay = (day: Date) => {
     const current = dateKey(day);
@@ -410,8 +421,16 @@ export default function MisReservasModificarPage() {
       <section className="mx-auto max-w-6xl px-5 py-8 md:px-8">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[.13em] text-[#385347]">Modificar reserva</p>
-            <h1 className="font-serif text-5xl tracking-tighter text-[#385347]">{reservaQuery.data.apartment?.name ?? "Departamento no disponible"}</h1>
+            {/* <p className="text-[11px] font-bold uppercase tracking-[.13em] text-[#385347]">Modificar reserva</p>
+             */}
+            <Link
+              to={`/reservas/${reservaQuery.data.reservationId}`}
+              className="pb-4 flex gap-1 items-center text-primary font-medium"
+            >
+              <ChevronLeft />
+              Volver
+            </Link>
+            <h1 className="font-serif text-5xl tracking-tighter text-[#385347]">Modificar reserva</h1>
           </div>
           <span className="rounded-full border border-[#d7d1c7] bg-[#edf2e8] px-2.5 py-1 text-xs font-semibold text-[#385347]">
             {getReservationStateLabel(reservaQuery.data.state)}
@@ -487,7 +506,7 @@ export default function MisReservasModificarPage() {
             <div className="mt-4 flex flex-wrap gap-4 border-t border-[#ece7df] pt-3 text-xs text-[#4d5b55]">
               <span className="inline-flex items-center gap-1.5"><CircleCheck size={14} className="text-[#6b8b63]" /> Disponible</span>
               <span className="inline-flex items-center gap-1.5"><CircleX size={14} className="text-[#c7765a]" /> Reservado</span>
-              {rangeStart && rangeEnd && <span className="w-full text-[#385347]">{dateKey(rangeStart)} a {dateKey(rangeEnd)}</span>}
+              {rangeStart && rangeEnd && <span className="w-full text-[#385347]">{dateKey(rangeStart)} a {dateKey(rangeEnd)} (salida el {dateKey(new Date(rangeEnd.setUTCDate(rangeEnd.getUTCDate() + 1)))})</span>}
             </div>
 
             {isLoadingAvailability && <p className="mt-3 text-sm text-[#68716a]" role="status">Verificando disponibilidad...</p>}
@@ -499,6 +518,7 @@ export default function MisReservasModificarPage() {
               disabled={
                 !rangeStart ||
                 !rangeEnd ||
+                isUnchangedDateRange ||
                 isLoadingAvailability ||
                 Boolean(availabilityError) ||
                 rangeHasReservedDay(rangeStart, rangeEnd)

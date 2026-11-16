@@ -171,9 +171,9 @@ export default function AdminReservasPage() {
                     </span>
                   </td> */}
                   <td className="whitespace-nowrap px-5 py-4">
-                    <p className="font-medium">{formatDate(reservation.checkInDate)}</p>
+                    <p className="font-medium">{formatDate(new Date(new Date(reservation.checkInDate).setUTCDate(new Date(reservation.checkInDate).getUTCDate() + 1)).toISOString())}</p>
                     <p className="mt-1 text-xs text-[#68716a]">
-                      hasta {formatDate(reservation.checkOutDate)}
+                      hasta {formatDate(new Date(new Date(reservation.checkOutDate).setUTCDate(new Date(reservation.checkOutDate).getUTCDate() + 1)).toISOString())}
                     </p>
                   </td>
                   <td className="px-5 py-4">

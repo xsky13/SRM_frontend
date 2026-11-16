@@ -61,6 +61,10 @@ function dateKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
+function dateKeyReadable(date: Date): string {
+  return `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}/${date.getFullYear()}`;
+}
+
 function parseDate(value: string): Date {
   const date = new Date(`${value.slice(0, 10)}T00:00:00`);
   return Number.isNaN(date.getTime()) ? new Date(0) : date;
@@ -460,7 +464,7 @@ export default function CalendarioDisponibilidad({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#202722]/35 p-4"
+      className="fixed inset-0 z-[999] flex items-center justify-center overflow-y-auto bg-[#202722]/35 p-4"
       onClick={onClose}
     >
       <section
@@ -621,9 +625,14 @@ export default function CalendarioDisponibilidad({
                 </span>
               )}
               {rangeStart && rangeEnd && (
-                <span className="w-full text-[#385347]">
-                  {dateKey(rangeStart)} a {dateKey(rangeEnd)}
-                </span>
+                <>
+                  <span className="w-full text-[#385347]">
+                    {dateKeyReadable(rangeStart)} a {dateKeyReadable(rangeEnd)}
+                  </span>
+                  <span className="w-full text-[#385347]">
+                    Entrada en {dateKeyReadable(rangeStart)} a la tarde, salida en {dateKeyReadable(new Date(rangeEnd.setUTCDate(rangeEnd.getUTCDate() + 1)))} (La salida es el día después del último seleccionado)
+                  </span>
+                </>
               )}
             </div>
 
