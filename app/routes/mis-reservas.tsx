@@ -116,18 +116,6 @@ export default function MisReservasPage() {
 
   return (
     <main className="min-h-screen bg-[#f6f4ee] text-[#202722]">
-      <header className="mx-auto flex max-w-7xl items-center justify-between px-5 py-6 md:px-8">
-        <Link
-          className="font-serif text-[23px] font-bold tracking-[-0.04em] text-[#385347]"
-          to="/"
-        >
-          reservas<span className="text-[#e28b68]">moreno</span>
-        </Link>
-        <Link to="/" className="ui-link">
-          Volver al inicio
-        </Link>
-      </header>
-
       <section className="mx-auto max-w-7xl px-5 py-8 md:px-8">
         <div className="mb-8 flex items-end justify-between gap-4">
           <div>

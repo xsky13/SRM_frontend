@@ -120,10 +120,6 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
 
 	return (
 		<main className="min-h-screen bg-[#f6f4ee] text-[#202722]">
-			<header className="mx-auto flex max-w-7xl items-center justify-between px-5 py-6 md:px-8">
-				<Link className="font-serif text-[23px] font-bold tracking-[-0.04em] text-[#385347]" to="/">reservas<span className="text-[#e28b68]">moreno</span></Link>
-				<Link className="ui-link text-sm" to="/">Volver al inicio</Link>
-			</header>
 			<section className="mx-auto grid max-w-6xl gap-12 px-5 py-10 md:grid-cols-[.8fr_1fr] md:px-8 md:py-20">
 				<div className="pt-4"><p className="mb-4 text-[11px] font-bold uppercase tracking-[.13em] text-[#e28b68]">Reservas Moreno</p><h1 className="font-serif text-5xl font-normal leading-none tracking-[-.05em] text-[#385347]">{mode === "register" ? <>Tu próxima estadía<br /><em className="text-[#e28b68]">empieza acá.</em></> : <>Qué bueno<br /><em className="text-[#e28b68]">verte de nuevo.</em></>}</h1><p className="mt-6 max-w-sm leading-7 text-[#68716a]">{mode === "register" ? "Creá tu cuenta para reservar departamentos cómodos en Libertador San Martín." : "Ingresá para continuar con tus reservas."}</p></div>
 				<form onSubmit={submit} noValidate className="rounded-md border border-[#e0ded5] bg-[#fffdf9] p-6 shadow-[0_18px_45px_rgba(56,83,71,.07)] md:p-8">

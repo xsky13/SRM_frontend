@@ -17,6 +17,7 @@ import { toast, Toaster } from 'sonner';
 import type { Route } from "./+types/root";
 import "./app.css";
 import { ApiError } from "./types/ApiError";
+import NavegacionUsuario from "./components/NavegacionUsuario";
 
 export const links: Route.LinksFunction = () => [
 	{ rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -96,7 +97,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-	return <Outlet />;
+	return (
+		<>
+			<div className="fixed w-full z-50">
+				<NavegacionUsuario />
+			</div>
+			<div className="pt-20">
+				<Outlet />
+			</div>
+		</>
+	);
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {

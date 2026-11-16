@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
-import NavegacionUsuario, { useAuthentication } from "~/components/NavegacionUsuario";
+import { useAuthentication } from "~/components/NavegacionUsuario";
 import { deleteUser, updateUser } from "~/utils/api";
 
 type AccountForm = {
@@ -66,18 +66,6 @@ export default function EditAccountRoute() {
 
   return (
     <main className="min-h-screen bg-[#f6f4ee] px-5 py-6 text-[#202722] md:px-8">
-      <header className="mx-auto flex max-w-7xl items-center justify-between gap-4">
-        <Link
-          to="/"
-          className="font-serif text-[23px] font-bold tracking-[-0.04em] text-[#385347]"
-        >
-          reservas<span className="text-[#e28b68]">moreno</span>
-        </Link>
-        <nav className="flex items-center gap-4 text-sm text-[#385347]">
-          <NavegacionUsuario />
-        </nav>
-      </header>
-
       <section className="mx-auto grid max-w-6xl gap-12 px-0 py-10 md:grid-cols-[.8fr_1fr] md:px-8 md:py-20">
         <div className="pt-4">
           <p className="mb-4 text-[11px] font-bold uppercase tracking-[.13em] text-[#e28b68]">

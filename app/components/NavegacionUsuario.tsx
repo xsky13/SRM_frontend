@@ -31,47 +31,61 @@ export default function NavegacionUsuario() {
   const user = authQuery.data;
   const isAdmin = user?.usertype === UserType.Admin;
 
-  if (authQuery.isPending) {
-    return <span className="text-sm text-[#68716a]">Verificando sesión...</span>;
-  }
-
-  if (user) {
-    return (
-      <div className="flex flex-wrap items-center justify-end gap-3">
-        <Link to="/reservas" className="ui-link">
-          Mis reservas
-        </Link>
-        <Link to="/cuenta/editar" className="ui-link">
-          Editar cuenta
-        </Link>
-        {isAdmin && (
-          <Link to="/admin/departamentos" className="ui-link">
-            Panel de Admin
-          </Link>
-        )}
-        <Link to="/logout" className="ui-button ui-button-sm">
-          Cerrar sesión
-        </Link>
-      </div>
-    );
-  }
-
   return (
-    <>
-      <Link
-        to="/register"
-        state={{ returnTo: location.pathname }}
-        className="ui-link"
-      >
-        Crear cuenta
-      </Link>
-      <Link
-        to="/login"
-        state={{ returnTo: location.pathname }}
-        className="ui-button ui-button-sm"
-      >
-        Iniciar sesión
-      </Link>
-    </>
+    <header className="border-b border-[#e0ded5] bg-[#fffdf9] text-[#385347]">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-5 py-5 md:px-8">
+        <Link
+          to="/"
+          className="font-serif text-[23px] font-bold tracking-[-0.04em]"
+          aria-label="Reservas Moreno - inicio"
+        >
+          reservas<span className="text-[#e28b68]">moreno</span>
+        </Link>
+        <nav
+          aria-label="Navegación principal"
+          className="flex flex-wrap items-center justify-end gap-3 text-sm"
+        >
+          {authQuery.isPending ? (
+            <span className="text-[#68716a]" role="status">
+              Verificando sesión...
+            </span>
+          ) : user ? (
+            <>
+              <Link to="/reservas" className="ui-link">
+                Mis reservas
+              </Link>
+              <Link to="/cuenta/editar" className="ui-link">
+                Configuración
+              </Link>
+              {isAdmin && (
+                <Link to="/admin/departamentos" className="ui-link">
+                  Panel de Admin
+                </Link>
+              )}
+              <Link to="/logout" className="ui-button ui-button-sm">
+                Cerrar sesión
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/register"
+                state={{ returnTo: location.pathname }}
+                className="ui-link"
+              >
+                Crear cuenta
+              </Link>
+              <Link
+                to="/login"
+                state={{ returnTo: location.pathname }}
+                className="ui-button ui-button-sm"
+              >
+                Iniciar sesión
+              </Link>
+            </>
+          )}
+        </nav>
+      </div>
+    </header>
   );
 }

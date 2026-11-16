@@ -4,6 +4,7 @@ import type { ApartmentCreateInput, DepartamentoData, ApartmentWriteInput } from
 import type { ImageData } from '~/types/images';
 import type { Reserva } from '~/types/Reserva';
 import type { ReservationDetail, ReservationListingDto } from '~/types/ReservationDetail';
+import type { User } from '~/types/User';
 
 export interface AdminCreateReservationInput {
     apartmentId: string;

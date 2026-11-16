@@ -1,4 +1,4 @@
-import { Link, useNavigate, useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { CardPayment, initMercadoPago } from "@mercadopago/sdk-react";
@@ -407,13 +407,6 @@ export default function MisReservasModificarPage() {
 
   return (
     <main className="min-h-screen bg-[#f6f4ee] text-[#202722]">
-      <header className="mx-auto flex max-w-7xl items-center justify-between px-5 py-6 md:px-8">
-        <Link className="font-serif text-[23px] font-bold tracking-[-0.04em] text-[#385347]" to="/">
-          reservas<span className="text-[#e28b68]">moreno</span>
-        </Link>
-        <Link to="/reservas" className="ui-link">Volver a reservas</Link>
-      </header>
-
       <section className="mx-auto max-w-6xl px-5 py-8 md:px-8">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>

@@ -5,7 +5,7 @@ import type { Departamento } from "~/models/Departamento";
 import type { Reserva } from "~/types/Reserva";
 import ApartmentLocationMap from "~/components/ApartmentLocationMap";
 import CalendarioDisponibilidad from "~/components/CalendarioDisponibilidad";
-import NavegacionUsuario, { useAuthentication } from "~/components/NavegacionUsuario";
+import { useAuthentication } from "~/components/NavegacionUsuario";
 import api, { resolveImageUrl } from "~/utils/api";
 import type { Route } from "./+types/departamento";
 
@@ -75,24 +75,6 @@ export default function DepartamentoDetallePage() {
 
 	return (
 		<main className="min-h-screen bg-[#f6f4ee] text-[#202722]">
-			<header className="mx-auto flex max-w-7xl items-center justify-between px-5 py-6 md:px-8">
-				<div className="flex items-center gap-3">
-					<Link
-						className="font-serif text-[23px] font-bold tracking-[-0.04em] text-[#385347]"
-						to="/"
-					>
-						reservas<span className="text-[#e28b68]">moreno</span>
-					</Link>
-				</div>
-
-				<div className="flex items-center gap-4 text-sm text-[#385347]">
-					{/* <Link to="/" className="ui-link">
-						Legal
-					</Link> */}
-					<NavegacionUsuario />
-				</div>
-			</header>
-
       <section className="mx-auto max-w-7xl px-5 pb-8 md:px-8 mt-14">
         <div className="pb-4">
 				<Link
