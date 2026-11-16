@@ -19,6 +19,7 @@ import "./app.css";
 import { ApiError } from "./types/ApiError";
 import AppLoadingIndicator from "./components/AppLoadingIndicator";
 import NavegacionUsuario from "./components/NavegacionUsuario";
+import { useEffect } from "react";
 
 export const links: Route.LinksFunction = () => [
 	{ rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -67,15 +68,14 @@ const queryClient = new QueryClient({
 
 export function Layout({ children }: { children: React.ReactNode }) {
     /** PARA EL MOMENTO EN QUE SE IMPLEMENTE AUTH */
-    // useEffect(() => {
-    //     const handleUnauthorized = () => {
-    //         queryClient.clear(); // limpia cache
-    //         setUser(null);
-    //         navigate('/login');
-    //     };
-    //     window.addEventListener('auth:unauthorized', handleUnauthorized);
-    //     return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
-    // }, []);
+    useEffect(() => {
+        const handleUnauthorized = () => {
+            queryClient.clear(); // limpia cache
+            window.location.reload();
+        };
+        window.addEventListener('auth:unauthorized', handleUnauthorized);
+        return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
+    }, []);
 
 	return (
 		<html lang="en">

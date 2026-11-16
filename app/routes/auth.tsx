@@ -70,15 +70,6 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
 		},
 		meta: { silent: true },
 		onSuccess: async (response) => {
-			if (mode === "login") {
-				// NUEVO: Registra únicamente campos de rol para evitar exponer datos personales o tokens.
-				console.log("LOGIN RESPONSE BACKEND:", {
-					usertype: response.data?.usertype,
-					userType: response.data?.userType,
-					role: response.data?.role,
-					type: response.data?.type,
-				});
-			}
 			// NUEVO: Espera a que la query de autenticación vuelva a cargar el objeto User.
 			await queryClient.invalidateQueries({ queryKey: ["auth-user"] });
 			toast.success(mode === "register" ? "Cuenta creada correctamente" : "Sesión iniciada");

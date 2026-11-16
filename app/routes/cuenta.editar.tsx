@@ -33,7 +33,6 @@ export default function EditAccountRoute() {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   useEffect(() => {
-    console.log(authQuery.data)
     if (!authQuery.data) return;
     setForm({
       firstName: authQuery.data.name,

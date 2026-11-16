@@ -391,7 +391,6 @@ export default function CalendarioDisponibilidad({
       setIsCreatingReservation(false);
       setReservationError(null);
       toast.success("Reserva creada exitosamente.");
-      console.log(data);
       navigate("/reservas/" + data.id);
     },
     onError: (error) => {

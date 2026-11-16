@@ -415,7 +415,6 @@ export default function MisReservasModificarPage() {
   }
 
   const payed = reservaQuery.data.payments.reduce((acc, r) => acc + r.amount, 0);
-  console.log(payed)
 
   return (
     <main className="min-h-screen bg-[#f6f4ee] text-[#202722]">

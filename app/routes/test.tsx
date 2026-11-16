@@ -20,10 +20,6 @@ export default function Test() {
         meta: { errorMessage: 'No pudimos cargar las reservas de esta propiedad' },
     });
 
-    useEffect(() => {
-        console.log(query.data)
-    }, [query])
-
     if (query.isPending) return <LoadingState label="Cargando..." />;
 
     if (query.isError) return JSON.stringify(query.error)

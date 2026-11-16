@@ -52,17 +52,14 @@ api.interceptors.response.use(
             const status = error.response.status;
 
             // mensajes mas especificos
-            //
-            console.log(error.response)
-
             const backendMessage = error.response.data?.error ?? error.response.data?.message ?? error.response.data?.Error;
             const message = backendMessage || ERROR_MESSAGES[status] || ERROR_MESSAGES[400];
 
             /** CUANDO TENGAMOS AUTH, DESCOMENTAR */
             /** SI EL ERROR RETORNADO ES 401 (no hay token) DESAUTENTICAR */
-            // if (status === 401) {
-            //     window.dispatchEvent(new CustomEvent('auth:unauthorized'));
-            // }
+            if (status === 401) {
+                window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+            }
 
             return Promise.reject(new ApiError(message, status, error.response.data?.code));
         }
