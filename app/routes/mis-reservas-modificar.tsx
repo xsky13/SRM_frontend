@@ -78,11 +78,9 @@ export default function MisReservasModificarPage() {
   const [rangeEnd, setRangeEnd] = useState<Date | undefined>();
   const [isDragging, setIsDragging] = useState(false);
   const [step, setStep] = useState<"dates" | "payment" | "success">("dates");
-  const [paymentOption, setPaymentOption] = useState<"deposit" | "full">("full");
   const [showCardForm, setShowCardForm] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
-  const [paymentStatus, setPaymentStatus] = useState<number | null>(null);
   const [userEmail, setUserEmail] = useState("test@gmail.com");
   const [existingReservations, setExistingReservations] = useState<ReservationReservation[]>([]);
   const [isLoadingAvailability, setIsLoadingAvailability] = useState(true);
@@ -259,7 +257,6 @@ export default function MisReservasModificarPage() {
 
     setIsProcessingPayment(true);
     setPaymentError(null);
-    setPaymentStatus(null);
 
     try {
       const { startDate, endDate } = normalizeRange(rangeStart, rangeEnd);
@@ -291,7 +288,6 @@ export default function MisReservasModificarPage() {
 
       const normalizedStatus = Number(data?.paymentStatus ?? data?.status ?? data?.payment_status ?? 0);
       setUserEmail(data.email ?? authQuery.data?.email ?? "tu correo");
-      setPaymentStatus(normalizedStatus);
 
       if (normalizedStatus === 2 || (response.ok && !normalizedStatus)) {
         setStep("success");
@@ -371,7 +367,7 @@ export default function MisReservasModificarPage() {
     }
   }
 
-  const paymentAmount = paymentOption === "deposit" ? Math.max(0, delta) : Math.max(0, delta);
+  const paymentAmount = Math.max(0, delta);
   const oldReservationDays = reservaQuery.data
     ? Math.max(
         1,
@@ -388,13 +384,6 @@ export default function MisReservasModificarPage() {
         reservaQuery.data.state === ReservationState.ConfirmedPaymentIncomplete ||
         reservaQuery.data.state === ReservationState.ConfirmedPaymentComplete
       ),
-  );
-  const shouldShowPayment = Boolean(
-    reservaQuery.data &&
-      (reservaQuery.data.state === ReservationState.NotConfirmed ||
-        reservaQuery.data.state ===
-          ReservationState.ConfirmedPaymentIncomplete) &&
-      (delta > 0 || refund > 0),
   );
 
   if (authQuery.isPending) {
@@ -552,42 +541,6 @@ export default function MisReservasModificarPage() {
               </div>
             )}
 
-            <div className="mt-4 space-y-2">
-              <button
-                type="button"
-                onClick={() => setPaymentOption("deposit")}
-                className={`flex w-full items-center justify-between rounded-md border p-3 text-left transition ${paymentOption === "deposit" ? "border-[#385347] bg-[#edf2e8]" : "border-[#e0ded5] bg-white hover:border-[#bfc5b9]"}`}
-              >
-                <span className="flex items-center gap-3">
-                  <CreditCard size={18} className="text-[#e28b68]" />
-                  <span>
-                    <strong className="block text-sm text-[#385347]">Abonar diferencia</strong>
-                    <small className="text-xs text-[#68716a]">{formatPrice(delta || 0)}</small>
-                  </span>
-                </span>
-                <span className="h-4 w-4 border border-[#385347] p-0.5">
-                  {paymentOption === "deposit" && <span className="block h-full w-full bg-[#385347]" />}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPaymentOption("full")}
-                className={`flex w-full items-center justify-between rounded-md border p-3 text-left transition ${paymentOption === "full" ? "border-[#385347] bg-[#edf2e8]" : "border-[#e0ded5] bg-white hover:border-[#bfc5b9]"}`}
-              >
-                <span className="flex items-center gap-3">
-                  <CreditCard size={18} className="text-[#e28b68]" />
-                  <span>
-                    <strong className="block text-sm text-[#385347]">Pagar monto completo</strong>
-                    <small className="text-xs text-[#68716a]">{formatPrice(newTotal)}</small>
-                  </span>
-                </span>
-                <span className="h-4 w-4 border border-[#385347] p-0.5">
-                  {paymentOption === "full" && <span className="block h-full w-full bg-[#385347]" />}
-                </span>
-              </button>
-            </div>
-
             {paymentError && <p className="mt-3 text-sm text-[#b74f3d]">{paymentError}</p>}
 
             {!showCardForm ? (
@@ -595,7 +548,7 @@ export default function MisReservasModificarPage() {
                 type="button"
                 onClick={requiresPaidModification ? () => setShowCardForm(true) : handleSaveDates}
                 disabled={isProcessingPayment}
-                className="ui-button ui-button-md ui-button-block mt-4"
+                className="ui-button ui-button-md ui-button-block mt-2"
               >
                 {requiresPaidModification ? "Continuar al pago" : "Guardar modificación"}
               </button>
