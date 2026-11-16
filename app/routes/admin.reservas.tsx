@@ -10,6 +10,10 @@ import CancelReservationModal from "~/components/admin/CancelReservationModal";
 import CreateReservationModal from "~/components/admin/CreateReservationModal";
 import { cancelReservationAdmin, getAdminReservations, resolveImageUrl } from "~/utils/api";
 
+export function meta() {
+  return [{ title: "Reservas | Administración | Reservas Moreno" }];
+}
+
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("es-AR", {
     day: "2-digit",

@@ -4,6 +4,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import api from "~/utils/api";
 
+export function meta() {
+	return [{ title: "Cerrar sesión | Reservas Moreno" }];
+}
+
 export default function LogoutRoute() {
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();

@@ -3,6 +3,10 @@ import { Navigate, NavLink, Outlet } from "react-router";
 import { useAuthentication } from "~/components/NavegacionUsuario";
 import { UserType } from "~/types/User";
 
+export function meta() {
+  return [{ title: "Panel de Administración | Reservas Moreno" }];
+}
+
 export default function AdminLayout() {
   const authQuery = useAuthentication();
   const isAdmin = authQuery.data?.usertype === UserType.Admin;

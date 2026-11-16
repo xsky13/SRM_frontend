@@ -1,5 +1,9 @@
 import ApartmentForm from "~/components/admin/forms/ApartmentForm";
 
+export function meta() {
+	return [{ title: "Crear departamento | Administración | Reservas Moreno" }];
+}
+
 export default function CreateApartmentPage() {
 	return (
 		<section className="mx-auto max-w-3xl rounded-md border border-[#e5e7eb] bg-[#fffdf9] p-6 shadow-[0_18px_45px_rgba(56,83,71,.07)] md:p-8">

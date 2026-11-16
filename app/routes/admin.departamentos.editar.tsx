@@ -3,6 +3,10 @@ import { useParams } from "react-router";
 import ApartmentForm from "~/components/admin/forms/ApartmentForm";
 import { getApartmentById } from "~/utils/api";
 
+export function meta() {
+	return [{ title: "Editar departamento | Administración | Reservas Moreno" }];
+}
+
 export default function EditApartmentPage() {
 	const { id } = useParams();
 	const apartmentQuery = useQuery({

@@ -7,7 +7,7 @@ import api from "~/utils/api";
 
 export function meta({ }: Route.MetaArgs) {
 	return [
-		{ title: "Reservas Moreno" },
+		{ title: "Prueba | Reservas Moreno" },
 		{ name: "description", content: "Reserve departamentos para su estadia en Libertador San Martin." },
 	];
 }

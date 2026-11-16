@@ -6,6 +6,10 @@ import type { ReservationListingDto } from "~/types/ReservationDetail";
 import { UserType, type User } from "~/types/User";
 import { getAdminUserReservations, getAdminUsers } from "~/utils/api";
 
+export function meta() {
+  return [{ title: "Usuarios | Administración | Reservas Moreno" }];
+}
+
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 function getUserTypeLabel(userType: User["usertype"]) {

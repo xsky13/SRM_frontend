@@ -9,6 +9,10 @@ import { useAuthentication } from "~/components/NavegacionUsuario";
 import api, { resolveImageUrl } from "~/utils/api";
 import type { Route } from "./+types/departamento";
 
+export function meta() {
+	return [{ title: "Departamento | Reservas Moreno" }];
+}
+
 export default function DepartamentoDetallePage() {
 	const { id } = useParams<Route.ComponentProps["params"]>();
 	const location = useLocation();

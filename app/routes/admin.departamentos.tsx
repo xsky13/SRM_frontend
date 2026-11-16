@@ -1,6 +1,10 @@
 import ApartmentTable from "~/components/admin/ApartmentTable";
 import { Link } from "react-router";
 
+export function meta() {
+  return [{ title: "Departamentos | Administración | Reservas Moreno" }];
+}
+
 export default function AdminDepartamentosPage() {
   return (
     <section>
