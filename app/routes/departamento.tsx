@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import type { Departamento } from "~/models/Departamento";
@@ -9,6 +9,7 @@ import LoadingState from "~/components/LoadingState";
 import { useAuthentication } from "~/components/NavegacionUsuario";
 import api, { resolveImageUrl } from "~/utils/api";
 import type { Route } from "./+types/departamento";
+import { MapPin } from "lucide-react";
 
 export function meta() {
 	return [{ title: "Departamento | Reservas Moreno" }];
@@ -19,6 +20,7 @@ export default function DepartamentoDetallePage() {
 	const location = useLocation();
 	const navigate = useNavigate();
 	const [selectedImageId, setSelectedImageId] = useState<string>();
+	const [selectedImageUrl, setSelectedImageUrl] = useState<string>("https://placehold.co/1000x800?text=Cargando... ");
 	const [showCalendar, setShowCalendar] = useState(false);
 	const authQuery = useAuthentication();
 
@@ -44,6 +46,10 @@ export default function DepartamentoDetallePage() {
   });
 
 	const departamento = query.data;
+
+	useEffect(() => {
+		setSelectedImageUrl(resolveImageUrl(departamento?.coverImgUrl))
+	}, [departamento])
 
 	if (query.isPending) {
 		return <LoadingState label="Cargando departamento..." />;
@@ -92,14 +98,18 @@ export default function DepartamentoDetallePage() {
 				<div className="grid items-start gap-16 lg:grid-cols-[0.95fr_1.35fr]">
 					<div className="flex flex-col justify-center">
 						<h1 className="font-serif text-5xl tracking-tighter text-[#202722] md:text-6xl">
-							{departamento.name} en {departamento.location}
+							{departamento.name} 
 						</h1>
 
 						 <p className="mt-4 max-w-md text-base leading-7 text-[#4d5b55]">
 							{departamento.description}
 						</p>
+						<p className="mt-5 mt-4 max-w-md text-base leading-7 text-gray-800 flex items-center gap-2">
+							<MapPin size={15} className="" /> 
+							{departamento.location}
+						</p>
 
-						<div className="mt-8 rounded-[.8rem] border border-dashed border-[#c8c2b8] bg-[#f5f2ec] p-5">
+						<div className="mt-7 rounded-[.8rem] border border-dashed border-[#c8c2b8] bg-[#f5f2ec] p-5">
 							<p className="text-xs font-bold uppercase tracking-[0.14em] text-[#e28b68]">Desde</p>
 							<div className="mt-3 flex items-end gap-2">
 								<span className="font-serif text-5xl tracking-tighter text-[#385347]">
@@ -126,7 +136,7 @@ export default function DepartamentoDetallePage() {
 							<div className="ui-border overflow-hidden rounded-md bg-[#ede9dc]">
 								<img
 									className="h-100 w-full object-cover"
-									src={resolveImageUrl(departamento.coverImgUrl)}
+									src={selectedImageUrl}
 									alt={`${departamento.name}, imagen de portada`}
 								/>
 							</div>
@@ -136,7 +146,10 @@ export default function DepartamentoDetallePage() {
 								<button
 									key={image.id}
 									type="button"
-									onClick={() => setSelectedImageId(image.id)}
+									onClick={() => {
+										setSelectedImageUrl(resolveImageUrl(image.url))
+										setSelectedImageId(image.id)
+									}}
 									className={`aspect-4/3 overflow-hidden rounded-md border-2 bg-[#ede9dc] transition ${
 										selectedImage.id === image.id ? "border-[#e28b68]" : "border-transparent"
 									}`}
