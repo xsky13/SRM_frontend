@@ -55,9 +55,10 @@ api.interceptors.response.use(
             const backendMessage = error.response.data?.error ?? error.response.data?.message ?? error.response.data?.Error;
             const message = backendMessage || ERROR_MESSAGES[status] || ERROR_MESSAGES[400];
 
-            /** CUANDO TENGAMOS AUTH, DESCOMENTAR */
-            /** SI EL ERROR RETORNADO ES 401 (no hay token) DESAUTENTICAR */
-            if (status === 401) {
+            const requestUrl = error.config?.url ?? "";
+            const isExpectedUnauthenticatedRequest =
+                /\/api\/user\/(me|login|register)\/?$/.test(requestUrl);
+            if (status === 401 && !isExpectedUnauthenticatedRequest) {
                 window.dispatchEvent(new CustomEvent('auth:unauthorized'));
             }
 

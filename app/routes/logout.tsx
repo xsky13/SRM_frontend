@@ -15,7 +15,7 @@ export default function LogoutRoute() {
 	const mutation = useMutation({
 		mutationFn: () => api.post("/api/user/logout"),
 		onSuccess: () => {
-			queryClient.setQueryData(["auth-user"], false);
+			queryClient.setQueryData(["auth-user"], null);
 			toast.success("Sesión cerrada");
 			navigate("/");
 		},

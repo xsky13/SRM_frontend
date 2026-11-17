@@ -67,11 +67,9 @@ const queryClient = new QueryClient({
 })
 
 export function Layout({ children }: { children: React.ReactNode }) {
-    /** PARA EL MOMENTO EN QUE SE IMPLEMENTE AUTH */
     useEffect(() => {
         const handleUnauthorized = () => {
-            queryClient.clear(); // limpia cache
-            window.location.reload();
+            queryClient.setQueryData(["auth-user"], null);
         };
         window.addEventListener('auth:unauthorized', handleUnauthorized);
         return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
