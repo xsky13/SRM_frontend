@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { ApiError } from '~/types/ApiError';
+import { beginTrackedRequest } from '~/utils/requestProgress';
 import type { ApartmentCreateInput, DepartamentoData, ApartmentWriteInput } from '~/models/Departamento';
 import type { ImageData } from '~/types/images';
 import type { Reserva } from '~/types/Reserva';
@@ -37,6 +38,19 @@ const api = axios.create({
     withCredentials: true,
 });
 
+const trackedAxiosRequests = new WeakMap<object, () => void>();
+
+api.interceptors.request.use(config => {
+    trackedAxiosRequests.set(config, beginTrackedRequest());
+    return config;
+});
+
+function completeTrackedAxiosRequest(config: object | undefined): void {
+    if (!config) return;
+    trackedAxiosRequests.get(config)?.();
+    trackedAxiosRequests.delete(config);
+}
+
 const ERROR_MESSAGES: Record<number, string> = {
     400: 'Ocurrió un error inesperado',
     401: 'No está autorizado para realizar esta acción',
@@ -46,8 +60,12 @@ const ERROR_MESSAGES: Record<number, string> = {
 };
 
 api.interceptors.response.use(
-    response => response,
+    response => {
+        completeTrackedAxiosRequest(response.config);
+        return response;
+    },
     error => {
+        completeTrackedAxiosRequest(error.config);
         if (error.response) {
             const status = error.response.status;
 

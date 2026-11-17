@@ -9,6 +9,7 @@ import { RESERVATION_STATE_LABEL } from "~/types/reservationState";
 import api, { cancelReservation } from "~/utils/api";
 import { ReservationState } from "~/types/Reserva";
 import { PaymentStatus, type ReservationDetail } from "~/types/ReservationDetail";
+import { trackedFetch } from "~/utils/requestProgress";
 
 const apiBaseUrl = import.meta.env.VITE_API_URL;
 const paymentEndpoints = {
@@ -273,7 +274,7 @@ export default function ReservaPage() {
 		setPaymentApproved(false);
 
 		try {
-			const response = await fetch(
+			const response = await trackedFetch(
 				`${apiBaseUrl.replace(/\/$/, "")}/api/Payment/${paymentEndpoints[option]}/${option === "rest" ? activeReservation.reservationId : activeReservation.apartmentId}`,
 				{
 					method: "POST",

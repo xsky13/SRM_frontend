@@ -9,6 +9,7 @@ import { useAuthentication } from "~/components/NavegacionUsuario";
 import { ReservationState } from "~/types/Reserva";
 import type { ReservationDetail } from "~/types/ReservationDetail";
 import { RESERVATION_STATE_LABEL } from "~/types/reservationState";
+import { trackedFetch } from "~/utils/requestProgress";
 
 const apiBaseUrl = import.meta.env.VITE_API_URL;
 const monthFormatter = new Intl.DateTimeFormat("es-AR", { month: "long", year: "numeric" });
@@ -267,7 +268,7 @@ export default function MisReservasModificarPage() {
 
     try {
       const { startDate, endDate } = normalizeRange(rangeStart, rangeEnd);
-      const response = await fetch(
+      const response = await trackedFetch(
         `${apiBaseUrl.replace(/\/$/, "")}/api/reservation/${reservaQuery.data.reservationId}/full`,
         {
           method: "PUT",
@@ -341,7 +342,7 @@ export default function MisReservasModificarPage() {
     setPaymentError(null);
 
     try {
-      const response = await fetch(
+      const response = await trackedFetch(
         `${apiBaseUrl.replace(/\/$/, "")}/api/reservation/${reservaQuery.data.reservationId}`,
         {
           method: "PUT",

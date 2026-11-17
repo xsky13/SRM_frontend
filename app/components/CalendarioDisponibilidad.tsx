@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { ReservationState, type Reserva } from "~/types/Reserva";
 import api from "~/utils/api";
+import { trackedFetch } from "~/utils/requestProgress";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 interface CalendarioDisponibilidadProps {
@@ -272,7 +273,7 @@ export default function CalendarioDisponibilidad({
     setPaymentStatus(null);
 
     try {
-      const response = await fetch(
+      const response = await trackedFetch(
         `${apiBaseUrl.replace(/\/$/, "")}/api/Payment/process_card_payment/${apartmentId}`,
         {
           method: "POST",
