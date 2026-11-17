@@ -179,7 +179,6 @@ export default function CalendarioDisponibilidad({
   const [userEmail, setUserEmail] = useState("test@gmail.com");
   const [rangeStart, setRangeStart] = useState<Date | undefined>();
   const [rangeEnd, setRangeEnd] = useState<Date | undefined>();
-  const [isDragging, setIsDragging] = useState(false);
   const [step, setStep] = useState<"dates" | "payment" | "success">("dates");
   const [paymentOption, setPaymentOption] = useState<"deposit" | "full">(
     isAuthenticated ? "deposit" : "full",
@@ -215,48 +214,34 @@ export default function CalendarioDisponibilidad({
       : { startDate: end, endDate: start };
   }
 
-  function updateRangeEnd(day: Date) {
-    if (!rangeStart || !isSelectableDay(day)) return;
-
-    const { startDate, endDate } = normalizeRange(rangeStart, day);
-
-    if (rangeHasReservation(startDate, endDate, reservas, userPendingReservations)) return;
-
-    if (rangeStart.getTime() <= day.getTime()) {
-      setRangeEnd(day);
-      return;
-    }
-
-    setRangeStart(day);
-    setRangeEnd(rangeStart);
+  function clearDateSelection() {
+    setRangeStart(undefined);
+    setRangeEnd(undefined);
   }
 
-  function handleDayPointerDown(day: Date) {
+  function handleDayClick(day: Date) {
     if (
       !isSelectableDay(day) ||
       isReserved(day, reservas) ||
       isPendingForUser(day, userPendingReservations)
     ) return;
 
-    setIsDragging(true);
+    setReservationError(null);
     if (!rangeStart || rangeEnd) {
       setRangeStart(day);
       setRangeEnd(undefined);
       return;
     }
 
-    updateRangeEnd(day);
-  }
+    const { startDate, endDate } = normalizeRange(rangeStart, day);
+    if (rangeHasReservation(startDate, endDate, reservas, userPendingReservations)) {
+      setReservationError("El rango seleccionado incluye fechas que no están disponibles para vos.");
+      clearDateSelection();
+      return;
+    }
 
-  function handleDayPointerUp(day: Date) {
-    if (
-      !rangeStart ||
-      !isSelectableDay(day) ||
-      isReserved(day, reservas) ||
-      isPendingForUser(day, userPendingReservations)
-    ) return;
-    updateRangeEnd(day);
-    setIsDragging(false);
+    setRangeStart(startDate);
+    setRangeEnd(endDate);
   }
 
   async function handlePaymentSubmit(formData: any): Promise<void> {
@@ -272,15 +257,21 @@ export default function CalendarioDisponibilidad({
       throw new Error("No se pudieron verificar tus reservas pendientes.");
     }
 
+    const { startDate, endDate } = normalizeRange(rangeStart, rangeEnd);
+    if (rangeHasReservation(startDate, endDate, reservas, userPendingReservations)) {
+      const message = "El rango seleccionado incluye fechas que no están disponibles para vos.";
+      clearDateSelection();
+      setStep("dates");
+      setPaymentError(null);
+      setReservationError(message);
+      throw new Error(message);
+    }
+
     setIsProcessingPayment(true);
     setPaymentError(null);
     setPaymentStatus(null);
 
     try {
-      const { startDate, endDate } = normalizeRange(rangeStart, rangeEnd);
-      if (rangeHasReservation(startDate, endDate, reservas, userPendingReservations)) {
-        throw new Error("El rango seleccionado incluye fechas que no están disponibles para vos.");
-      }
       const response = await fetch(
         `${apiBaseUrl.replace(/\/$/, "")}/api/Payment/process_card_payment/${apartmentId}`,
         {
@@ -366,6 +357,13 @@ export default function CalendarioDisponibilidad({
           Math.abs(rangeEnd.getTime() - rangeStart.getTime()) / 86_400_000,
         ) + 1
       : 0;
+  const selectedCheckoutDate = rangeEnd
+    ? new Date(
+        rangeEnd.getFullYear(),
+        rangeEnd.getMonth(),
+        rangeEnd.getDate() + 1,
+      )
+    : undefined;
   const total = selectedDays * pricePerDay;
   const deposit = total * 0.1;
   const paymentAmount = paymentOption === "deposit" ? deposit : total;
@@ -411,6 +409,7 @@ export default function CalendarioDisponibilidad({
     const { startDate, endDate } = normalizeRange(rangeStart, rangeEnd);
     if (rangeHasReservation(startDate, endDate, reservas, userPendingReservations)) {
       setReservationError("El rango seleccionado incluye fechas que no están disponibles para vos.");
+      clearDateSelection();
       return;
     }
 
@@ -545,8 +544,6 @@ export default function CalendarioDisponibilidad({
             {/* calendario */}
             <div
               className="mt-3 grid grid-cols-7 gap-1 text-center text-[11px] text-[#68716a]"
-              onPointerUp={() => setIsDragging(false)}
-              onPointerCancel={() => setIsDragging(false)}
             >
               {weekdays.map((day) => (
                 <div key={day} className="py-1 font-bold uppercase">
@@ -576,15 +573,7 @@ export default function CalendarioDisponibilidad({
                               : ""
                         }
                         disabled={unavailable || !isSelectableDay(day)}
-                        onPointerDown={() =>
-                          !unavailable && handleDayPointerDown(day)
-                        }
-                        onPointerEnter={() =>
-                          isDragging && !unavailable && updateRangeEnd(day)
-                        }
-                        onPointerUp={() =>
-                          !unavailable && handleDayPointerUp(day)
-                        }
+                        onClick={() => handleDayClick(day)}
                         className={`aspect-square rounded-sm border border-transparent p-0.5 transition ${
                           reserved
                             ? "cursor-not-allowed bg-[#f3ddd3] text-[#a85c43]"
@@ -610,6 +599,14 @@ export default function CalendarioDisponibilidad({
               )}
             </div>
 
+            <p className="mt-3 font-medium text-center text-muted-foreground" aria-live="polite">
+              {rangeStart && !rangeEnd
+                ? "Entrada seleccionada. Ahora elegí la fecha de salida."
+                : rangeStart && rangeEnd
+                  ? "Hacé clic en otra fecha para iniciar una nueva selección."
+                  : "Hacé clic en la fecha de entrada y luego en la fecha de salida."}
+            </p>
+
             <div className="mt-4 flex flex-wrap gap-4 border-t border-[#ece7df] pt-3 text-xs text-[#4d5b55]">
               <span className="inline-flex items-center gap-1.5">
                 <CircleCheck size={14} className="text-[#6b8b63]" /> Disponible
@@ -623,13 +620,14 @@ export default function CalendarioDisponibilidad({
                   Tu reserva pendiente
                 </span>
               )}
-              {rangeStart && rangeEnd && (
+              {rangeStart && rangeEnd && selectedCheckoutDate && (
                 <>
                   <span className="w-full text-[#385347]">
-                    {dateKeyReadable(rangeStart)} a {dateKeyReadable(rangeEnd)}
+                    Entrada: {dateKeyReadable(rangeStart)} · Salida:{" "}
+                    {dateKeyReadable(selectedCheckoutDate)}
                   </span>
-                  <span className="w-full text-[#385347]">
-                    Entrada en {dateKeyReadable(rangeStart)} a la tarde, salida en {dateKeyReadable(new Date(rangeEnd.setUTCDate(rangeEnd.getUTCDate() + 1)))} (La salida es el día después del último seleccionado)
+                  <span className="w-full text-[#68716a]">
+                    El último día seleccionado es la última noche de estadía.
                   </span>
                 </>
               )}

@@ -30,6 +30,10 @@ function formatDate(value: string | Date) {
 }
 
 function dateKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function dateKeyReadable(date: Date): string {
   return `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}/${date.getFullYear()}`;
 }
 
@@ -77,7 +81,6 @@ export default function MisReservasModificarPage() {
   const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [rangeStart, setRangeStart] = useState<Date | undefined>();
   const [rangeEnd, setRangeEnd] = useState<Date | undefined>();
-  const [isDragging, setIsDragging] = useState(false);
   const [step, setStep] = useState<"dates" | "payment" | "success">("dates");
   const [showCardForm, setShowCardForm] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -153,6 +156,8 @@ export default function MisReservasModificarPage() {
   const selectedDays = rangeStart && rangeEnd
     ? Math.round(Math.abs(rangeEnd.getTime() - rangeStart.getTime()) / 86_400_000) + 1
     : 0;
+  const checkoutDate = rangeEnd ? new Date(rangeEnd) : undefined;
+  checkoutDate?.setDate(checkoutDate.getDate() + 1);
 
   const originalTotal = reservaQuery.data ?
     reservaQuery.data.fullCost : 0;
@@ -203,57 +208,42 @@ export default function MisReservasModificarPage() {
     return false;
   };
 
-  const handleDayPointerDown = (day: Date) => {
+  const clearDateSelection = () => {
+    // setRangeStart(undefined);
+    // setRangeEnd(undefined);
+    setRangeStart(reservaQuery.data != null ? parseDate(reservaQuery.data.checkInDate) : undefined);
+    setRangeEnd(reservaQuery.data != null ? parseDate(reservaQuery.data.checkOutDate) : undefined);
+  };
+
+  const handleDayClick = (day: Date) => {
     if (!isSelectableDay(day) || isReservedDay(day)) return;
-    setIsDragging(true);
+    setDateSelectionError(null);
     if (!rangeStart || rangeEnd) {
-      setDateSelectionError(null);
       setRangeStart(day);
       setRangeEnd(undefined);
       return;
     }
 
-    if (rangeHasReservedDay(rangeStart, day)) {
+    const { startDate, endDate } = normalizeRange(rangeStart, day);
+    if (rangeHasReservedDay(startDate, endDate)) {
       setDateSelectionError("El rango seleccionado incluye días que ya están reservados.");
+      clearDateSelection();
       return;
     }
 
-    setDateSelectionError(null);
-    if (day.getTime() < rangeStart.getTime()) setRangeStart(day);
-    setRangeEnd(day);
+    setRangeStart(startDate);
+    setRangeEnd(endDate);
   };
 
-  const handleDayPointerUp = (day: Date) => {
-    if (!rangeStart || !isSelectableDay(day) || isReservedDay(day)) return;
-    if (rangeHasReservedDay(rangeStart, day)) {
-      setDateSelectionError("El rango seleccionado incluye días que ya están reservados.");
-      setIsDragging(false);
-      return;
-    }
-
-    setDateSelectionError(null);
-    if (day.getTime() < rangeStart.getTime()) {
-      setRangeEnd(rangeStart);
-      setRangeStart(day);
-    } else {
-      setRangeEnd(day);
-    }
-    setIsDragging(false);
-  };
-
-  const isCalendarConflict = (day: Date) => {
-    return isReservedDay(day);
-  };
-
-  const handleDayPointerEnter = (day: Date) => {
-    if (!isDragging || !rangeStart || isCalendarConflict(day)) return;
-    if (rangeHasReservedDay(rangeStart, day)) {
+  const handleContinueToPayment = () => {
+    if (!rangeStart || !rangeEnd) return;
+    if (rangeHasReservedDay(rangeStart, rangeEnd)) {
+      clearDateSelection();
       setDateSelectionError("El rango seleccionado incluye días que ya están reservados.");
       return;
     }
-
     setDateSelectionError(null);
-    setRangeEnd(day);
+    setStep("payment");
   };
 
   async function handlePaymentSubmit(formData: any): Promise<void> {
@@ -264,7 +254,12 @@ export default function MisReservasModificarPage() {
       throw new Error(availabilityError ?? "Esperá a que se verifique la disponibilidad.");
     }
     if (rangeHasReservedDay(rangeStart, rangeEnd)) {
-      throw new Error("El rango seleccionado incluye días que ya están reservados.");
+      const message = "El rango seleccionado incluye días que ya están reservados.";
+      clearDateSelection();
+      setStep("dates");
+      setDateSelectionError(message);
+      setPaymentError(null);
+      throw new Error(message);
     }
 
     setIsProcessingPayment(true);
@@ -334,7 +329,10 @@ export default function MisReservasModificarPage() {
       return;
     }
     if (rangeHasReservedDay(rangeStart, rangeEnd)) {
-      setPaymentError("El rango seleccionado incluye días que ya están reservados.");
+      clearDateSelection();
+      setStep("dates");
+      setDateSelectionError("El rango seleccionado incluye días que ya están reservados.");
+      setPaymentError(null);
       return;
     }
 
@@ -444,7 +442,7 @@ export default function MisReservasModificarPage() {
         </div>
 
         {step === "dates" ? (
-          <div className="rounded-md border border-[#d7d1c7] bg-[#fffdf9] p-4 shadow-sm">
+          <div className="mx-auto w-full max-w-md rounded-md border border-[#d7d1c7] bg-[#fffdf9] p-3 shadow-sm sm:p-4">
             <div className="mt-4 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <button
@@ -469,23 +467,21 @@ export default function MisReservasModificarPage() {
               </div>
             </div>
 
-            <div className="mt-3 grid grid-cols-7 gap-1 text-center text-[11px] text-[#68716a]" onPointerUp={() => setIsDragging(false)} onPointerCancel={() => setIsDragging(false)}>
+            <div className="mt-3 grid grid-cols-7 gap-1 text-center text-[11px] text-[#68716a]">
               {weekdays.map((day) => (
                 <div key={day} className="py-1 font-bold uppercase">{day}</div>
               ))}
               {days.map((day, index) =>
                 day ? (() => {
                   const selected = isBetween(day, rangeStart, rangeEnd) || Boolean(rangeStart && dateKey(day) === dateKey(rangeStart));
-                  const conflict = isCalendarConflict(day);
+                  const conflict = isReservedDay(day);
                   return (
                     <button
                       key={dateKey(day)}
                       type="button"
                       disabled={conflict || !isSelectableDay(day)}
-                      onPointerDown={() => !conflict && handleDayPointerDown(day)}
-                      onPointerEnter={() => handleDayPointerEnter(day)}
-                      onPointerUp={() => !conflict && handleDayPointerUp(day)}
-                      className={`aspect-square rounded-sm border border-transparent p-0.5 transition ${
+                      onClick={() => handleDayClick(day)}
+                      className={`aspect-square rounded-sm border border-transparent p-0.5 transition flex h-full items-center justify-center text-xs font-semibold ${
                         conflict
                           ? "cursor-not-allowed border-[#e7a4a4] bg-[#fde2e2] text-[#b42318]"
                           : !isSelectableDay(day)
@@ -496,17 +492,29 @@ export default function MisReservasModificarPage() {
                       }`}
                       aria-label={`${day.getDate()} de ${monthFormatter.format(month)}${conflict ? ", reservado" : ", disponible"}`}
                     >
-                      <span className="flex h-full items-center justify-center text-xs font-semibold">{day.getDate()}</span>
+                      {day.getDate()}
                     </button>
                   );
                 })() : <div key={`empty-${index}`} />,
               )}
             </div>
 
+            <p className="mt-3 text-center text-xs text-[#68716a]" aria-live="polite">
+              {!rangeStart
+                ? "Elegí el primer día de estadía."
+                : !rangeEnd
+                  ? "Ahora elegí el último día de estadía. La salida será al día siguiente."
+                  : "Para empezar una nueva selección, elegí otra fecha."}
+            </p>
+
             <div className="mt-4 flex flex-wrap gap-4 border-t border-[#ece7df] pt-3 text-xs text-[#4d5b55]">
               <span className="inline-flex items-center gap-1.5"><CircleCheck size={14} className="text-[#6b8b63]" /> Disponible</span>
               <span className="inline-flex items-center gap-1.5"><CircleX size={14} className="text-[#c7765a]" /> Reservado</span>
-              {rangeStart && rangeEnd && <span className="w-full text-[#385347]">{dateKey(rangeStart)} a {dateKey(rangeEnd)} (salida el {dateKey(new Date(rangeEnd.setUTCDate(rangeEnd.getUTCDate() + 1)))})</span>}
+              {rangeStart && rangeEnd && checkoutDate && (
+                <span className="w-full text-[#385347]">
+                  {dateKeyReadable(rangeStart)} a {dateKeyReadable(rangeEnd)} (salida el {dateKeyReadable(checkoutDate)})
+                </span>
+              )}
             </div>
 
             {isLoadingAvailability && (
@@ -526,10 +534,9 @@ export default function MisReservasModificarPage() {
                 !rangeEnd ||
                 isUnchangedDateRange ||
                 isLoadingAvailability ||
-                Boolean(availabilityError) ||
-                rangeHasReservedDay(rangeStart, rangeEnd)
+                Boolean(availabilityError)
               }
-              onClick={() => setStep("payment")}
+              onClick={handleContinueToPayment}
               className="ui-button ui-button-md ui-button-block mt-4"
             >
               {rangeStart && rangeEnd ? `Continuar con ${selectedDays} ${selectedDays === 1 ? "día" : "días"}` : "Seleccioná fechas"}
