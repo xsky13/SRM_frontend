@@ -10,6 +10,7 @@ import api, { cancelReservation } from "~/utils/api";
 import { ReservationState } from "~/types/Reserva";
 import { PaymentStatus, type ReservationDetail } from "~/types/ReservationDetail";
 import { trackedFetch } from "~/utils/requestProgress";
+import { Link2, SquareArrowOutUpRight, SquareArrowUpRight } from "lucide-react";
 
 const apiBaseUrl = import.meta.env.VITE_API_URL;
 const paymentEndpoints = {
@@ -82,6 +83,22 @@ function getPaymentStatusLabel(status: PaymentStatus) {
 
 function getReservationStateLabel(state?: ReservationState) {
 	return RESERVATION_STATE_LABEL[state!] ?? "No confirmada";
+}
+
+function getReservationStateClass(state?: ReservationState) {
+	switch (state) {
+		case ReservationState.ConfirmedPaymentComplete:
+			return "border-emerald-200 bg-emerald-50 text-emerald-800";
+		case ReservationState.ConfirmedPaymentIncomplete:
+		case ReservationState.PaymentPending:
+			return "border-amber-200 bg-amber-50 text-amber-800";
+		case ReservationState.Cancelled:
+			return "border-rose-200 bg-rose-50 text-rose-800";
+		case ReservationState.NotConfirmed:
+			return "border-sky-200 bg-sky-50 text-sky-800";
+		default:
+			return "border-[#d7d1c7] bg-[#f0efe9] text-[#385347]";
+	}
 }
 
 export function meta() {
@@ -200,8 +217,8 @@ export default function ReservaPage() {
 		amount: number;
 	}) {
 		return (
-			<article className="flex min-h-80 flex-col border border-dashed border-[#c8c2b8] p-8">
-				<h2 className="text-center font-serif text-3xl font-bold text-[#202722]">
+			<article className="flex min-h-80 flex-col border border-[#e0ded5] bg-[#fffdf9]  p-8">
+				<h2 className="text-center font-serif text-3xl font-bold text-[#385347]">
 					{title}
 				</h2>
 				<p className="mt-3 max-w-md text-sm">{description}</p>
@@ -358,19 +375,42 @@ export default function ReservaPage() {
 					<p className="text-2xl font-bold text-[#202722]">Monto total: {formatPrice(total)}</p>
 				</div>
 
-				<div className="mt-8 grid gap-4 rounded-md bg-[#e7e4dc] p-5 text-sm md:grid-cols-4">
-					<p>Inicio: {formatDate(activeReservation.checkInDate)}</p>
-					<p>Fin: {formatDate(activeReservation.checkOutDate)}</p>
-					<p>Ubicación: {activeReservation.apartment?.name ?? "Departamento no disponible"}</p>
-					<p>Estado: {getReservationStateLabel(reservationState)}</p>
+				<div className="mt-8 px-3 py-2 border border-[#e0ded5] bg-[#fffdf9] grid grid-cols-1 overflow-hidden rounded-lg bg-[#fffdf9] sm:grid-cols-2 xl:grid-cols-4">
+					<div className=" p-4">
+						<p className="text-xs font-bold uppercase tracking-wider text-[#68716a]">Inicio</p>
+						<p className="mt-2 text-xl font-semibold leading-tight text-[#202722]">
+							{formatDate(activeReservation.checkInDate)}
+						</p>
+					</div>
+					<div className=" p-4">
+						<p className="text-xs font-bold uppercase tracking-wider text-[#68716a]">Fin</p>
+						<p className="mt-2 text-xl font-semibold leading-tight text-[#202722]">
+							{formatDate(activeReservation.checkOutDate)}
+						</p>
+					</div>
+					<div className=" p-4">
+						<p className="text-xs font-bold uppercase tracking-wider text-[#68716a]">Ubicación </p>
+						<Link to={`/departamento/${reservation.apartmentId}`} target="_blank" className="mt-2 break-words text-lg font-semibold leading-snug text-[#202722] flex gap-2 align-items-center">
+							{activeReservation.apartment?.name ?? "Departamento no disponible"}
+							<SquareArrowOutUpRight className="w-5" />
+						</Link>
+					</div>
+					<div className="p-4">
+						<p className="text-xs font-bold uppercase tracking-wider text-[#68716a]">Estado</p>
+						<span
+							className={`mt-2 inline-flex max-w-full rounded-full border px-3 py-1.5 text-sm font-bold leading-snug ${getReservationStateClass(reservationState)}`}
+						>
+							{getReservationStateLabel(reservationState)}
+						</span>
+					</div>
 				</div>
 				<p className="my-3">
-					La entrada al departamento es el {formatDate(activeReservation.checkInDate)} a la tarde, y la salida salida el {formatDate(new Date(new Date(activeReservation.checkOutDate).setUTCDate(new Date(activeReservation.checkOutDate).getUTCDate() + 1)).toISOString())} a la mañana. 
+					La entrada al departamento es el {formatDate(activeReservation.checkInDate)} a la tarde, y la salida el {formatDate(new Date(new Date(activeReservation.checkOutDate).setUTCDate(new Date(activeReservation.checkOutDate).getUTCDate() + 1)).toISOString())} a la mañana. 
 					{activeReservation.state == ReservationState.NotConfirmed && <strong> Mientras que su reserva no este confirmada, otra persona puede hacer una reserva en el mismo plazo que usted.</strong>}
 				</p>
 
 				{showCompleteInfoOnly ? (
-					<div className="mt-8 rounded-md border border-dashed border-[#c8c2b8] bg-[#fffdf9] p-6 text-[#202722]">
+					<div className="mt-8 rounded-md border border-[#e0ded5] bg-[#fffdf9] p-6 text-[#202722]">
 						<h2 className="font-serif text-3xl text-[#385347]">Información de la reserva</h2>
 						<div className="mt-4 space-y-2 text-sm text-[#68716a]">
 							<p>

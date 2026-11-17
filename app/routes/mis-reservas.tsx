@@ -186,14 +186,15 @@ export default function MisReservasPage() {
               ) : visibleReservations.map((reserva) => (
                 <article
                   key={reserva.id}
-                  className="rounded-md border border-[#d7d1c7] bg-[#fffdf9] p-5 shadow-sm transition hover:border-[#c8c2b8]"
+                  className="rounded-md border border-[#d7d1c7] bg-[#fffdf9] text-[#385347] p-5 shadow-sm transition hover:border-[#c8c2b8]"
                 >
                   <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-[.14em] text-[#e28b68]">
-                        {reserva.apartmentLocation ?? "Ubicación no disponible"}
+                        {/* {reserva.apartmentLocation ?? "Ubicación no disponible"} */}
+                        Reserva en:
                       </p>
-                      <h2 className="mt-1 font-serif text-3xl text-[#385347]">
+                      <h2 className="mt-1 font-serif text-2xl! text-[#385347]">
                         {reserva.apartmentName ?? "Departamento"}
                       </h2>
                       <p className="mt-2 text-sm text-[#68716a]">
