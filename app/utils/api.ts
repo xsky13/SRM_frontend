@@ -152,8 +152,10 @@ export async function createAdminReservation(
     await api.post('/api/reservation/admin_create', reservation);
 }
 
-export async function getAdminReservations(): Promise<ReservationDetail[]> {
-    const { data } = await api.get<ReservationDetail[] | { reservations: ReservationDetail[] }>('/api/reservation');
+export async function getAdminReservations(pageNumber: number, pageSize: number): Promise<ReservationDetail[]> {
+    const { data } = await api.get<ReservationDetail[] | { reservations: ReservationDetail[] }>('/api/reservation', {
+        params: { PageNumber: pageNumber, PageSize: pageSize },
+    });
     const reservations = Array.isArray(data) ? data : data.reservations;
 
     if (!Array.isArray(reservations)) {

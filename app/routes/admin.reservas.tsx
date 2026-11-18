@@ -15,6 +15,8 @@ export function meta() {
   return [{ title: "Reservas | Administración | Reservas Moreno" }];
 }
 
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("es-AR", {
     day: "2-digit",
@@ -75,12 +77,14 @@ function getUserTypeLabel(userType: UserType) {
 
 export default function AdminReservasPage() {
   const queryClient = useQueryClient();
+  const [pageNumber, setPageNumber] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedReservationId, setSelectedReservationId] = useState<string | null>(null);
   const [reservationToCancel, setReservationToCancel] = useState<string | null>(null);
   const reservationsQuery = useQuery<ReservationDetail[]>({
-    queryKey: ["admin-reservations"],
-    queryFn: getAdminReservations,
+    queryKey: ["admin-reservations", pageNumber, pageSize],
+    queryFn: () => getAdminReservations(pageNumber, pageSize),
     meta: { silent: true },
   });
   const cancelMutation = useMutation({
@@ -117,19 +121,36 @@ export default function AdminReservasPage() {
 
   return (
     <section>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <h2 className="font-serif text-4xl tracking-[-0.04em] text-[#385347]">
           Gestión de Reservas
         </h2>
-        <button
-          type="button"
-          onClick={() => setIsCreateModalOpen(true)}
-          className="rounded-md bg-green-700 px-4 py-2.5 text-sm font-semibold text-white transition
-                     hover:bg-green-800 focus-visible:outline-2 focus-visible:outline-offset-2
-                     focus-visible:outline-green-700"
-        >
-          + Crear Reserva Manual
-        </button>
+        <div className="flex flex-wrap items-center gap-4">
+          <label className="flex items-center gap-2 text-sm text-[#68716a]">
+            Filas por página
+            <select
+              value={pageSize}
+              onChange={(event) => {
+                setPageSize(Number(event.target.value));
+                setPageNumber(1);
+              }}
+              className="rounded-md border border-[#d8d5ca] bg-[#fffdf9] px-3 py-2 text-[#202722] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#385347]"
+            >
+              {PAGE_SIZE_OPTIONS.map((size) => (
+                <option key={size} value={size}>{size}</option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            onClick={() => setIsCreateModalOpen(true)}
+            className="rounded-md bg-green-700 px-4 py-2.5 text-sm font-semibold text-white transition
+                       hover:bg-green-800 focus-visible:outline-2 focus-visible:outline-offset-2
+                       focus-visible:outline-green-700"
+          >
+            + Crear Reserva Manual
+          </button>
+        </div>
       </div>
 
       <div className="overflow-x-auto rounded-md border border-[#e0ded5] bg-[#fffdf9]">
@@ -168,7 +189,9 @@ export default function AdminReservasPage() {
             ) : reservations.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-5 py-8 text-center text-[#68716a]">
-                  No hay reservas registradas
+                  {pageNumber === 1
+                    ? "No hay reservas registradas"
+                    : "No hay reservas en esta página"}
                 </td>
               </tr>
             ) : (
@@ -377,6 +400,28 @@ export default function AdminReservasPage() {
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-[#68716a]">
+        <span>Página {pageNumber}</span>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setPageNumber((current) => current - 1)}
+            disabled={pageNumber === 1 || reservationsQuery.isFetching}
+            className="rounded-md border border-[#d8d5ca] px-4 py-2 font-semibold transition hover:bg-[#edf2e8] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Anterior
+          </button>
+          <button
+            type="button"
+            onClick={() => setPageNumber((current) => current + 1)}
+            disabled={reservations.length === 0 || reservationsQuery.isFetching}
+            className="rounded-md border border-[#d8d5ca] px-4 py-2 font-semibold transition hover:bg-[#edf2e8] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Siguiente
+          </button>
+        </div>
       </div>
 
       <CreateReservationModal
