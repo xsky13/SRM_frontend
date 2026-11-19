@@ -15,3 +15,12 @@ export type User = {
   pwdHash: string | null;
   usertype: UserType;
 };
+
+export type UserSearchDto = {
+  id: string;
+  name: string;
+  lastName: string;
+  email: string;
+  telefono: string;
+  usertype: UserType;
+};

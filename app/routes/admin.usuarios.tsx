@@ -5,7 +5,7 @@ import type { ReservationListingDto } from "~/types/ReservationDetail";
 import LoadingState from "~/components/LoadingState";
 
 import { UserType, type User } from "~/types/User";
-import { getAdminUserReservations, getAdminUsers } from "~/utils/api";
+import { getAdminUserReservations, getAdminUsers, searchAdminUsers } from "~/utils/api";
 
 export function meta() {
   return [{ title: "Usuarios | Administración | Reservas Moreno" }];
@@ -98,10 +98,15 @@ function UserReservations({ userId }: { userId: string }) {
 export default function AdminUsuariosPage() {
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
   const usersQuery = useQuery({
-    queryKey: ["admin-users", pageNumber, pageSize],
-    queryFn: () => getAdminUsers(pageNumber, pageSize),
+    queryKey: ["admin-users", pageNumber, pageSize, searchQuery],
+    queryFn: () =>
+      searchQuery
+        ? searchAdminUsers(pageNumber, pageSize, searchQuery)
+        : getAdminUsers(pageNumber, pageSize),
     meta: { silent: true },
   });
   const users = usersQuery.data ?? [];
@@ -133,6 +138,48 @@ export default function AdminUsuariosPage() {
           </select>
         </label>
       </div>
+
+      <form
+        className="mb-5 flex flex-wrap items-end gap-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          setPageNumber(1);
+          setExpandedUserId(null);
+          setSearchQuery(searchInput.trim());
+        }}
+      >
+        <label className="flex min-w-64 flex-1 flex-col gap-1.5 text-sm font-medium text-[#385347]">
+          Buscar por nombre, apellido o email
+          <input
+            type="search"
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            placeholder="Ingresá nombre, apellido o email"
+            className="rounded-md border border-[#d8d5ca] bg-[#fffdf9] px-3 py-2 text-[#202722] placeholder:text-[#92978f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#385347]"
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={usersQuery.isFetching}
+          className="rounded-md bg-[#385347] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2c4238] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#385347]"
+        >
+          Buscar
+        </button>
+        {searchQuery && (
+          <button
+            type="button"
+            onClick={() => {
+              setSearchInput("");
+              setSearchQuery("");
+              setPageNumber(1);
+              setExpandedUserId(null);
+            }}
+            className="rounded-md border border-[#d8d5ca] px-4 py-2.5 text-sm font-semibold text-[#385347] transition hover:bg-[#edf2e8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#385347]"
+          >
+            Limpiar búsqueda
+          </button>
+        )}
+      </form>
 
       <div className="overflow-x-auto rounded-md border border-[#e0ded5] bg-[#fffdf9]">
         <table className="w-full min-w-[900px] border-collapse text-left text-sm">
@@ -170,7 +217,9 @@ export default function AdminUsuariosPage() {
             ) : users.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-5 py-8 text-center text-[#68716a]">
-                  No hay usuarios registrados
+                  {searchQuery
+                    ? "No se encontraron usuarios para esa búsqueda"
+                    : "No hay usuarios registrados"}
                 </td>
               </tr>
             ) : (
