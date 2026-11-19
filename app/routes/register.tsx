@@ -17,9 +17,9 @@ export default function RegisterRoute() {
 			</div>
 		);
 
-	if (!authQuery.isError)
+	if (authQuery.isError)
 		return (
-			<div className="flex justify-center pt-20">
+			<div className="flex justify-center pt-20 text-gray-600 tracking-wide">
 				Ocurrió un error inesperado. Por favor, intentá nuevamente.
 			</div>
 		);
