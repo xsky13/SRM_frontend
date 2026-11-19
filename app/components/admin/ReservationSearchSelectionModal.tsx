@@ -53,7 +53,7 @@ export default function ReservationSearchSelectionModal({
   const title = isUserPicker ? "Seleccionar usuario" : "Seleccionar departamento";
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-black/50 px-4 py-8">
+    <div className="fixed inset-0 z-[1600] flex items-center justify-center overflow-y-auto bg-black/50 px-4 py-8">
       <section
         role="dialog"
         aria-modal="true"

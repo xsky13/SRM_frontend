@@ -258,7 +258,6 @@ export default function AdminUsuariosPage() {
         <table className="w-full min-w-[900px] border-collapse text-left text-sm">
           <thead className="bg-[#edf2e8] text-[#385347]">
             <tr>
-              <th scope="col" className="px-5 py-4 font-semibold">ID</th>
               <th scope="col" className="px-5 py-4 font-semibold">Nombre</th>
               <th scope="col" className="px-5 py-4 font-semibold">Apellido</th>
               <th scope="col" className="px-5 py-4 font-semibold">Email</th>
@@ -302,9 +301,6 @@ export default function AdminUsuariosPage() {
                 return (
                   <Fragment key={user.id}>
                     <tr>
-                      <td className="max-w-52 break-all px-5 py-4 font-mono text-xs text-[#68716a]">
-                        {user.id}
-                      </td>
                       <td className="px-5 py-4">{user.name}</td>
                       <td className="px-5 py-4">{user.lastName}</td>
                       <td className="px-5 py-4">{user.email}</td>
