@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { Link, useLocation } from "react-router";
 import api from "~/utils/api";
 import LoadingState from "~/components/LoadingState";
@@ -17,7 +17,7 @@ async function checkAuthentication(): Promise<User | null> {
   }
 }
 
-export function useAuthentication() {
+export function useAuthentication(): UseQueryResult<NoInfer<User | null>, Error> {
   return useQuery({
     queryKey: ["auth-user"],
     queryFn: checkAuthentication,
