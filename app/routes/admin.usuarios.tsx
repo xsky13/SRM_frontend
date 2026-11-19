@@ -1,17 +1,28 @@
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "react-router";
 import { RESERVATION_STATE_LABEL } from "~/types/reservationState";
 import type { ReservationListingDto } from "~/types/ReservationDetail";
 import LoadingState from "~/components/LoadingState";
 
-import { UserType, type User } from "~/types/User";
-import { getAdminUserReservations, getAdminUsers, searchAdminUsers } from "~/utils/api";
+import { UserType, type User, type UserSearchDto } from "~/types/User";
+import {
+  getAdminUserById,
+  getAdminUserReservations,
+  getAdminUsers,
+  searchAdminUsers,
+} from "~/utils/api";
 
 export function meta() {
   return [{ title: "Usuarios | Administración | Reservas Moreno" }];
 }
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+type UserSearchType = "id" | "query";
+
+function isUserSearchType(value: string | null): value is UserSearchType {
+  return value === "id" || value === "query";
+}
 
 function getUserTypeLabel(userType: User["usertype"]) {
   switch (userType) {
@@ -96,20 +107,62 @@ function UserReservations({ userId }: { userId: string }) {
 }
 
 export default function AdminUsuariosPage() {
-  const [pageNumber, setPageNumber] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [searchInput, setSearchInput] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const pageParam = Number(searchParams.get("page"));
+  const pageNumber = Number.isSafeInteger(pageParam) && pageParam > 0 ? pageParam : 1;
+  const pageSizeParam = Number(searchParams.get("pageSize"));
+  const pageSize = PAGE_SIZE_OPTIONS.includes(pageSizeParam) ? pageSizeParam : 10;
+  const searchTypeParam = searchParams.get("searchType");
+  const searchType = isUserSearchType(searchTypeParam) ? searchTypeParam : "query";
+  const filterTypeParam = searchParams.get("filterType");
+  const appliedSearchType = isUserSearchType(filterTypeParam) ? filterTypeParam : null;
+  const searchQuery = searchParams.get("query")?.trim() ?? "";
+  const isSearchActive = Boolean(appliedSearchType && searchQuery);
+  const [searchInput, setSearchInput] = useState(searchQuery);
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
-  const usersQuery = useQuery({
-    queryKey: ["admin-users", pageNumber, pageSize, searchQuery],
-    queryFn: () =>
-      searchQuery
-        ? searchAdminUsers(pageNumber, pageSize, searchQuery)
-        : getAdminUsers(pageNumber, pageSize),
+  const usersQuery = useQuery<UserSearchDto[]>({
+    queryKey: ["admin-users", pageNumber, pageSize, appliedSearchType, searchQuery],
+    queryFn: async () => {
+      if (!isSearchActive) return getAdminUsers(pageNumber, pageSize);
+      if (appliedSearchType === "id") return [await getAdminUserById(searchQuery)];
+      return searchAdminUsers(pageNumber, pageSize, searchQuery);
+    },
     meta: { silent: true },
   });
   const users = usersQuery.data ?? [];
+
+  useEffect(() => {
+    setSearchInput(searchQuery);
+  }, [appliedSearchType, searchQuery]);
+
+  function updateSearchParameters(updates: Record<string, string | null>, replace = false) {
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        for (const [key, value] of Object.entries(updates)) {
+          if (value === null) {
+            next.delete(key);
+          } else {
+            next.set(key, value);
+          }
+        }
+        return next;
+      },
+      { replace },
+    );
+  }
+
+  function applySearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const query = searchInput.trim();
+    if (!query) return;
+    setExpandedUserId(null);
+    updateSearchParameters({
+      page: "1",
+      filterType: searchType,
+      query,
+    });
+  }
 
   return (
     <section>
@@ -127,8 +180,10 @@ export default function AdminUsuariosPage() {
           <select
             value={pageSize}
             onChange={(event) => {
-              setPageSize(Number(event.target.value));
-              setPageNumber(1);
+              updateSearchParameters({
+                page: "1",
+                pageSize: event.target.value,
+              });
             }}
             className="rounded-md border border-[#d8d5ca] bg-[#fffdf9] px-3 py-2 text-[#202722] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#385347]"
           >
@@ -141,20 +196,35 @@ export default function AdminUsuariosPage() {
 
       <form
         className="mb-5 flex flex-wrap items-end gap-3"
-        onSubmit={(event) => {
-          event.preventDefault();
-          setPageNumber(1);
-          setExpandedUserId(null);
-          setSearchQuery(searchInput.trim());
-        }}
+        onSubmit={applySearch}
       >
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-[#385347]">
+          Buscar por
+          <select
+            value={searchType}
+            onChange={(event) => {
+              const value = event.target.value;
+              if (!isUserSearchType(value)) return;
+              updateSearchParameters({ searchType: value }, true);
+            }}
+            className="rounded-md border border-[#d8d5ca] bg-[#fffdf9] px-3 py-2 text-[#202722] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#385347]"
+          >
+            <option value="query">Nombre, apellido o email</option>
+            <option value="id">ID de usuario</option>
+          </select>
+        </label>
         <label className="flex min-w-64 flex-1 flex-col gap-1.5 text-sm font-medium text-[#385347]">
-          Buscar por nombre, apellido o email
+          {searchType === "id" ? "ID de usuario" : "Nombre, apellido o email"}
           <input
             type="search"
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
-            placeholder="Ingresá nombre, apellido o email"
+            placeholder={
+              searchType === "id"
+                ? "Ingresá el ID del usuario"
+                : "Ingresá nombre, apellido o email"
+            }
+            required
             className="rounded-md border border-[#d8d5ca] bg-[#fffdf9] px-3 py-2 text-[#202722] placeholder:text-[#92978f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#385347]"
           />
         </label>
@@ -165,14 +235,17 @@ export default function AdminUsuariosPage() {
         >
           Buscar
         </button>
-        {searchQuery && (
+        {isSearchActive && (
           <button
             type="button"
             onClick={() => {
               setSearchInput("");
-              setSearchQuery("");
-              setPageNumber(1);
               setExpandedUserId(null);
+              updateSearchParameters({
+                page: "1",
+                filterType: null,
+                query: null,
+              });
             }}
             className="rounded-md border border-[#d8d5ca] px-4 py-2.5 text-sm font-semibold text-[#385347] transition hover:bg-[#edf2e8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#385347]"
           >
@@ -217,7 +290,7 @@ export default function AdminUsuariosPage() {
             ) : users.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-5 py-8 text-center text-[#68716a]">
-                  {searchQuery
+                  {isSearchActive
                     ? "No se encontraron usuarios para esa búsqueda"
                     : "No hay usuarios registrados"}
                 </td>
@@ -263,27 +336,29 @@ export default function AdminUsuariosPage() {
         </table>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-[#68716a]">
-        <span>Página {pageNumber}</span>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setPageNumber((current) => current - 1)}
-            disabled={pageNumber === 1 || usersQuery.isFetching}
-            className="rounded-md border border-[#d8d5ca] px-4 py-2 font-semibold transition hover:bg-[#edf2e8] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Anterior
-          </button>
-          <button
-            type="button"
-            onClick={() => setPageNumber((current) => current + 1)}
-            disabled={users.length < pageSize || usersQuery.isFetching}
-            className="rounded-md border border-[#d8d5ca] px-4 py-2 font-semibold transition hover:bg-[#edf2e8] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Siguiente
-          </button>
+      {appliedSearchType !== "id" && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-[#68716a]">
+          <span>Página {pageNumber}</span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => updateSearchParameters({ page: String(pageNumber - 1) })}
+              disabled={pageNumber === 1 || usersQuery.isFetching}
+              className="rounded-md border border-[#d8d5ca] px-4 py-2 font-semibold transition hover:bg-[#edf2e8] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Anterior
+            </button>
+            <button
+              type="button"
+              onClick={() => updateSearchParameters({ page: String(pageNumber + 1) })}
+              disabled={users.length < pageSize || usersQuery.isFetching}
+              className="rounded-md border border-[#d8d5ca] px-4 py-2 font-semibold transition hover:bg-[#edf2e8] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Siguiente
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </section>
   );
 }

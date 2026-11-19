@@ -41,6 +41,7 @@ export interface UserListingDto {
   email: string;
   telefono: string;
   usertype: UserType;
+  isDeleted?: boolean;
 }
 
 export interface ReservationDetail {

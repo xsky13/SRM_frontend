@@ -172,6 +172,40 @@ export async function getAdminReservationById(id: string): Promise<ReservationDe
     return data;
 }
 
+export async function getAdminReservationsByUser(
+    userId: string,
+    pageNumber: number,
+    pageSize: number,
+): Promise<ReservationDetail[]> {
+    const { data } = await api.get<ReservationDetail[]>(
+        `/api/reservation/admin/user/${encodeURIComponent(userId)}`,
+        { params: { PageNumber: pageNumber, PageSize: pageSize } },
+    );
+
+    if (!Array.isArray(data)) {
+        throw new Error('La respuesta del servidor no contiene una lista de reservas');
+    }
+
+    return data;
+}
+
+export async function getAdminReservationsByApartment(
+    apartmentId: string,
+    pageNumber: number,
+    pageSize: number,
+): Promise<ReservationDetail[]> {
+    const { data } = await api.get<ReservationDetail[]>(
+        `/api/reservation/admin/apartment/${encodeURIComponent(apartmentId)}`,
+        { params: { PageNumber: pageNumber, PageSize: pageSize } },
+    );
+
+    if (!Array.isArray(data)) {
+        throw new Error('La respuesta del servidor no contiene una lista de reservas');
+    }
+
+    return data;
+}
+
 export async function getAdminUsers(pageNumber: number, pageSize: number): Promise<User[]> {
     const { data } = await api.get<User[]>('/api/user/list', {
         params: { PageNumber: pageNumber, PageSize: pageSize },
@@ -181,6 +215,13 @@ export async function getAdminUsers(pageNumber: number, pageSize: number): Promi
         throw new Error('La respuesta del servidor no contiene una lista de usuarios');
     }
 
+    return data;
+}
+
+export async function getAdminUserById(id: string): Promise<UserSearchDto> {
+    const { data } = await api.get<UserSearchDto>(
+        `/api/user/${encodeURIComponent(id)}`,
+    );
     return data;
 }
 

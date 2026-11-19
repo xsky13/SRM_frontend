@@ -5,14 +5,18 @@ import { RESERVATION_STATE_LABEL } from "~/types/reservationState";
 import { type ReservationState } from "~/types/Reserva";
 import { UserType } from "~/types/User";
 import { PaymentStatus, type PaymentDto, type ReservationDetail } from "~/types/ReservationDetail";
+import { useSearchParams } from "react-router";
 import LoadingState from "~/components/LoadingState";
 import AddPaymentModal from "~/components/admin/AddPaymentModal";
 import CancelReservationModal from "~/components/admin/CancelReservationModal";
 import CreateReservationModal from "~/components/admin/CreateReservationModal";
+import ReservationSearchSelectionModal from "~/components/admin/ReservationSearchSelectionModal";
 import {
   cancelReservationAdmin,
   getAdminReservationById,
   getAdminReservations,
+  getAdminReservationsByApartment,
+  getAdminReservationsByUser,
   resolveImageUrl,
 } from "~/utils/api";
 
@@ -21,6 +25,12 @@ export function meta() {
 }
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+
+type ReservationSearchTarget = {
+  type: "id" | "user" | "apartment";
+  id: string;
+  label: string;
+};
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("es-AR", {
@@ -80,17 +90,86 @@ function getUserTypeLabel(userType: UserType) {
   }
 }
 
+function isReservationSearchType(value: string | null): value is ReservationSearchTarget["type"] {
+  return value === "id" || value === "user" || value === "apartment";
+}
+
 export default function AdminReservasPage() {
   const queryClient = useQueryClient();
-  const [pageNumber, setPageNumber] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [reservationIdInput, setReservationIdInput] = useState("");
-  const [isSearchMode, setIsSearchMode] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const pageParam = Number(searchParams.get("page"));
+  const pageNumber = Number.isSafeInteger(pageParam) && pageParam > 0 ? pageParam : 1;
+  const pageSizeParam = Number(searchParams.get("pageSize"));
+  const pageSize = PAGE_SIZE_OPTIONS.includes(pageSizeParam) ? pageSizeParam : 10;
+  const filterTypeParam = searchParams.get("filterType");
+  const filterId = searchParams.get("filterId");
+  const filterLabel = searchParams.get("filterLabel");
+  const searchTarget =
+    isReservationSearchType(filterTypeParam) && filterId
+      ? {
+          type: filterTypeParam,
+          id: filterId,
+          label: filterLabel || filterId,
+        }
+      : null;
+  const searchTypeParam = searchParams.get("searchType");
+  const searchType = isReservationSearchType(searchTypeParam)
+    ? searchTypeParam
+    : searchTarget?.type ?? "id";
+  const [reservationIdInput, setReservationIdInput] = useState(
+    searchTarget?.type === "id" ? searchTarget.id : "",
+  );
+  const [isSelectionModalOpen, setIsSelectionModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedReservationId, setSelectedReservationId] = useState<string | null>(null);
   const [reservationToCancel, setReservationToCancel] = useState<string | null>(null);
-  const reservationLookupMutation = useMutation({
-    mutationFn: getAdminReservationById,
+  function updateSearchParameters(
+    updates: Record<string, string | null>,
+    replace = false,
+  ) {
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        for (const [key, value] of Object.entries(updates)) {
+          if (value === null) {
+            next.delete(key);
+          } else {
+            next.set(key, value);
+          }
+        }
+        return next;
+      },
+      { replace },
+    );
+  }
+
+  useEffect(() => {
+    setReservationIdInput(searchTarget?.type === "id" ? searchTarget.id : "");
+  }, [searchTarget?.type, searchTarget?.id]);
+
+  const reservationSearchQuery = useQuery<ReservationDetail[]>({
+    queryKey: [
+      "admin-reservation-search",
+      searchTarget?.type,
+      searchTarget?.id,
+      pageNumber,
+      pageSize,
+    ],
+    queryFn: async () => {
+      if (!searchTarget) {
+        throw new Error("No se seleccionó un criterio de búsqueda.");
+      }
+
+      switch (searchTarget.type) {
+        case "id":
+          return [await getAdminReservationById(searchTarget.id)];
+        case "user":
+          return getAdminReservationsByUser(searchTarget.id, pageNumber, pageSize);
+        case "apartment":
+          return getAdminReservationsByApartment(searchTarget.id, pageNumber, pageSize);
+      }
+    },
+    enabled: searchTarget !== null,
     meta: { silent: true },
   });
   const reservationsQuery = useQuery<ReservationDetail[]>({
@@ -98,12 +177,18 @@ export default function AdminReservasPage() {
     queryFn: () => getAdminReservations(pageNumber, pageSize),
     meta: { silent: true },
   });
+  useEffect(() => console.log(reservationsQuery.data), [reservationsQuery.data]);
+  useEffect(() => console.log(reservationSearchQuery.data), [reservationSearchQuery.data])
+
   const cancelMutation = useMutation({
     mutationFn: cancelReservationAdmin,
     meta: { silent: true },
     onSuccess: async () => {
       setReservationToCancel(null);
-      await queryClient.invalidateQueries({ queryKey: ["admin-reservations"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-reservations"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-reservation-search"] }),
+      ]);
       toast.success("Reserva cancelada correctamente");
     },
     onError: (error) => {
@@ -111,11 +196,12 @@ export default function AdminReservasPage() {
     },
   });
   const reservations = reservationsQuery.data ?? [];
-  const displayedReservations = isSearchMode
-    ? reservationLookupMutation.data
-      ? [reservationLookupMutation.data]
-      : []
+  const displayedReservations = searchTarget
+    ? reservationSearchQuery.data ?? []
     : reservations;
+  const displayedReservationsQuery = searchTarget
+    ? reservationSearchQuery
+    : reservationsQuery;
 
   function getDaysBetweenDates(date1: Date, date2: Date): number {
     const utc1 = Date.UTC(date1.getFullYear(), date1.getMonth(), date1.getDate());
@@ -141,14 +227,16 @@ export default function AdminReservasPage() {
         <h2 className="font-serif text-4xl tracking-[-0.04em] text-[#385347]">
           Gestión de Reservas
         </h2>
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="flex justify-between w-full sm:w-auto sm:justify-normal items-center gap-4">
           <label className="flex items-center gap-2 text-sm text-[#68716a]">
             Filas por página
             <select
               value={pageSize}
               onChange={(event) => {
-                setPageSize(Number(event.target.value));
-                setPageNumber(1);
+                updateSearchParameters({
+                  page: "1",
+                  pageSize: event.target.value,
+                });
               }}
               className="rounded-md border border-[#d8d5ca] bg-[#fffdf9] px-3 py-2 text-[#202722] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#385347]"
             >
@@ -173,44 +261,95 @@ export default function AdminReservasPage() {
         className="mb-5 flex flex-wrap items-end gap-3"
         onSubmit={(event) => {
           event.preventDefault();
-          const reservationId = reservationIdInput.trim();
-          if (!reservationId) return;
-          setIsSearchMode(true);
-          reservationLookupMutation.mutate(reservationId);
+          if (searchType === "id") {
+            const reservationId = reservationIdInput.trim();
+            if (!reservationId) return;
+            updateSearchParameters({
+              page: "1",
+              searchType: "id",
+              filterType: "id",
+              filterId: reservationId,
+              filterLabel: reservationId,
+            });
+            return;
+          }
+
+          setIsSelectionModalOpen(true);
         }}
       >
-        <label className="flex min-w-64 flex-1 flex-col gap-1.5 text-sm font-medium text-[#385347]">
-          Buscar reserva por ID
-          <input
-            type="text"
-            value={reservationIdInput}
-            onChange={(event) => setReservationIdInput(event.target.value)}
-            placeholder="Ingresá el ID de la reserva"
-            required
-            className="rounded-md border border-[#d8d5ca] bg-[#fffdf9] px-3 py-2 text-[#202722] placeholder:text-[#92978f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#385347]"
-          />
+        <label className="flex flex-col w-full sm:w-auto gap-1.5 text-sm font-medium text-[#385347]">
+          Buscar por
+          <select
+            value={searchType}
+            onChange={(event) => {
+              const value = event.target.value;
+              if (value !== "id" && value !== "user" && value !== "apartment") return;
+              updateSearchParameters({ searchType: value }, true);
+            }}
+            className="rounded-md border border-[#d8d5ca] bg-[#fffdf9] px-3 py-2 text-[#202722] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#385347]"
+          >
+            <option value="id">ID de reserva</option>
+            <option value="apartment">Departamento</option>
+            <option value="user">Usuario</option>
+          </select>
         </label>
+        {searchType === "id" ? (
+          <label className="flex min-w-64 flex-1 flex-col gap-1.5 text-sm font-medium text-[#385347]">
+            ID de reserva
+            <input
+              type="text"
+              value={reservationIdInput}
+              onChange={(event) => setReservationIdInput(event.target.value)}
+              placeholder="Ingresá el ID de la reserva"
+              required
+              className="rounded-md border border-[#d8d5ca] bg-[#fffdf9] px-3 py-2 text-[#202722] placeholder:text-[#92978f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#385347]"
+            />
+          </label>
+        ) : (
+          <p className="flex min-w-64 flex-1 sm:mb-2 items-center text-sm text-[#68716a]">
+            {searchType === "user"
+              ? "Elegí un usuario para ver sus reservas."
+              : "Elegí un departamento para ver sus reservas."}
+          </p>
+        )}
         <button
           type="submit"
-          disabled={reservationLookupMutation.isPending}
-          className="rounded-md bg-[#385347] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2c4238] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#385347]"
+          disabled={searchType === "id" && reservationSearchQuery.isFetching}
+          className={(searchType != "id" ? "w-full sm:w-auto " : "") + "rounded-md bg-[#385347] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2c4238] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#385347]"}
         >
-          {reservationLookupMutation.isPending ? "Buscando..." : "Buscar"}
+          {searchType === "id"
+            ? reservationSearchQuery.isFetching
+              ? "Buscando..."
+              : "Buscar"
+            : searchType === "user"
+              ? "Elegir usuario"
+              : "Elegir departamento"}
         </button>
-        {isSearchMode && (
+        {searchTarget && (
           <button
             type="button"
             onClick={() => {
-              setIsSearchMode(false);
-              setReservationIdInput("");
-              reservationLookupMutation.reset();
+              updateSearchParameters({
+                page: "1",
+                filterType: null,
+                filterId: null,
+                filterLabel: null,
+              });
             }}
             className="rounded-md border border-[#d8d5ca] px-4 py-2.5 text-sm font-semibold text-[#385347] transition hover:bg-[#edf2e8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#385347]"
           >
-            Volver a todas
+            Volver a todas las reservas
           </button>
         )}
       </form>
+
+      {searchTarget && (
+        <p className="mb-3 text-sm text-[#68716a]">
+          {searchTarget.type === "id"
+            ? `Reserva ID: ${searchTarget.label}`
+            : `${searchTarget.type === "user" ? "Usuario" : "Departamento"}: ${searchTarget.label}`}
+        </p>
+      )}
 
       <div className="overflow-x-auto rounded-md border border-[#e0ded5] bg-[#fffdf9]">
         <table className="w-full min-w-[1180px] border-collapse text-left text-sm">
@@ -226,49 +365,34 @@ export default function AdminReservasPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-[#ece7df] text-[#202722]">
-            {isSearchMode && reservationLookupMutation.isPending ? (
+            {displayedReservationsQuery.isLoading ? (
               <tr>
                 <td colSpan={7} className="px-5 py-8 text-center">
                   <LoadingState
                     variant="inline"
-                    label="Buscando reserva..."
+                    label={searchTarget ? "Buscando reservas..." : "Cargando reservas..."}
                     className="w-full"
                   />
                 </td>
               </tr>
-            ) : isSearchMode && reservationLookupMutation.isError ? (
+            ) : displayedReservationsQuery.isError ? (
               <tr>
                 <td colSpan={7} className="px-5 py-8 text-center text-red-700">
-                  No se pudo buscar la reserva:{" "}
-                  {reservationLookupMutation.error instanceof Error
-                    ? reservationLookupMutation.error.message
-                    : "Error desconocido"}
-                </td>
-              </tr>
-            ) : !isSearchMode && reservationsQuery.isLoading ? (
-              <tr>
-                <td colSpan={7} className="px-5 py-8 text-center">
-                  <LoadingState
-                    variant="inline"
-                    label="Cargando reservas..."
-                    className="w-full"
-                  />
-                </td>
-              </tr>
-            ) : !isSearchMode && reservationsQuery.isError ? (
-              <tr>
-                <td colSpan={7} className="px-5 py-8 text-center text-red-700">
-                  No se pudieron cargar las reservas:{" "}
-                  {reservationsQuery.error instanceof Error
-                    ? reservationsQuery.error.message
+                  {searchTarget
+                    ? "No se pudieron buscar las reservas: "
+                    : "No se pudieron cargar las reservas: "}
+                  {displayedReservationsQuery.error instanceof Error
+                    ? displayedReservationsQuery.error.message
                     : "Error desconocido"}
                 </td>
               </tr>
             ) : displayedReservations.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-5 py-8 text-center text-[#68716a]">
-                  {isSearchMode
-                    ? "No se encontró una reserva con ese ID."
+                  {searchTarget
+                    ? searchTarget.type === "id"
+                      ? "No se encontró una reserva con ese ID."
+                      : "No se encontraron reservas para la selección."
                     : pageNumber === 1
                       ? "No hay reservas registradas"
                       : "No hay reservas en esta página"}
@@ -327,7 +451,7 @@ export default function AdminReservasPage() {
                     )}
                   </td>
                   <td className="px-5 py-4">
-                    {reservation.appUser ? (
+                    {(reservation.appUser && !reservation.appUser.isDeleted) ? (
                       <div className="min-w-44">
                         <p className="text-[#385347]">
                           {
@@ -386,7 +510,7 @@ export default function AdminReservasPage() {
                       <div className="min-w-44">
                         <p className="font-medium text-[#68716a]">Usuario no disponible</p>
                         <p className="mt-1 break-all font-mono text-xs text-[#68716a]">
-                          {reservation.appUserId}
+                          Id de usuario: <strong>{reservation.appUserId}</strong>
                         </p>
                       </div>
                     )}
@@ -482,22 +606,27 @@ export default function AdminReservasPage() {
         </table>
       </div>
 
-      {!isSearchMode && (
+      {(!searchTarget || searchTarget.type !== "id") && (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-[#68716a]">
           <span>Página {pageNumber}</span>
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => setPageNumber((current) => current - 1)}
-              disabled={pageNumber === 1 || reservationsQuery.isFetching}
+              onClick={() => updateSearchParameters({ page: String(pageNumber - 1) })}
+              disabled={pageNumber === 1 || displayedReservationsQuery.isFetching}
               className="rounded-md border border-[#d8d5ca] px-4 py-2 font-semibold transition hover:bg-[#edf2e8] disabled:cursor-not-allowed disabled:opacity-50"
             >
               Anterior
             </button>
             <button
               type="button"
-              onClick={() => setPageNumber((current) => current + 1)}
-              disabled={reservations.length === 0 || reservationsQuery.isFetching}
+              onClick={() => updateSearchParameters({ page: String(pageNumber + 1) })}
+              disabled={
+                (searchTarget
+                  ? displayedReservations.length < pageSize
+                  : displayedReservations.length === 0) ||
+                displayedReservationsQuery.isFetching
+              }
               className="rounded-md border border-[#d8d5ca] px-4 py-2 font-semibold transition hover:bg-[#edf2e8] disabled:cursor-not-allowed disabled:opacity-50"
             >
               Siguiente
@@ -510,6 +639,22 @@ export default function AdminReservasPage() {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
       />
+      {isSelectionModalOpen && searchType !== "id" && (
+        <ReservationSearchSelectionModal
+          isOpen
+          type={searchType}
+          onClose={() => setIsSelectionModalOpen(false)}
+          onSelect={(id, label) => {
+            updateSearchParameters({
+              page: "1",
+              filterType: searchType,
+              filterId: id,
+              filterLabel: label,
+            });
+            setIsSelectionModalOpen(false);
+          }}
+        />
+      )}
       <AddPaymentModal
         reservationId={selectedReservationId}
         onClose={() => setSelectedReservationId(null)}
