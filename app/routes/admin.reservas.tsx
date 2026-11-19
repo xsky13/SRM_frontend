@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { RESERVATION_STATE_LABEL } from "~/types/reservationState";
@@ -9,7 +9,12 @@ import LoadingState from "~/components/LoadingState";
 import AddPaymentModal from "~/components/admin/AddPaymentModal";
 import CancelReservationModal from "~/components/admin/CancelReservationModal";
 import CreateReservationModal from "~/components/admin/CreateReservationModal";
-import { cancelReservationAdmin, getAdminReservations, resolveImageUrl } from "~/utils/api";
+import {
+  cancelReservationAdmin,
+  getAdminReservationById,
+  getAdminReservations,
+  resolveImageUrl,
+} from "~/utils/api";
 
 export function meta() {
   return [{ title: "Reservas | Administración | Reservas Moreno" }];
@@ -79,9 +84,15 @@ export default function AdminReservasPage() {
   const queryClient = useQueryClient();
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [reservationIdInput, setReservationIdInput] = useState("");
+  const [isSearchMode, setIsSearchMode] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedReservationId, setSelectedReservationId] = useState<string | null>(null);
   const [reservationToCancel, setReservationToCancel] = useState<string | null>(null);
+  const reservationLookupMutation = useMutation({
+    mutationFn: getAdminReservationById,
+    meta: { silent: true },
+  });
   const reservationsQuery = useQuery<ReservationDetail[]>({
     queryKey: ["admin-reservations", pageNumber, pageSize],
     queryFn: () => getAdminReservations(pageNumber, pageSize),
@@ -100,6 +111,11 @@ export default function AdminReservasPage() {
     },
   });
   const reservations = reservationsQuery.data ?? [];
+  const displayedReservations = isSearchMode
+    ? reservationLookupMutation.data
+      ? [reservationLookupMutation.data]
+      : []
+    : reservations;
 
   function getDaysBetweenDates(date1: Date, date2: Date): number {
     const utc1 = Date.UTC(date1.getFullYear(), date1.getMonth(), date1.getDate());
@@ -153,6 +169,49 @@ export default function AdminReservasPage() {
         </div>
       </div>
 
+      <form
+        className="mb-5 flex flex-wrap items-end gap-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const reservationId = reservationIdInput.trim();
+          if (!reservationId) return;
+          setIsSearchMode(true);
+          reservationLookupMutation.mutate(reservationId);
+        }}
+      >
+        <label className="flex min-w-64 flex-1 flex-col gap-1.5 text-sm font-medium text-[#385347]">
+          Buscar reserva por ID
+          <input
+            type="text"
+            value={reservationIdInput}
+            onChange={(event) => setReservationIdInput(event.target.value)}
+            placeholder="Ingresá el ID de la reserva"
+            required
+            className="rounded-md border border-[#d8d5ca] bg-[#fffdf9] px-3 py-2 text-[#202722] placeholder:text-[#92978f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#385347]"
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={reservationLookupMutation.isPending}
+          className="rounded-md bg-[#385347] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2c4238] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#385347]"
+        >
+          {reservationLookupMutation.isPending ? "Buscando..." : "Buscar"}
+        </button>
+        {isSearchMode && (
+          <button
+            type="button"
+            onClick={() => {
+              setIsSearchMode(false);
+              setReservationIdInput("");
+              reservationLookupMutation.reset();
+            }}
+            className="rounded-md border border-[#d8d5ca] px-4 py-2.5 text-sm font-semibold text-[#385347] transition hover:bg-[#edf2e8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#385347]"
+          >
+            Volver a todas
+          </button>
+        )}
+      </form>
+
       <div className="overflow-x-auto rounded-md border border-[#e0ded5] bg-[#fffdf9]">
         <table className="w-full min-w-[1180px] border-collapse text-left text-sm">
           <thead className="bg-[#edf2e8] text-[#385347]">
@@ -167,7 +226,26 @@ export default function AdminReservasPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-[#ece7df] text-[#202722]">
-            {reservationsQuery.isLoading ? (
+            {isSearchMode && reservationLookupMutation.isPending ? (
+              <tr>
+                <td colSpan={7} className="px-5 py-8 text-center">
+                  <LoadingState
+                    variant="inline"
+                    label="Buscando reserva..."
+                    className="w-full"
+                  />
+                </td>
+              </tr>
+            ) : isSearchMode && reservationLookupMutation.isError ? (
+              <tr>
+                <td colSpan={7} className="px-5 py-8 text-center text-red-700">
+                  No se pudo buscar la reserva:{" "}
+                  {reservationLookupMutation.error instanceof Error
+                    ? reservationLookupMutation.error.message
+                    : "Error desconocido"}
+                </td>
+              </tr>
+            ) : !isSearchMode && reservationsQuery.isLoading ? (
               <tr>
                 <td colSpan={7} className="px-5 py-8 text-center">
                   <LoadingState
@@ -177,7 +255,7 @@ export default function AdminReservasPage() {
                   />
                 </td>
               </tr>
-            ) : reservationsQuery.isError ? (
+            ) : !isSearchMode && reservationsQuery.isError ? (
               <tr>
                 <td colSpan={7} className="px-5 py-8 text-center text-red-700">
                   No se pudieron cargar las reservas:{" "}
@@ -186,16 +264,18 @@ export default function AdminReservasPage() {
                     : "Error desconocido"}
                 </td>
               </tr>
-            ) : reservations.length === 0 ? (
+            ) : displayedReservations.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-5 py-8 text-center text-[#68716a]">
-                  {pageNumber === 1
-                    ? "No hay reservas registradas"
-                    : "No hay reservas en esta página"}
+                  {isSearchMode
+                    ? "No se encontró una reserva con ese ID."
+                    : pageNumber === 1
+                      ? "No hay reservas registradas"
+                      : "No hay reservas en esta página"}
                 </td>
               </tr>
             ) : (
-              reservations.map((reservation) => (
+              displayedReservations.map((reservation) => (
                 <tr key={reservation.reservationId} className="align-top">
                   {/* <td className="max-w-36 px-5 py-4">
                     <span className="block break-all font-mono text-xs text-[#68716a]">
@@ -402,27 +482,29 @@ export default function AdminReservasPage() {
         </table>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-[#68716a]">
-        <span>Página {pageNumber}</span>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setPageNumber((current) => current - 1)}
-            disabled={pageNumber === 1 || reservationsQuery.isFetching}
-            className="rounded-md border border-[#d8d5ca] px-4 py-2 font-semibold transition hover:bg-[#edf2e8] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Anterior
-          </button>
-          <button
-            type="button"
-            onClick={() => setPageNumber((current) => current + 1)}
-            disabled={reservations.length === 0 || reservationsQuery.isFetching}
-            className="rounded-md border border-[#d8d5ca] px-4 py-2 font-semibold transition hover:bg-[#edf2e8] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Siguiente
-          </button>
+      {!isSearchMode && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-[#68716a]">
+          <span>Página {pageNumber}</span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setPageNumber((current) => current - 1)}
+              disabled={pageNumber === 1 || reservationsQuery.isFetching}
+              className="rounded-md border border-[#d8d5ca] px-4 py-2 font-semibold transition hover:bg-[#edf2e8] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Anterior
+            </button>
+            <button
+              type="button"
+              onClick={() => setPageNumber((current) => current + 1)}
+              disabled={reservations.length === 0 || reservationsQuery.isFetching}
+              className="rounded-md border border-[#d8d5ca] px-4 py-2 font-semibold transition hover:bg-[#edf2e8] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Siguiente
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       <CreateReservationModal
         isOpen={isCreateModalOpen}

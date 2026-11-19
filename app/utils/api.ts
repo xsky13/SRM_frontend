@@ -165,6 +165,13 @@ export async function getAdminReservations(pageNumber: number, pageSize: number)
     return reservations;
 }
 
+export async function getAdminReservationById(id: string): Promise<ReservationDetail> {
+    const { data } = await api.get<ReservationDetail>(
+        `/api/reservation/${encodeURIComponent(id)}`,
+    );
+    return data;
+}
+
 export async function getAdminUsers(pageNumber: number, pageSize: number): Promise<User[]> {
     const { data } = await api.get<User[]>('/api/user/list', {
         params: { PageNumber: pageNumber, PageSize: pageSize },
