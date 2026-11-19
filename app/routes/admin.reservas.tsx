@@ -121,7 +121,7 @@ export default function AdminReservasPage() {
 	);
 	const [isSelectionModalOpen, setIsSelectionModalOpen] = useState(false);
 	const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-	const [selectedReservationId, setSelectedReservationId] = useState<string | null>(null);
+	const [selectedReservation, setSelectedReservation] = useState<ReservationDetail | null>(null);
 	const [reservationToCancel, setReservationToCancel] = useState<string | null>(null);
 	function updateSearchParameters(
 		updates: Record<string, string | null>,
@@ -520,7 +520,7 @@ export default function AdminReservasPage() {
 											<p className="font-semibold text-[#385347]">
 												{formatCurrency(getPaymentsTotal(reservation.payments))}
 												<span className="ml-1 font-normal text-[#68716a]">
-													/ {formatCurrency(getReservationFullPrice(reservation.checkInDate, reservation.checkOutDate, reservation.apartment?.price ?? 0))}
+													pagado de {formatCurrency(getReservationFullPrice(reservation.checkInDate, reservation.checkOutDate, reservation.apartment?.price ?? 0))}
 												</span>
 											</p>
 											{/* {getPendingRefunds(reservation.payments).length > 0 && (
@@ -581,7 +581,7 @@ export default function AdminReservasPage() {
 										<div className="flex flex-wrap gap-2">
 											<button
 												type="button"
-												onClick={() => setSelectedReservationId(reservation.reservationId)}
+												onClick={() => setSelectedReservation(reservation)}
 												className="rounded-lg bg-[#385347] px-4 py-1.5 text-sm font-semibold text-white shadow-sm
                                    transition hover:bg-[#2c4238] focus:outline-none focus-visible:ring-2
                                    focus-visible:ring-[#385347]/50 focus-visible:ring-offset-2 active:scale-95"
@@ -656,8 +656,8 @@ export default function AdminReservasPage() {
 				/>
 			)}
 			<AddPaymentModal
-				reservationId={selectedReservationId}
-				onClose={() => setSelectedReservationId(null)}
+				reservation={selectedReservation}
+				onClose={() => setSelectedReservation(null)}
 			/>
 			<CancelReservationModal
 				isOpen={reservationToCancel !== null}
