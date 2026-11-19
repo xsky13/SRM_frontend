@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { RESERVATION_STATE_LABEL } from "~/types/reservationState";
-import { type ReservationState } from "~/types/Reserva";
+import { ReservationState } from "~/types/Reserva";
 import { UserType } from "~/types/User";
 import { PaymentStatus, type PaymentDto, type ReservationDetail } from "~/types/ReservationDetail";
 import { useSearchParams } from "react-router";
@@ -31,6 +31,8 @@ type ReservationSearchTarget = {
 	id: string;
 	label: string;
 };
+
+type ReservationStateFilter = "all" | "confirmed" | "not-confirmed" | "cancelled";
 
 function formatDate(value: string) {
 	return new Intl.DateTimeFormat("es-AR", {
@@ -94,6 +96,23 @@ function isReservationSearchType(value: string | null): value is ReservationSear
 	return value === "id" || value === "user" || value === "apartment";
 }
 
+function getReservationPage(
+	target: ReservationSearchTarget | null,
+	pageNumber: number,
+	pageSize: number,
+): Promise<ReservationDetail[]> {
+	if (!target) return getAdminReservations(pageNumber, pageSize);
+
+	switch (target.type) {
+		case "id":
+			return getAdminReservationById(target.id).then((reservation) => [reservation]);
+		case "user":
+			return getAdminReservationsByUser(target.id, pageNumber, pageSize);
+		case "apartment":
+			return getAdminReservationsByApartment(target.id, pageNumber, pageSize);
+	}
+}
+
 export default function AdminReservasPage() {
 	const queryClient = useQueryClient();
 	const [searchParams, setSearchParams] = useSearchParams();
@@ -121,6 +140,7 @@ export default function AdminReservasPage() {
 	);
 	const [isSelectionModalOpen, setIsSelectionModalOpen] = useState(false);
 	const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+	const [stateFilter, setStateFilter] = useState<ReservationStateFilter>("all");
 	const [selectedReservation, setSelectedReservation] = useState<ReservationDetail | null>(null);
 	const [reservationToCancel, setReservationToCancel] = useState<string | null>(null);
 	function updateSearchParameters(
@@ -155,20 +175,7 @@ export default function AdminReservasPage() {
 			pageNumber,
 			pageSize,
 		],
-		queryFn: async () => {
-			if (!searchTarget) {
-				throw new Error("No se seleccionó un criterio de búsqueda.");
-			}
-
-			switch (searchTarget.type) {
-				case "id":
-					return [await getAdminReservationById(searchTarget.id)];
-				case "user":
-					return getAdminReservationsByUser(searchTarget.id, pageNumber, pageSize);
-				case "apartment":
-					return getAdminReservationsByApartment(searchTarget.id, pageNumber, pageSize);
-			}
-		},
+			queryFn: () => getReservationPage(searchTarget, pageNumber, pageSize),
 		enabled: searchTarget !== null,
 		meta: { silent: true },
 	});
@@ -199,9 +206,46 @@ export default function AdminReservasPage() {
 	const displayedReservations = searchTarget
 		? reservationSearchQuery.data ?? []
 		: reservations;
+	const filteredReservations = displayedReservations.filter((reservation) => {
+		switch (stateFilter) {
+			case "confirmed":
+				return (
+					reservation.state === ReservationState.ConfirmedPaymentIncomplete ||
+					reservation.state === ReservationState.ConfirmedPaymentComplete
+				);
+			case "not-confirmed":
+				return (
+					reservation.state === ReservationState.NotConfirmed ||
+					reservation.state === ReservationState.PaymentPending
+				);
+			case "cancelled":
+				return reservation.state === ReservationState.Cancelled;
+			default:
+				return true;
+		}
+	});
 	const displayedReservationsQuery = searchTarget
 		? reservationSearchQuery
 		: reservationsQuery;
+	const canCheckNextReservationPage =
+		(!searchTarget || searchTarget.type !== "id") &&
+		displayedReservations.length === pageSize &&
+		!displayedReservationsQuery.isFetching &&
+		!displayedReservationsQuery.isError;
+	const nextReservationsQuery = useQuery<ReservationDetail[]>({
+		queryKey: searchTarget
+			? [
+				"admin-reservation-search",
+				searchTarget.type,
+				searchTarget.id,
+				pageNumber + 1,
+				pageSize,
+			]
+			: ["admin-reservations", pageNumber + 1, pageSize],
+		queryFn: () => getReservationPage(searchTarget, pageNumber + 1, pageSize),
+		enabled: canCheckNextReservationPage,
+		meta: { silent: true },
+	});
 
 	function getDaysBetweenDates(date1: Date, date2: Date): number {
 		const utc1 = Date.UTC(date1.getFullYear(), date1.getMonth(), date1.getDate());
@@ -342,6 +386,34 @@ export default function AdminReservasPage() {
 					</button>
 				)}
 			</form>
+			<fieldset className="mb-5">
+				<legend className="mb-2 text-sm font-semibold text-[#385347]">
+					Filtrar por estado en página actual
+				</legend>
+				<div className="flex flex-wrap gap-x-5 gap-y-2">
+					{([
+						["all", "Todas"],
+						["confirmed", "Confirmadas"],
+						["not-confirmed", "No confirmadas"],
+						["cancelled", "Canceladas"],
+					] as const).map(([value, label]) => (
+						<label
+							key={value}
+							className="inline-flex cursor-pointer items-center gap-2 text-sm text-[#424a44]"
+						>
+							<input
+								type="radio"
+								name="reservation-state-filter"
+								value={value}
+								checked={stateFilter === value}
+								onChange={() => setStateFilter(value)}
+								className="accent-[#385347] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#385347]"
+							/>
+							{label}
+						</label>
+					))}
+				</div>
+			</fieldset>
 			<em className="mb-3 inline-block text-muted-foreground text-sm">Desplazese a la derecha para ver acciones y mas resultados</em>
 			{searchTarget && (
 				<p className="mb-3 text-sm text-[#68716a]">
@@ -398,8 +470,18 @@ export default function AdminReservasPage() {
 											: "No hay reservas en esta página"}
 								</td>
 							</tr>
+						) : filteredReservations.length === 0 ? (
+							<tr>
+								<td colSpan={7} className="px-5 py-8 text-center text-[#68716a]">
+									{stateFilter === "confirmed"
+										? "No hay reservas confirmadas en esta página."
+										: stateFilter === "not-confirmed"
+											? "No hay reservas no confirmadas en esta página."
+											: "No hay reservas canceladas en esta página."}
+								</td>
+							</tr>
 						) : (
-							displayedReservations.map((reservation) => (
+							filteredReservations.map((reservation) => (
 								<tr key={reservation.reservationId} className="align-top">
 									{/* <td className="max-w-36 px-5 py-4">
                     <span className="block break-all font-mono text-xs text-[#68716a]">
@@ -622,9 +704,10 @@ export default function AdminReservasPage() {
 							type="button"
 							onClick={() => updateSearchParameters({ page: String(pageNumber + 1) })}
 							disabled={
-								(searchTarget
-									? displayedReservations.length < pageSize
-									: displayedReservations.length === 0) ||
+								displayedReservations.length < pageSize ||
+								nextReservationsQuery.isPending ||
+								nextReservationsQuery.isFetching ||
+								nextReservationsQuery.data?.length === 0 ||
 								displayedReservationsQuery.isFetching
 							}
 							className="rounded-md border border-[#d8d5ca] px-4 py-2 font-semibold transition hover:bg-[#edf2e8] disabled:cursor-not-allowed disabled:opacity-50"
@@ -632,6 +715,14 @@ export default function AdminReservasPage() {
 							Siguiente
 						</button>
 					</div>
+					{nextReservationsQuery.isError && (
+						<p role="alert" className="w-full text-right text-xs text-red-700">
+							No se pudo verificar la página siguiente:{" "}
+							{nextReservationsQuery.error instanceof Error
+								? nextReservationsQuery.error.message
+								: "Error desconocido"}
+						</p>
+					)}
 				</div>
 			)}
 

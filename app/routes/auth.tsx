@@ -57,7 +57,8 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
 		reservation?: unknown;
 	} | null;
 	const returnTo = navigationState?.returnTo;
-	const destination = typeof returnTo === "string" && returnTo.startsWith("/") ? returnTo : "/";
+	// const destination = typeof returnTo === "string" && returnTo.startsWith("/") ? returnTo : "/";
+	const destination = "/";
 	const mutation = useMutation({
 		mutationFn: async () => {
 			if (mode === "register") {
