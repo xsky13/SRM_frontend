@@ -51,14 +51,7 @@ function formatCurrency(value: number) {
 }
 
 function getPaymentsTotal(payments: PaymentDto[]) {
-	return payments.reduce((total, payment) => total + payment.amount, 0);
-}
-
-function getPendingRefunds(payments: PaymentDto[]) {
-	return payments.filter(
-		(payment) =>
-			payment.isRefund && payment.paymentStatus !== PaymentStatus.Refunded,
-	);
+	return payments.filter(p => p.paymentStatus == PaymentStatus.Approved).reduce((total, payment) => total + payment.amount, 0);
 }
 
 function getPaymentStatusLabel(status: PaymentStatus) {

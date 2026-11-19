@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { addAdminReservationPayment } from "~/utils/api";
-import type { ReservationDetail } from "~/types/ReservationDetail";
+import { PaymentStatus, type ReservationDetail } from "~/types/ReservationDetail";
 import formatDate from "~/utils/formatDate";
 import { ReservationState } from "~/types/Reserva";
 
@@ -53,7 +53,7 @@ export default function AddPaymentModal({
 		mutation.mutate({ id: reservation?.reservationId, paymentAmount });
 	}
 
-	const payed = reservation.payments.reduce((acc, curr) => acc + curr.amount, 0);
+	const payed = reservation.payments.filter(p => p.paymentStatus == PaymentStatus.Approved).reduce((acc, curr) => acc + curr.amount, 0);
 	const nightsInReservation = new Date(reservation.checkOutDate).getDate() - new Date(reservation.checkInDate).getDate() + 1;
 	const fullCost = nightsInReservation * (reservation.apartment?.price || 0);
 

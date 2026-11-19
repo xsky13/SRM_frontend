@@ -432,7 +432,7 @@ export default function ReservaPage() {
 					<div>
 						<h1 className="font-serif text-5xl tracking-tighter text-[#202722]">Reserva</h1>
 						<p className="mt-2 text-sm text-[#68716a]">
-							{activeReservation.apartment?.name ?? "Departamento no disponible"}
+							En: <Link to={"/departamento/" + reservation.apartmentId} className="underline">{activeReservation.apartment?.name ?? "Departamento no disponible"}</Link>
 						</p>
 					</div>
 					<p className="text-2xl font-bold text-[#202722]">Monto total: {formatPrice(total)}</p>
