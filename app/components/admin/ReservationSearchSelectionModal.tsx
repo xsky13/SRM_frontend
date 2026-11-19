@@ -132,15 +132,16 @@ export default function ReservationSearchSelectionModal({
                 </button>
               )}
             </form>
+			      <em className="mt-3 inline-block text-muted-foreground text-sm">Puede haber más información en la tabla. Desplazese a la derecha para ver acciones y mas resultados</em>
 
             <div className="mt-4 min-h-0 flex-1 overflow-auto rounded-md border border-[#e0ded5]">
               <table className="w-full min-w-[620px] border-collapse text-left text-sm">
                 <thead className="sticky top-0 bg-[#edf2e8] text-[#385347]">
                   <tr>
+                    <th scope="col" className="px-4 py-3 font-semibold">Seleccionar</th>
                     <th scope="col" className="px-4 py-3 font-semibold">Nombre</th>
                     <th scope="col" className="px-4 py-3 font-semibold">Apellido</th>
                     <th scope="col" className="px-4 py-3 font-semibold">Email</th>
-                    <th scope="col" className="px-4 py-3 font-semibold">Seleccionar</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#ece7df] text-[#202722]">
@@ -170,9 +171,6 @@ export default function ReservationSearchSelectionModal({
                   ) : (
                     users.map((user) => (
                       <tr key={user.id}>
-                        <td className="px-4 py-3">{user.name}</td>
-                        <td className="px-4 py-3">{user.lastName}</td>
-                        <td className="px-4 py-3">{user.email}</td>
                         <td className="px-4 py-3">
                           <button
                             type="button"
@@ -182,6 +180,9 @@ export default function ReservationSearchSelectionModal({
                             Elegir
                           </button>
                         </td>
+                        <td className="px-4 py-3">{user.name}</td>
+                        <td className="px-4 py-3">{user.lastName}</td>
+                        <td className="px-4 py-3">{user.email}</td>
                       </tr>
                     ))
                   )}
