@@ -1,6 +1,6 @@
 import { CardPayment, initMercadoPago } from "@mercadopago/sdk-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import ConfirmReservationCancellationModal from "~/components/ConfirmReservationCancellationModal";
@@ -105,6 +105,60 @@ export function meta() {
 	return [{ title: "Reserva | Reservas Moreno" }];
 }
 
+function ReservationCardPaymentForm({
+	amount,
+	option,
+	reservation,
+	onSubmit,
+	onError,
+}: {
+	amount: number;
+	option: PaymentOption;
+	reservation: ReservationDetail;
+	onSubmit: (
+		formData: any,
+		option: PaymentOption,
+		reservation: ReservationDetail,
+	) => Promise<void>;
+	onError: (message: string) => void;
+}) {
+	const initialization = useMemo(() => ({ amount }), [amount]);
+	const customization = useMemo(
+		() =>
+			option === "full"
+				? { paymentMethods: { minInstallments: 1, maxInstallments: 1 } }
+				: undefined,
+		[option],
+	);
+	const handleSubmit = useCallback(
+		(formData: any) => onSubmit(formData, option, reservation),
+		[onSubmit, option, reservation],
+	);
+	const handleError = useCallback(
+		(error: unknown) => {
+			const message =
+				isRecord(error) && typeof error.message === "string"
+					? error.message
+					: null;
+			onError(
+				message === "empty_installments"
+					? "Mercado Pago no ofreció una opción de pago en una cuota para esta tarjeta y este importe. Probá con otra tarjeta."
+					: message ?? "No se pudo inicializar el pago.",
+			);
+		},
+		[onError],
+	);
+
+	return (
+		<CardPayment
+			initialization={initialization}
+			customization={customization}
+			onSubmit={handleSubmit}
+			onError={handleError}
+		/>
+	);
+}
+
 export default function ReservaPage() {
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
@@ -150,6 +204,95 @@ export default function ReservaPage() {
 	});
 
 	const reservation = reservationQuery.data;
+	const refetchReservation = reservationQuery.refetch;
+
+	const handlePaymentSubmit = useCallback(
+		async (
+			formData: any,
+			option: PaymentOption,
+			activeReservation: ReservationDetail,
+		): Promise<void> => {
+			setIsProcessingPayment(true);
+			setPaymentError(null);
+			setPaymentApproved(false);
+
+			try {
+				const response = await trackedFetch(
+					`${apiBaseUrl.replace(/\/$/, "")}/api/Payment/${paymentEndpoints[option]}/${option === "rest" ? activeReservation.reservationId : activeReservation.apartmentId}`,
+					{
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						credentials: "include",
+						body: JSON.stringify({
+							...formData,
+							reservationId: activeReservation.reservationId,
+							checkInDate: activeReservation.checkInDate,
+							checkOutDate: activeReservation.checkOutDate,
+							paymentOption: option,
+							isModification: false,
+						}),
+					},
+				);
+
+				const rawText = await response.text();
+				let data: Record<string, unknown> = {};
+				if (rawText) {
+					try {
+						const parsed: unknown = JSON.parse(rawText);
+						if (isRecord(parsed)) data = parsed;
+						else data = { message: rawText };
+					} catch {
+						data = { message: rawText };
+					}
+				}
+
+				if (!response.ok) {
+					const message = [data.message, data.error, data.title].find(
+						(value): value is string => typeof value === "string",
+					);
+					throw new Error(message ?? "No se pudo procesar el pago.");
+				}
+
+				const status = Number(
+					data.paymentStatus ?? data.status ?? data.payment_status ?? 0,
+				);
+				if (status === 2) {
+					setPaymentApproved(true);
+					const nextState =
+						parseReservationState(data.state) ??
+						(option === "deposit"
+							? ReservationState.ConfirmedPaymentIncomplete
+							: ReservationState.ConfirmedPaymentComplete);
+					setReservationStateOverride({
+						reservationId: activeReservation.reservationId,
+						state: nextState,
+					});
+					void refetchReservation();
+					return;
+				}
+				if (status === 1) {
+					throw new Error(
+						"Pago pendiente. Mercado Pago continuará el proceso y te avisará cuando se confirme.",
+					);
+				}
+				if (status === 4) {
+					throw new Error("El pago fue rechazado. Verificá los datos de tu tarjeta.");
+				}
+				if (status === 5) {
+					throw new Error("El pago fue cancelado.");
+				}
+				throw new Error("El backend respondió un estado de pago no reconocido.");
+			} catch (error) {
+				setPaymentError(
+					error instanceof Error ? error.message : "Error al procesar el pago.",
+				);
+				throw error;
+			} finally {
+				setIsProcessingPayment(false);
+			}
+		},
+		[refetchReservation],
+	);
 
 	useEffect(() => {
 		initMercadoPago("TEST-440e66b5-54b5-49f2-9930-3dd2e1baed8e");
@@ -254,15 +397,12 @@ export default function ReservaPage() {
 										</svg>
 									</button>
 								</div>
-								<CardPayment
-									initialization={{ amount }}
-									onReady={() => undefined}
-									onSubmit={(formData: any) => handlePaymentSubmit(formData, option)}
-									onError={(error: any) => {
-										setPaymentError(
-											error?.message ?? "No se pudo inicializar el pago.",
-										);
-									}}
+								<ReservationCardPaymentForm
+									amount={amount}
+									option={option}
+									reservation={activeReservation}
+									onSubmit={handlePaymentSubmit}
+									onError={setPaymentError}
 								/>
 							</>
 						)}
@@ -283,83 +423,6 @@ export default function ReservaPage() {
 				)}
 			</article>
 		);
-	}
-
-	async function handlePaymentSubmit(formData: any, option: PaymentOption): Promise<void> {
-		setIsProcessingPayment(true);
-		setPaymentError(null);
-		setPaymentApproved(false);
-
-		try {
-			const response = await trackedFetch(
-				`${apiBaseUrl.replace(/\/$/, "")}/api/Payment/${paymentEndpoints[option]}/${option === "rest" ? activeReservation.reservationId : activeReservation.apartmentId}`,
-				{
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					credentials: "include",
-					body: JSON.stringify({
-						...formData,
-						reservationId: activeReservation.reservationId,
-						checkInDate: activeReservation.checkInDate,
-						checkOutDate: activeReservation.checkOutDate,
-						paymentOption,
-						isModification: false,
-					}),
-				},
-			);
-
-			const rawText = await response.text();
-			let data: Record<string, unknown> = {};
-			if (rawText) {
-				try {
-					const parsed: unknown = JSON.parse(rawText);
-					if (isRecord(parsed)) data = parsed;
-					else data = { message: rawText };
-				} catch {
-					data = { message: rawText };
-				}
-			}
-
-			if (!response.ok) {
-				const message = [data.message, data.error, data.title].find(
-					(value): value is string => typeof value === "string",
-				);
-				throw new Error(
-					message ?? "No se pudo procesar el pago.",
-				);
-			}
-
-			const status = Number(data.paymentStatus ?? data.status ?? data.payment_status ?? 0);
-			if (status === 2) {
-				setPaymentApproved(true);
-				const nextState =
-					parseReservationState(data.state) ??
-					(option === "deposit"
-						? ReservationState.ConfirmedPaymentIncomplete
-						: ReservationState.ConfirmedPaymentComplete);
-				setReservationStateOverride({
-					reservationId: activeReservation.reservationId,
-					state: nextState,
-				});
-				void reservationQuery.refetch();
-				return;
-			}
-			if (status === 1) {
-				throw new Error("Pago pendiente. Mercado Pago continuará el proceso y te avisará cuando se confirme.");
-			}
-			if (status === 4) {
-				throw new Error("El pago fue rechazado. Verificá los datos de tu tarjeta.");
-			}
-			if (status === 5) {
-				throw new Error("El pago fue cancelado.");
-			}
-			throw new Error("El backend respondió un estado de pago no reconocido.");
-		} catch (error) {
-			setPaymentError(error instanceof Error ? error.message : "Error al procesar el pago.");
-			throw error;
-		} finally {
-			setIsProcessingPayment(false);
-		}
 	}
 
 	return (
