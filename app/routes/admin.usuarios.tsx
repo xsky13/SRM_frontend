@@ -274,7 +274,7 @@ export default function AdminUsuariosPage() {
           </button>
         )}
       </form>
-			<em className="mb-3 inline-block text-muted-foreground text-sm">Puede haber más información en la tabla. Desplazese a la derecha para ver acciones y mas resultados</em>
+			<em className="mb-3 inline-block text-muted-foreground text-sm">Puede haber más información en la tabla. Desplazese hacia la derecha en la tabla para ver acciones y mas resultados</em>
 
       <div className="overflow-x-auto rounded-md border border-[#e0ded5] bg-[#fffdf9]">
         <table className="w-full min-w-[900px] border-collapse text-left text-sm">

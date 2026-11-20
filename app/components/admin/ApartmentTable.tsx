@@ -56,11 +56,23 @@ export default function ApartmentTable() {
         <table className="w-full min-w-[720px] border-collapse text-left text-sm">
           <thead className="bg-[#edf2e8] text-[#385347]">
             <tr>
-              {orderedColumns.map((column) => (
+              {/* {orderedColumns.map((column) => (
                 <th key={column} scope="col" className="px-5 py-4 font-semibold">
                   {column}
                 </th>
-              ))}
+              ))} */}
+              <th className="px-5 py-4 font-semibold">
+                Imágen principal
+              </th>
+              <th className="px-5 py-4 font-semibold">
+                Nombre
+              </th>
+              <th className="px-5 py-4 font-semibold">
+                Dirección
+              </th>
+              <th className="px-5 py-4 font-semibold">
+                Precio por noche
+              </th>
               <th scope="col" className="px-5 py-4 font-semibold">Acciones</th>
             </tr>
           </thead>

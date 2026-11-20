@@ -132,7 +132,7 @@ export default function ReservationSearchSelectionModal({
                 </button>
               )}
             </form>
-			      <em className="mt-3 inline-block text-muted-foreground text-sm">Puede haber más información en la tabla. Desplazese a la derecha para ver acciones y mas resultados</em>
+			      <em className="mt-3 inline-block text-muted-foreground text-sm">Puede haber más información en la tabla. Desplazese hacia la derecha en la tabla para ver acciones y mas resultados</em>
 
             <div className="mt-4 min-h-0 flex-1 overflow-auto rounded-md border border-[#e0ded5]">
               <table className="w-full min-w-[620px] border-collapse text-left text-sm">

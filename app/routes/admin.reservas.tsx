@@ -173,6 +173,8 @@ export default function AdminReservasPage() {
 			},
 			{ replace },
 		);
+
+		setStateFilter("all");
 	}
 
 	useEffect(() => {
@@ -187,7 +189,7 @@ export default function AdminReservasPage() {
 			pageNumber,
 			pageSize,
 		],
-			queryFn: () => getReservationPage(searchTarget, pageNumber, pageSize),
+		queryFn: () => getReservationPage(searchTarget, pageNumber, pageSize),
 		enabled: searchTarget !== null,
 		meta: { silent: true },
 	});
@@ -418,7 +420,7 @@ export default function AdminReservasPage() {
 					))}
 				</div>
 			</fieldset>
-			<em className="mb-3 inline-block text-muted-foreground text-sm">Desplazese a la derecha para ver acciones y mas resultados</em>
+			<em className="mb-3 inline-block text-muted-foreground text-sm">Desplazese hacia la derecha en la tabla para ver acciones y mas resultados</em>
 			{searchTarget && (
 				<p className="mb-3 text-sm text-[#68716a]">
 					{searchTarget.type === "id"
@@ -665,30 +667,43 @@ export default function AdminReservasPage() {
 									</td>
 									<td className="px-5 py-4">
 										<div className="flex flex-wrap gap-2">
-											<button
-												type="button"
-												onClick={() => setSelectedReservation(reservation)}
-												className="rounded-lg bg-[#385347] px-4 py-1.5 text-sm font-semibold text-white shadow-sm
+											{
+												(() => {
+													switch (reservation.state) {
+														case ReservationState.Cancelled:
+															return <em className="text-xs text-muted-foreground mt-3 inline-block">Esta reserva esta cancelada. No puede agregar pagos.</em>
+														case ReservationState.ConfirmedPaymentComplete:
+															return <em className="text-xs text-muted-foreground mt-3 inline-block">Esta reserva tiene sus pagos completos. No puede agregar pagos.</em>
+														case ReservationState.PaymentPending:
+															return <em className="text-xs text-muted-foreground mt-3 inline-block">Esta reserva tiene un pago pendiente. No puede agregar pagos.</em>
+														default:
+															return <button
+																type="button"
+																onClick={() => setSelectedReservation(reservation)}
+																className="rounded-lg bg-[#385347] px-4 py-1.5 text-sm font-semibold text-white shadow-sm
                                    transition hover:bg-[#2c4238] focus:outline-none focus-visible:ring-2
                                    focus-visible:ring-[#385347]/50 focus-visible:ring-offset-2 active:scale-95"
-											>
-												Registrar Pago
-											</button>
+															>
+																Registrar Pago
+															</button>
+													}
+												})()
+											}
 											{
 												isReservationStartInFuture(reservation.checkInDate) ?
-												<button
-													type="button"
-													onClick={() => setReservationToCancel(reservation)}
-													className="rounded-lg bg-[#e28b68] px-4 py-1.5 text-sm font-semibold text-white shadow-sm
+													<button
+														type="button"
+														onClick={() => setReservationToCancel(reservation)}
+														className="rounded-lg bg-[#e28b68] px-4 py-1.5 text-sm font-semibold text-white shadow-sm
 									transition hover:bg-[#d47b58] focus:outline-none focus-visible:ring-2
 									focus-visible:ring-[#e28b68]/50 focus-visible:ring-offset-2 active:scale-95"
-												>
-													Cancelar
-												</button>
-												:
-												<em className="text-muted-foreground text-xs">
-													No se pueden cancelar reservas pasadas o que estan por comenzar {/* //TODO: right message?  */}
-												</em>
+													>
+														Cancelar
+													</button>
+													:
+													<em className="text-muted-foreground text-xs">
+														No se pueden cancelar reservas pasadas o que estan por comenzar {/* //TODO: right message?  */}
+													</em>
 											}
 										</div>
 									</td>
