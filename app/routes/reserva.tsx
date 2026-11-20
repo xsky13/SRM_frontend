@@ -487,16 +487,18 @@ export default function ReservaPage() {
 							<p>
 								<strong className="text-[#202722]">Total:</strong> {formatPrice(total)}
 							</p>
-							<p>
-								<strong className="text-[#202722]">Seña:</strong> {formatPrice(deposit)}
-							</p>
+							{
+								reservation.payments.some(p => p.isSign) && <p>
+									<strong className="text-[#202722]">Seña pagada:</strong> {formatPrice(deposit)}
+								</p>
+							}
 							<p>
 								<strong className="text-[#202722]">Estado:</strong>
 								&nbsp;{getReservationStateLabel(reservationState)}
 							</p>
 							<p>
 								<strong className="text-[#202722]">Saldo restante:</strong>
-								{formatPrice(remaining)}
+								{" "}{formatPrice(remaining)}
 							</p>
 						</div>
 					</div>
@@ -518,11 +520,11 @@ export default function ReservaPage() {
 								amount: total,
 							})}
 						{canPayRest && renderPaymentOptionCard({
-								title: "Pagar resto",
-								description: "Completar el pago pendiente de la reserva",
-								option: "rest",
-								amount: total,
-							})}
+							title: "Pagar resto",
+							description: "Completar el pago pendiente de la reserva",
+							option: "rest",
+							amount: total,
+						})}
 					</div>
 				) : (
 					<div className="mt-8 rounded-md border border-dashed border-[#c8c2b8] bg-[#fffdf9] p-6 text-sm text-[#68716a]">
@@ -581,16 +583,20 @@ export default function ReservaPage() {
 									className="flex flex-wrap items-start justify-between gap-4 rounded-md border border-[#ece7df] bg-white p-4"
 								>
 									<div>
-										<p className="font-semibold text-[#202722]">
-											{formatPrice(payment.amount)}
-										</p>
+										<div className="font-semibold text-[#202722] flex items-center gap-2">
+											{formatPrice(Math.abs(payment.amount))}
+											{
+												payment.isRefund &&
+												<span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800">Reembolso</span>
+											}
+										</div>
 										<p className="mt-1 text-sm text-[#68716a]">
 											{formatPaymentDate(payment.paymentDate)}
 										</p>
-										<p className="mt-1 text-sm text-[#68716a]">
+										<p className="mt-1 text-sm text-[#68716a] font-medium">
 											{payment.isManual ? "Pago manual" : "Pago en línea"}
 											{payment.isSign ? " · Seña" : ""}
-											{payment.isRefund ? " · Reembolso" : ""}
+											{/* {payment.isRefund ? " · Reembolso" : ""} */}
 										</p>
 									</div>
 									<span className="rounded-full bg-[#edf2e8] px-3 py-1 text-sm font-medium text-[#385347]">
@@ -612,7 +618,7 @@ export default function ReservaPage() {
 					onConfirm={() => cancelMutation.mutate(activeReservation.reservationId)}
 				/>
 			</section>
-			
+
 		</main>
 	);
 }

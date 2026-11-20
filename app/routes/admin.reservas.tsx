@@ -488,7 +488,7 @@ export default function AdminReservasPage() {
 							</tr>
 						) : (
 							filteredReservations.map((reservation) => (
-								<tr key={reservation.reservationId} className="align-top">
+								<tr key={reservation.reservationId} className="align-center">
 									{/* <td className="max-w-36 px-5 py-4">
                     <span className="block break-all font-mono text-xs text-[#68716a]">
                       {reservation.reservationId}
@@ -498,6 +498,9 @@ export default function AdminReservasPage() {
 										<p className="font-medium">{formatDate(reservation.checkInDate)}</p>
 										<p className="mt-1 text-xs text-[#68716a]">
 											hasta {formatDate(reservation.checkOutDate)}
+										</p>
+										<p className="mt-3 text-xs text-[#68716a] italic">
+											Creada el {formatDate(reservation.createdAt)}
 										</p>
 									</td>
 									<td className="px-5 py-4">
