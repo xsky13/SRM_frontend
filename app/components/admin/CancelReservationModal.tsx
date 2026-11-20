@@ -33,8 +33,7 @@ export default function CancelReservationModal({
 					Cancelar Reserva
 				</h2>
 				<p className="mt-3 text-sm leading-6 text-[#505a53]">
-					¿Estás seguro de que deseas cancelar esta reserva? Esta acción es irreversible y se
-					realiza desde el panel de administrador.
+					¿Estás seguro de que deseas cancelar esta reserva? Esta acción es irreversible!
 				</p>
 				<div className="border border-[#e0ded5] bg-[#F6F4EE] rounded-md px-3 py-2.5 my-3">
 					<p className=" text-sm text-[#68716a]">

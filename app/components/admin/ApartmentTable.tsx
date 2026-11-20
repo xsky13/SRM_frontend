@@ -156,6 +156,7 @@ export default function ApartmentTable() {
         onConfirm={() => {
           if (apartmentToDelete) deleteMutation.mutate(apartmentToDelete.id);
         }}
+        apartmentId={apartmentToDelete?.id ?? null}
         apartmentName={apartmentToDelete?.name ?? ""}
         isPending={deleteMutation.isPending}
       />
