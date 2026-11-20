@@ -433,6 +433,9 @@ export default function ReservaPage() {
 		);
 	}
 
+	// to check if user can edit reservation
+	const allowedEditTime = new Date(reservation.checkInDate).getTime() - 60 * 60 * 1000;
+
 	return (
 		<main className="min-h-screen bg-[#f6f4ee] text-[#202722]">
 			<section className="mx-auto max-w-7xl px-5 py-8 md:px-8">
@@ -538,7 +541,7 @@ export default function ReservaPage() {
 				)}
 				<div className="mt-6 flex justify-end gap-3">
 					{
-						reservation.state != ReservationState.Cancelled &&
+						reservation.state != ReservationState.Cancelled && Date.now() < allowedEditTime  &&
 						<button
 							type="button"
 							onClick={() => navigate(`/reservas/${id}/modificar`)}
@@ -547,7 +550,7 @@ export default function ReservaPage() {
 							Modificar reserva
 						</button>
 					}
-					{canPayDeposit || canPayFull ? (
+					{(canPayDeposit || canPayFull) && Date.now() < allowedEditTime ? (
 						<button
 							type="button"
 							onClick={() => setIsCancelDialogOpen(true)}

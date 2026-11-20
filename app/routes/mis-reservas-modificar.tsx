@@ -423,6 +423,25 @@ export default function MisReservasModificarPage() {
 			No puede modificar una reserva cancelada.
 		</main>;
 
+	function addHours(date: Date, hours: number): number {
+		const newDate = new Date(date.getTime());
+		newDate.setTime(newDate.getTime() + hours * 60 * 60 * 1000); // or hours * 3_600_000
+		return newDate.getUTCDate();
+	}
+	
+	const allowedTime = new Date(reservaQuery.data.checkInDate).getTime() - 60 * 60 * 1000;
+    if (Date.now() > allowedTime)
+		return <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">
+			<Link
+				to={`/reservas/${reservaQuery.data.reservationId}`}
+				className="pb-4 flex gap-1 items-center text-primary font-medium"
+			>
+				<ChevronLeft />
+				Volver
+			</Link>
+			No puede modificar una reserva cancelada.
+		</main>;
+
 	const payed = reservaQuery.data.payments.reduce((acc, r) => acc + r.amount, 0);
 
 	return (
