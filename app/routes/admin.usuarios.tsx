@@ -12,6 +12,7 @@ import {
   getAdminUsers,
   searchAdminUsers,
 } from "~/utils/api";
+import { formatDateOnly } from "~/utils/dateOnly";
 
 export function meta() {
   return [{ title: "Usuarios | Administración | Reservas Moreno" }];
@@ -38,11 +39,11 @@ function getUserTypeLabel(userType: User["usertype"]) {
 }
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat("es-AR", {
+  return formatDateOnly(value, {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
-  }).format(new Date(value));
+  });
 }
 
 function UserReservations({ userId }: { userId: string }) {

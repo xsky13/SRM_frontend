@@ -13,6 +13,11 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { ReservationState, type Reserva } from "~/types/Reserva";
 import api from "~/utils/api";
+import {
+  differenceInCalendarDays,
+  parseDateOnly,
+  serializeDateOnly,
+} from "~/utils/dateOnly";
 import { trackedFetch } from "~/utils/requestProgress";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
@@ -66,22 +71,11 @@ function dateKeyReadable(date: Date): string {
   return `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}/${date.getFullYear()}`;
 }
 
-function parseDate(value: string): Date {
-  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
-  return Number.isNaN(date.getTime()) ? new Date(0) : date;
-}
-
-function serializeDate(date: Date): string {
-  return new Date(
-    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
-  ).toISOString();
-}
-
 function isReserved(day: Date, reservas: Reserva[]): boolean {
   const current = dateKey(day);
   return reservas.some((reserva) => {
-    const start = dateKey(parseDate(reserva.checkInDate));
-    const end = dateKey(parseDate(reserva.checkOutDate));
+    const start = dateKey(parseDateOnly(reserva.checkInDate));
+    const end = dateKey(parseDateOnly(reserva.checkOutDate));
     const state = Number(reserva.reservationState);
     return (
       current >= start &&
@@ -96,8 +90,8 @@ function isReserved(day: Date, reservas: Reserva[]): boolean {
 function isPendingForUser(day: Date, reservas: Reserva[]): boolean {
   const current = dateKey(day);
   return reservas.some((reserva) => {
-    const start = dateKey(parseDate(reserva.checkInDate));
-    const end = dateKey(parseDate(reserva.checkOutDate));
+    const start = dateKey(parseDateOnly(reserva.checkInDate));
+    const end = dateKey(parseDateOnly(reserva.checkOutDate));
     return (
       Number(reserva.reservationState) === ReservationState.NotConfirmed &&
       current >= start &&
@@ -283,8 +277,8 @@ export default function CalendarioDisponibilidad({
           credentials: "include",
           body: JSON.stringify({
             ...formData,
-            checkInDate: serializeDate(startDate),
-            checkOutDate: serializeDate(endDate),
+            checkInDate: serializeDateOnly(startDate),
+            checkOutDate: serializeDateOnly(endDate),
             paymentOption,
           }),
         },
@@ -354,9 +348,7 @@ export default function CalendarioDisponibilidad({
 
   const selectedDays =
     rangeStart && rangeEnd
-      ? Math.round(
-          Math.abs(rangeEnd.getTime() - rangeStart.getTime()) / 86_400_000,
-        ) + 1
+      ? Math.abs(differenceInCalendarDays(rangeStart, rangeEnd)) + 1
       : 0;
   const selectedCheckoutDate = rangeEnd
     ? new Date(
@@ -381,8 +373,8 @@ export default function CalendarioDisponibilidad({
     }) => {
       const response = await api.post("/api/reservation/with_auth", {
         apartmentId: apartmentId,
-        checkInDate: serializeDate(startDay),
-        checkOutDate: serializeDate(endDay),
+        checkInDate: serializeDateOnly(startDay),
+        checkOutDate: serializeDateOnly(endDay),
       });
       return response.data;
     },
@@ -426,40 +418,6 @@ export default function CalendarioDisponibilidad({
 
     setStep("payment");
   }
-
-  //   async function confirmDates() {
-  //     if (!rangeStart || !rangeEnd || isCreatingReservation) return;
-  //
-  //     setIsCreatingReservation(true);
-  //     setReservationError(null);
-  //
-  //     try {
-  //       const checkInDate = rangeStart.toISOString();
-  //       const checkOutDate = rangeEnd.toISOString();
-  //       const { data } = await api.post("/api/reservation", {
-  //         apartmentId,
-  //         checkInDate,
-  //         checkOutDate,
-  //       });
-  //       const createdReservation = data?.reservation ?? data;
-  //       const reservationId =
-  //         createdReservation?.id ?? createdReservation?.reservationId;
-  //
-  //       if (!reservationId) {
-  //         throw new Error("El servidor no devolvió el ID de la reserva creada.");
-  //       }
-  //
-  //       toast.success("Reserva creada exitosamente.");
-  //       onClose();
-  //       navigate(`/reserva/${reservationId}`);
-  //     } catch (error) {
-  //       setReservationError(
-  //         error instanceof Error ? error.message : "No se pudo crear la reserva.",
-  //       );
-  //     } finally {
-  //       setIsCreatingReservation(false);
-  //     }
-  //   }
 
   return (
     <div
@@ -600,7 +558,7 @@ export default function CalendarioDisponibilidad({
               )}
             </div>
 
-            <p className="mt-3 font-medium text-center text-muted-foreground" aria-live="polite">
+            <p className="mt-3 font-medium text-sm text-muted-foreground" aria-live="polite">
               {rangeStart && !rangeEnd
                 ? "Entrada seleccionada. Ahora elegí la fecha de salida."
                 : rangeStart && rangeEnd
@@ -623,12 +581,13 @@ export default function CalendarioDisponibilidad({
               )}
               {rangeStart && rangeEnd && selectedCheckoutDate && (
                 <>
-                  <span className="w-full text-[#385347]">
-                    Entrada: {dateKeyReadable(rangeStart)} · Salida:{" "}
-                    {dateKeyReadable(selectedCheckoutDate)}
+                  <span className="w-full text-[#385347] text-sm my-1">
+                    Del <span className="font-medium">{dateKeyReadable(rangeStart)}</span> al {" "}
+                    <span className="font-medium">{dateKeyReadable(rangeEnd)}</span> {" "}
+                    · (Salida el <span className="font-medium">{dateKeyReadable(selectedCheckoutDate)}</span> a la mañana)
                   </span>
                   <span className="w-full text-[#68716a]">
-                    El último día seleccionado es la última noche de estadía.
+                    La ultima fecha seleccionado es la última noche de estadía.
                   </span>
                 </>
               )}
@@ -736,8 +695,8 @@ export default function CalendarioDisponibilidad({
                         apartmentName,
                         apartmentLocation,
                         pricePerDay,
-                        checkInDate: rangeStart ? serializeDate(rangeStart) : undefined,
-                        checkOutDate: rangeEnd ? serializeDate(rangeEnd) : undefined,
+                        checkInDate: rangeStart ? serializeDateOnly(rangeStart) : undefined,
+                        checkOutDate: rangeEnd ? serializeDateOnly(rangeEnd) : undefined,
                       },
                     }}
                     className="font-semibold underline"
@@ -754,8 +713,8 @@ export default function CalendarioDisponibilidad({
                         apartmentName,
                         apartmentLocation,
                         pricePerDay,
-                        checkInDate: rangeStart ? serializeDate(rangeStart) : undefined,
-                        checkOutDate: rangeEnd ? serializeDate(rangeEnd) : undefined,
+                        checkInDate: rangeStart ? serializeDateOnly(rangeStart) : undefined,
+                        checkOutDate: rangeEnd ? serializeDateOnly(rangeEnd) : undefined,
                       },
                     }}
                     className="font-semibold underline"

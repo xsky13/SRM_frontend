@@ -19,6 +19,11 @@ import {
 	getAdminReservationsByUser,
 	resolveImageUrl,
 } from "~/utils/api";
+import {
+	differenceInCalendarDays,
+	formatDateOnly,
+	parseDateOnly,
+} from "~/utils/dateOnly";
 
 export function meta() {
 	return [{ title: "Reservas | Administración | Reservas Moreno" }];
@@ -35,11 +40,25 @@ type ReservationSearchTarget = {
 type ReservationStateFilter = "all" | "confirmed" | "not-confirmed" | "cancelled";
 
 function formatDate(value: string) {
+	return formatDateOnly(value, {
+		day: "2-digit",
+		month: "2-digit",
+		year: "numeric",
+	});
+}
+
+function formatPaymentDate(value: string) {
 	return new Intl.DateTimeFormat("es-AR", {
 		day: "2-digit",
 		month: "2-digit",
 		year: "numeric",
 	}).format(new Date(value));
+}
+
+function isReservationStartInFuture(value: string) {
+	const now = new Date();
+	const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+	return parseDateOnly(value).getTime() > today.getTime();
 }
 
 function formatCurrency(value: number) {
@@ -135,7 +154,7 @@ export default function AdminReservasPage() {
 	const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 	const [stateFilter, setStateFilter] = useState<ReservationStateFilter>("all");
 	const [selectedReservation, setSelectedReservation] = useState<ReservationDetail | null>(null);
-	const [reservationToCancel, setReservationToCancel] = useState<string | null>(null);
+	const [reservationToCancel, setReservationToCancel] = useState<ReservationDetail | null>(null);
 	function updateSearchParameters(
 		updates: Record<string, string | null>,
 		replace = false,
@@ -182,7 +201,7 @@ export default function AdminReservasPage() {
 
 	const cancelMutation = useMutation({
 		mutationFn: cancelReservationAdmin,
-		meta: { silent: true },
+		// meta: { silent: true },
 		onSuccess: async () => {
 			setReservationToCancel(null);
 			await Promise.all([
@@ -190,9 +209,6 @@ export default function AdminReservasPage() {
 				queryClient.invalidateQueries({ queryKey: ["admin-reservation-search"] }),
 			]);
 			toast.success("Reserva cancelada correctamente");
-		},
-		onError: (error) => {
-			toast.error(error instanceof Error ? error.message : "No se pudo cancelar la reserva");
 		},
 	});
 	const reservations = reservationsQuery.data ?? [];
@@ -240,19 +256,14 @@ export default function AdminReservasPage() {
 		meta: { silent: true },
 	});
 
-	function getDaysBetweenDates(date1: Date, date2: Date): number {
-		const utc1 = Date.UTC(date1.getFullYear(), date1.getMonth(), date1.getDate());
-		const utc2 = Date.UTC(date2.getFullYear(), date2.getMonth(), date2.getDate());
-
-		const msPerDay = 1000 * 60 * 60 * 24;
-
-		return Math.floor(Math.abs(utc2 - utc1) / msPerDay);
-	}
-
 	const getReservationFullPrice = (checkInDate: string, checkOutDate: string, price: number) => {
-		const checkInDATE = new Date(checkInDate);
-		const checkOutDATE = new Date(checkOutDate);
-		const diff = getDaysBetweenDates(checkInDATE, checkOutDATE) + 1;
+		const diff =
+			Math.abs(
+				differenceInCalendarDays(
+					parseDateOnly(checkInDate),
+					parseDateOnly(checkOutDate),
+				),
+			) + 1;
 
 		return price * diff;
 	}
@@ -482,9 +493,9 @@ export default function AdminReservasPage() {
                     </span>
                   </td> */}
 									<td className="whitespace-nowrap px-5 py-4">
-										<p className="font-medium">{formatDate(new Date(new Date(reservation.checkInDate).setUTCDate(new Date(reservation.checkInDate).getUTCDate() + 1)).toISOString())}</p>
+										<p className="font-medium">{formatDate(reservation.checkInDate)}</p>
 										<p className="mt-1 text-xs text-[#68716a]">
-											hasta {formatDate(new Date(new Date(reservation.checkOutDate).setUTCDate(new Date(reservation.checkOutDate).getUTCDate() + 1)).toISOString())}
+											hasta {formatDate(reservation.checkOutDate)}
 										</p>
 									</td>
 									<td className="px-5 py-4">
@@ -633,7 +644,7 @@ export default function AdminReservasPage() {
 																	</span>
 																</div>
 																<p className="mt-1 text-[#68716a]">
-																	{formatDate(payment.paymentDate)} ·{" "}
+																	{formatPaymentDate(payment.paymentDate)} ·{" "}
 																	{payment.isManual ? "Manual" : "En línea"}
 																	{payment.isSign ? " · Seña" : ""}
 																	{payment.isRefund ? " · Reembolso" : ""}
@@ -663,15 +674,22 @@ export default function AdminReservasPage() {
 											>
 												Registrar Pago
 											</button>
-											<button
-												type="button"
-												onClick={() => setReservationToCancel(reservation.reservationId)}
-												className="rounded-lg bg-[#e28b68] px-4 py-1.5 text-sm font-semibold text-white shadow-sm
-                                   transition hover:bg-[#d47b58] focus:outline-none focus-visible:ring-2
-                                   focus-visible:ring-[#e28b68]/50 focus-visible:ring-offset-2 active:scale-95"
-											>
-												Cancelar
-											</button>
+											{
+												isReservationStartInFuture(reservation.checkInDate) ?
+												<button
+													type="button"
+													onClick={() => setReservationToCancel(reservation)}
+													className="rounded-lg bg-[#e28b68] px-4 py-1.5 text-sm font-semibold text-white shadow-sm
+									transition hover:bg-[#d47b58] focus:outline-none focus-visible:ring-2
+									focus-visible:ring-[#e28b68]/50 focus-visible:ring-offset-2 active:scale-95"
+												>
+													Cancelar
+												</button>
+												:
+												<em className="text-muted-foreground text-xs">
+													No se pueden cancelar reservas pasadas o que estan por comenzar {/* //TODO: right message?  */}
+												</em>
+											}
 										</div>
 									</td>
 								</tr>
@@ -747,9 +765,9 @@ export default function AdminReservasPage() {
 				isOpen={reservationToCancel !== null}
 				onClose={() => setReservationToCancel(null)}
 				onConfirm={() => {
-					if (reservationToCancel) cancelMutation.mutate(reservationToCancel);
+					if (reservationToCancel) cancelMutation.mutate(reservationToCancel.reservationId);
 				}}
-				reservationId={reservationToCancel ?? ""}
+				reservation={reservationToCancel}
 				isPending={cancelMutation.isPending}
 			/>
 		</section>

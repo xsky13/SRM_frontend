@@ -9,6 +9,11 @@ import { useAuthentication } from "~/components/NavegacionUsuario";
 import { ReservationState } from "~/types/Reserva";
 import type { ReservationDetail } from "~/types/ReservationDetail";
 import { RESERVATION_STATE_LABEL } from "~/types/reservationState";
+import {
+  differenceInCalendarDays,
+  parseDateOnly,
+  serializeDateOnly,
+} from "~/utils/dateOnly";
 import { trackedFetch } from "~/utils/requestProgress";
 
 const apiBaseUrl = import.meta.env.VITE_API_URL;
@@ -27,7 +32,7 @@ function formatDate(value: string | Date) {
     day: "numeric",
     month: "long",
     year: "numeric",
-  }).format(typeof value === "string" ? parseDate(value) : value);
+  }).format(typeof value === "string" ? parseDateOnly(value) : value);
 }
 
 function dateKey(date: Date): string {
@@ -36,15 +41,6 @@ function dateKey(date: Date): string {
 
 function dateKeyReadable(date: Date): string {
   return `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}/${date.getFullYear()}`;
-}
-
-function parseDate(value: string): Date {
-  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
-  return Number.isNaN(date.getTime()) ? new Date(0) : date;
-}
-
-function serializeDate(date: Date): string {
-  return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())).toISOString();
 }
 
 function isSelectableDay(day: Date): boolean {
@@ -99,8 +95,8 @@ export default function MisReservasModificarPage() {
   useEffect(() => {
     if (!reservaQuery.data) return;
     const res = reservaQuery.data;
-    setRangeStart(parseDate(res.checkInDate));
-    setRangeEnd(parseDate(res.checkOutDate));
+    setRangeStart(parseDateOnly(res.checkInDate));
+    setRangeEnd(parseDateOnly(res.checkOutDate));
   }, [reservaQuery.data]);
 
   useEffect(() => {
@@ -155,7 +151,7 @@ export default function MisReservasModificarPage() {
   );
 
   const selectedDays = rangeStart && rangeEnd
-    ? Math.round(Math.abs(rangeEnd.getTime() - rangeStart.getTime()) / 86_400_000) + 1
+    ? Math.abs(differenceInCalendarDays(rangeStart, rangeEnd)) + 1
     : 0;
   const checkoutDate = rangeEnd ? new Date(rangeEnd) : undefined;
   checkoutDate?.setDate(checkoutDate.getDate() + 1);
@@ -183,16 +179,16 @@ export default function MisReservasModificarPage() {
     reservaQuery.data &&
       selectedRange &&
       dateKey(selectedRange.startDate) ===
-        dateKey(parseDate(reservaQuery.data.checkInDate)) &&
+        dateKey(parseDateOnly(reservaQuery.data.checkInDate)) &&
       dateKey(selectedRange.endDate) ===
-        dateKey(parseDate(reservaQuery.data.checkOutDate)),
+        dateKey(parseDateOnly(reservaQuery.data.checkOutDate)),
   );
 
   const isReservedDay = (day: Date) => {
     const current = dateKey(day);
     return existingReservations.some((reservation) => {
-      const start = dateKey(parseDate(reservation.checkInDate));
-      const end = dateKey(parseDate(reservation.checkOutDate));
+      const start = dateKey(parseDateOnly(reservation.checkInDate));
+      const end = dateKey(parseDateOnly(reservation.checkOutDate));
       return current >= start && current <= end && (
         reservation.reservationState === ReservationState.ConfirmedPaymentIncomplete ||
         reservation.reservationState === ReservationState.ConfirmedPaymentComplete ||
@@ -212,8 +208,8 @@ export default function MisReservasModificarPage() {
   const clearDateSelection = () => {
     // setRangeStart(undefined);
     // setRangeEnd(undefined);
-    setRangeStart(reservaQuery.data != null ? parseDate(reservaQuery.data.checkInDate) : undefined);
-    setRangeEnd(reservaQuery.data != null ? parseDate(reservaQuery.data.checkOutDate) : undefined);
+    setRangeStart(reservaQuery.data != null ? parseDateOnly(reservaQuery.data.checkInDate) : undefined);
+    setRangeEnd(reservaQuery.data != null ? parseDateOnly(reservaQuery.data.checkOutDate) : undefined);
   };
 
   const handleDayClick = (day: Date) => {
@@ -276,8 +272,8 @@ export default function MisReservasModificarPage() {
           credentials: "include",
           body: JSON.stringify({
             ...formData,
-            NewStartDate: serializeDate(startDate),
-            NewEndDate: serializeDate(endDate),
+            NewStartDate: serializeDateOnly(startDate),
+            NewEndDate: serializeDateOnly(endDate),
             ReservationId: reservaQuery.data.reservationId,
           }),
         },
@@ -349,8 +345,8 @@ export default function MisReservasModificarPage() {
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({
-            NewStartDate: serializeDate(startDate),
-            NewEndDate: serializeDate(endDate),
+            NewStartDate: serializeDateOnly(startDate),
+            NewEndDate: serializeDateOnly(endDate),
           }),
         },
       );
@@ -382,9 +378,11 @@ export default function MisReservasModificarPage() {
   const oldReservationDays = reservaQuery.data
     ? Math.max(
         1,
-        Math.round(
-          Math.abs(parseDate(reservaQuery.data.checkOutDate).getTime() - parseDate(reservaQuery.data.checkInDate).getTime())
-            / 86_400_000,
+        Math.abs(
+          differenceInCalendarDays(
+            parseDateOnly(reservaQuery.data.checkInDate),
+            parseDateOnly(reservaQuery.data.checkOutDate),
+          ),
         ),
       )
     : 0;

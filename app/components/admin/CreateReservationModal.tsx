@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { DepartamentoData } from "~/models/Departamento";
 import { createAdminReservation, getApartments } from "~/utils/api";
+import { serializeDateOnlyInput } from "~/utils/dateOnly";
 
 type CreateReservationModalProps = {
   isOpen: boolean;
@@ -91,8 +92,8 @@ export default function CreateReservationModal({
 
     mutation.mutate({
       apartmentId: values.apartmentId,
-      startDate: new Date(`${values.startDate}T00:00:00.000Z`).toISOString(),
-      endDate: new Date(`${values.endDate}T00:00:00.000Z`).toISOString(),
+      startDate: serializeDateOnlyInput(values.startDate),
+      endDate: serializeDateOnlyInput(values.endDate),
       isRegisteredUser,
       userId: isRegisteredUser ? values.userId.trim() : null,
       guestUserInfo: isRegisteredUser

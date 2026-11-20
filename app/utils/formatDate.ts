@@ -1,7 +1,9 @@
+import { formatDateOnly } from "~/utils/dateOnly";
+
 export default function formatDate(value: string) {
-	return new Intl.DateTimeFormat("es-AR", {
+	return formatDateOnly(value, {
 		day: "2-digit",
 		month: "2-digit",
 		year: "numeric",
-	}).format(new Date(value));
+	});
 }

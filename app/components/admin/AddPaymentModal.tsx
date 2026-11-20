@@ -5,6 +5,7 @@ import { addAdminReservationPayment } from "~/utils/api";
 import { PaymentStatus, type ReservationDetail } from "~/types/ReservationDetail";
 import formatDate from "~/utils/formatDate";
 import { ReservationState } from "~/types/Reserva";
+import { differenceInCalendarDays, parseDateOnly } from "~/utils/dateOnly";
 
 type AddPaymentModalProps = {
 	reservation: ReservationDetail | null;
@@ -54,9 +55,14 @@ export default function AddPaymentModal({
 	}
 
 	const payed = reservation.payments.filter(p => p.paymentStatus == PaymentStatus.Approved).reduce((acc, curr) => acc + curr.amount, 0);
-	const nightsInReservation = new Date(reservation.checkOutDate).getDate() - new Date(reservation.checkInDate).getDate() + 1;
+	const nightsInReservation =
+		Math.abs(
+			differenceInCalendarDays(
+				parseDateOnly(reservation.checkInDate),
+				parseDateOnly(reservation.checkOutDate),
+			),
+		) + 1;
 	const fullCost = nightsInReservation * (reservation.apartment?.price || 0);
-
 
 	return (
 		<div className="fixed inset-0 z-[1600] flex items-center justify-center bg-black/50 px-4">
@@ -77,8 +83,8 @@ export default function AddPaymentModal({
 						Reserva <span className="font-medium text-[#202722]">{reservation?.apartment?.name ?? <em>Departamento no disponible</em>}</span>
 					</p>
 					<div className="font-medium text-[#385347] text-sm mt-2">
-						{formatDate(new Date(new Date(reservation.checkInDate).setUTCDate(new Date(reservation.checkInDate).getUTCDate() + 1)).toISOString())}
-						&nbsp;hasta {formatDate(new Date(new Date(reservation.checkOutDate).setUTCDate(new Date(reservation.checkOutDate).getUTCDate() + 1)).toISOString())}
+						{formatDate(reservation.checkInDate)}
+						&nbsp;hasta {formatDate(reservation.checkOutDate)}
 					</div>
 				</div>
 

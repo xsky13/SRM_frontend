@@ -6,6 +6,7 @@ import LoadingState from "~/components/LoadingState";
 import { useAuthentication } from "~/components/NavegacionUsuario";
 import { ReservationState } from "~/types/Reserva";
 import { RESERVATION_STATE_LABEL } from "~/types/reservationState";
+import { formatDateOnly } from "~/utils/dateOnly";
 
 export function meta() {
   return [{ title: "Mis reservas | Reservas Moreno" }];
@@ -25,13 +26,11 @@ type ReservationListItem = {
 };
 
 function formatDate(value: string) {
-  const [year, month, day] = value.slice(0, 10).split("-").map(Number);
-  const date = new Date(year, month - 1, day);
-  return new Intl.DateTimeFormat("es-AR", {
+  return formatDateOnly(value, {
     day: "numeric",
     month: "long",
     year: "numeric",
-  }).format(date);
+  });
 }
 
 function getReservationStateLabel(state: ReservationState) {

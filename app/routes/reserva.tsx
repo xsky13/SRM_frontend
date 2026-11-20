@@ -11,6 +11,12 @@ import { ReservationState } from "~/types/Reserva";
 import { PaymentStatus, type ReservationDetail } from "~/types/ReservationDetail";
 import { trackedFetch } from "~/utils/requestProgress";
 import { Link2, SquareArrowOutUpRight, SquareArrowUpRight } from "lucide-react";
+import {
+	addDaysToDateOnly,
+	formatDateOnly,
+	parseDateOnly,
+	serializeDateOnly,
+} from "~/utils/dateOnly";
 
 const apiBaseUrl = import.meta.env.VITE_API_URL;
 const paymentEndpoints = {
@@ -44,12 +50,10 @@ function isReservationState(value: unknown): value is ReservationState {
 }
 
 function formatDate(value: string) {
-	const [year, month, day] = value.slice(0, 10).split("-").map(Number);
-	const date = new Date(year, month - 1, day);
-	return new Intl.DateTimeFormat("es-AR", {
+	return formatDateOnly(value, {
 		day: "numeric",
 		month: "long",
-	}).format(date);
+	});
 }
 
 function formatPrice(value: number) {
@@ -226,8 +230,12 @@ export default function ReservaPage() {
 						body: JSON.stringify({
 							...formData,
 							reservationId: activeReservation.reservationId,
-							checkInDate: activeReservation.checkInDate,
-							checkOutDate: activeReservation.checkOutDate,
+							checkInDate: serializeDateOnly(
+								parseDateOnly(activeReservation.checkInDate),
+							),
+							checkOutDate: serializeDateOnly(
+								parseDateOnly(activeReservation.checkOutDate),
+							),
 							paymentOption: option,
 							isModification: false,
 						}),
@@ -468,7 +476,7 @@ export default function ReservaPage() {
 					</div>
 				</div>
 				<p className="my-3">
-					La entrada al departamento es el {formatDate(activeReservation.checkInDate)} a la tarde, y la salida el {formatDate(new Date(new Date(activeReservation.checkOutDate).setUTCDate(new Date(activeReservation.checkOutDate).getUTCDate() + 1)).toISOString())} a la mañana. 
+					La entrada al departamento es el {formatDate(activeReservation.checkInDate)} a la tarde, y la salida el {formatDate(addDaysToDateOnly(activeReservation.checkOutDate, 1))} a la mañana.
 					{activeReservation.state == ReservationState.NotConfirmed && <strong> Mientras que su reserva no este confirmada, otra persona puede hacer una reserva en el mismo plazo que usted.</strong>}
 				</p>
 
