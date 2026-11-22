@@ -4,9 +4,15 @@ import { toast } from "sonner";
 import { RESERVATION_STATE_LABEL } from "~/types/reservationState";
 import { ReservationState } from "~/types/Reserva";
 import { UserType } from "~/types/User";
-import { PaymentStatus, type PaymentDto, type ReservationDetail } from "~/types/ReservationDetail";
+import {
+	PaymentStatus,
+	type PagedResponse,
+	type PaymentDto,
+	type ReservationDetail,
+} from "~/types/ReservationDetail";
 import { useSearchParams } from "react-router";
 import LoadingState from "~/components/LoadingState";
+import PaginationControls from "~/components/PaginationControls";
 import AddPaymentModal from "~/components/admin/AddPaymentModal";
 import CancelReservationModal from "~/components/admin/CancelReservationModal";
 import CreateReservationModal from "~/components/admin/CreateReservationModal";
@@ -126,16 +132,20 @@ function getApiDateFilter(filter: ReservationDateFilter): AdminReservationDateFi
 }
 
 function getReservationPage(
-	target: ReservationSearchTarget | null,
+	target: ReservationSearchTarget,
 	pageNumber: number,
 	pageSize: number,
 	dateFilter: AdminReservationDateFilter,
-): Promise<ReservationDetail[]> {
-	if (!target) return getAdminReservations(pageNumber, pageSize, dateFilter);
-
+): Promise<PagedResponse<ReservationDetail>> {
 	switch (target.type) {
 		case "id":
-			return getAdminReservationById(target.id).then((reservation) => [reservation]);
+			return getAdminReservationById(target.id).then((reservation) => ({
+				data: [reservation],
+				pageNumber: 1,
+				pageSize: 1,
+				totalPages: 1,
+				totalRecords: 1,
+			}));
 		case "user":
 			return getAdminReservationsByUser(target.id, pageNumber, pageSize, dateFilter);
 		case "apartment":
@@ -223,7 +233,7 @@ export default function AdminReservasPage() {
 		setReservationIdInput(searchTarget?.type === "id" ? searchTarget.id : "");
 	}, [searchTarget?.type, searchTarget?.id]);
 
-	const reservationSearchQuery = useQuery<ReservationDetail[]>({
+	const reservationSearchQuery = useQuery<PagedResponse<ReservationDetail>>({
 		queryKey: [
 			"admin-reservation-search",
 			searchTarget?.type,
@@ -232,7 +242,10 @@ export default function AdminReservasPage() {
 			pageSize,
 			apiDateFilter,
 		],
-		queryFn: () => getReservationPage(searchTarget, pageNumber, pageSize, apiDateFilter),
+		queryFn: () => {
+			if (!searchTarget) throw new Error("No se indicó el filtro de búsqueda de reservas.");
+			return getReservationPage(searchTarget, pageNumber, pageSize, apiDateFilter);
+		},
 		enabled: searchTarget !== null,
 		meta: { silent: true },
 	});
@@ -258,7 +271,7 @@ export default function AdminReservasPage() {
 	});
 	const reservations = reservationsQuery.data ?? [];
 	const displayedReservations = searchTarget
-		? reservationSearchQuery.data ?? []
+		? reservationSearchQuery.data?.data ?? []
 		: reservations;
 	const filteredReservations = displayedReservations.filter((reservation) => {
 		switch (stateFilter) {
@@ -282,25 +295,30 @@ export default function AdminReservasPage() {
 		? reservationSearchQuery
 		: reservationsQuery;
 	const canCheckNextReservationPage =
-		(!searchTarget || searchTarget.type !== "id") &&
-		displayedReservations.length === pageSize &&
-		!displayedReservationsQuery.isFetching &&
-		!displayedReservationsQuery.isError;
+		!searchTarget &&
+		reservations.length === pageSize &&
+		!reservationsQuery.isFetching &&
+		!reservationsQuery.isError;
 	const nextReservationsQuery = useQuery<ReservationDetail[]>({
-		queryKey: searchTarget
-			? [
-				"admin-reservation-search",
-				searchTarget.type,
-				searchTarget.id,
-				pageNumber + 1,
-				pageSize,
-				apiDateFilter,
-			]
-			: ["admin-reservations", pageNumber + 1, pageSize, apiDateFilter],
-		queryFn: () => getReservationPage(searchTarget, pageNumber + 1, pageSize, apiDateFilter),
+		queryKey: ["admin-reservations", pageNumber + 1, pageSize, apiDateFilter],
+		queryFn: () => getAdminReservations(pageNumber + 1, pageSize, apiDateFilter),
 		enabled: canCheckNextReservationPage,
 		meta: { silent: true },
 	});
+	const paginationTotalPages = searchTarget
+		? reservationSearchQuery.data?.totalPages ?? (searchTarget.type === "id" ? 1 : pageNumber)
+		: Math.max(
+			pageNumber,
+			!nextReservationsQuery.isFetching &&
+				!nextReservationsQuery.isError &&
+				nextReservationsQuery.data &&
+				nextReservationsQuery.data.length > 0
+				? pageNumber + 1
+				: pageNumber,
+		);
+	const paginationSummary = searchTarget && reservationSearchQuery.data
+		? `Página ${reservationSearchQuery.data.pageNumber} de ${reservationSearchQuery.data.totalPages} · ${reservationSearchQuery.data.totalRecords} reservas`
+		: `Página ${pageNumber}`;
 
 	const getReservationFullPrice = (checkInDate: string, checkOutDate: string, price: number) => {
 		const diff =
@@ -796,42 +814,25 @@ export default function AdminReservasPage() {
 				</table>
 			</div>
 
-			{(!searchTarget || searchTarget.type !== "id") && (
-				<div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-[#68716a]">
-					<span>Página {pageNumber}</span>
-					<div className="flex gap-2">
-						<button
-							type="button"
-							onClick={() => updateSearchParameters({ page: String(pageNumber - 1) })}
-							disabled={pageNumber === 1 || displayedReservationsQuery.isFetching}
-							className="rounded-md border border-[#d8d5ca] px-4 py-2 font-semibold transition hover:bg-[#edf2e8] disabled:cursor-not-allowed disabled:opacity-50"
-						>
-							Anterior
-						</button>
-						<button
-							type="button"
-							onClick={() => updateSearchParameters({ page: String(pageNumber + 1) })}
-							disabled={
-								displayedReservations.length < pageSize ||
-								nextReservationsQuery.isPending ||
-								nextReservationsQuery.isFetching ||
-								nextReservationsQuery.data?.length === 0 ||
-								displayedReservationsQuery.isFetching
-							}
-							className="rounded-md border border-[#d8d5ca] px-4 py-2 font-semibold transition hover:bg-[#edf2e8] disabled:cursor-not-allowed disabled:opacity-50"
-						>
-							Siguiente
-						</button>
-					</div>
-					{nextReservationsQuery.isError && (
-						<p role="alert" className="w-full text-right text-xs text-red-700">
-							No se pudo verificar la página siguiente:{" "}
-							{nextReservationsQuery.error instanceof Error
-								? nextReservationsQuery.error.message
-								: "Error desconocido"}
-						</p>
-					)}
-				</div>
+			<PaginationControls
+				currentPage={pageNumber}
+				totalPages={paginationTotalPages}
+				summary={paginationSummary}
+				onPageChange={(page) => updateSearchParameters({ page: String(page) })}
+				isDisabled={displayedReservationsQuery.isFetching}
+				ariaLabel={
+					searchTarget
+						? "Paginación de reservas filtradas"
+						: "Paginación de todas las reservas"
+				}
+			/>
+			{!searchTarget && nextReservationsQuery.isError && (
+				<p role="alert" className="mt-2 text-right text-xs text-red-700">
+					No se pudo verificar la página siguiente:{" "}
+					{nextReservationsQuery.error instanceof Error
+						? nextReservationsQuery.error.message
+						: "Error desconocido"}
+				</p>
 			)}
 
 			<CreateReservationModal

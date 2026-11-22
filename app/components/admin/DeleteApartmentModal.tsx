@@ -36,19 +36,19 @@ export default function DeleteApartmentModal({
       ].join("-");
 
       for (let pageNumber = 1; ; pageNumber += 1) {
-        const reservations = await getAdminReservationsByApartment(
+        const reservationsPage = await getAdminReservationsByApartment(
           apartmentId,
           pageNumber,
           RESERVATION_PAGE_SIZE,
         );
-        const hasPendingReservations = reservations.some(
+        const hasPendingReservations = reservationsPage.data.some(
           (reservation) =>
             reservation.state !== ReservationState.Cancelled &&
             reservation.checkOutDate.slice(0, 10) >= todayDate,
         );
 
         if (hasPendingReservations) return true;
-        if (reservations.length < RESERVATION_PAGE_SIZE) return false;
+        if (pageNumber >= reservationsPage.totalPages) return false;
       }
     },
     enabled: isOpen && apartmentId !== null,
