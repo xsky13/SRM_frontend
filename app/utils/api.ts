@@ -4,7 +4,7 @@ import { beginTrackedRequest } from '~/utils/requestProgress';
 import type { ApartmentCreateInput, DepartamentoData, ApartmentWriteInput } from '~/models/Departamento';
 import type { ImageData } from '~/types/images';
 import type { Reserva } from '~/types/Reserva';
-import type { ReservationDetail, ReservationListingDto } from '~/types/ReservationDetail';
+import type { PagedResponse, ReservationDetail, ReservationListingDto } from '~/types/ReservationDetail';
 import type { User, UserSearchDto } from '~/types/User';
 
 export interface AdminCreateReservationInput {
@@ -253,16 +253,62 @@ export async function searchAdminUsers(
     return data;
 }
 
-export async function getAdminUserReservations(userId: string): Promise<ReservationListingDto[]> {
-    const { data } = await api.get<ReservationListingDto[]>(
-        `/api/reservation/user/${encodeURIComponent(userId)}`,
+function isPagedResponse<T>(value: unknown): value is PagedResponse<T> {
+    return (
+        typeof value === 'object' &&
+        value !== null &&
+        'data' in value &&
+        Array.isArray(value.data) &&
+        'pageNumber' in value &&
+        typeof value.pageNumber === 'number' &&
+        'pageSize' in value &&
+        typeof value.pageSize === 'number' &&
+        'totalPages' in value &&
+        typeof value.totalPages === 'number' &&
+        'totalRecords' in value &&
+        typeof value.totalRecords === 'number'
     );
+}
 
-    if (!Array.isArray(data)) {
-        throw new Error('La respuesta del servidor no contiene una lista de reservas');
+async function getUserReservationPage(
+    endpoint: string,
+    pageNumber: number,
+    pageSize: number,
+): Promise<PagedResponse<ReservationListingDto>> {
+    const { data } = await api.get<unknown>(endpoint, {
+        params: { PageNumber: pageNumber, PageSize: pageSize },
+    });
+
+    if (!isPagedResponse<ReservationListingDto>(data)) {
+        throw new Error('La respuesta del servidor no contiene una página válida de reservas');
     }
 
     return data;
+}
+
+export async function getUserReservations(
+    userId: string,
+    period: 'future' | 'past',
+    pageNumber: number,
+    pageSize: number,
+): Promise<PagedResponse<ReservationListingDto>> {
+    return getUserReservationPage(
+        `/api/reservation/user/${encodeURIComponent(userId)}/${period}`,
+        pageNumber,
+        pageSize,
+    );
+}
+
+export async function getAdminUserReservations(
+    userId: string,
+    pageNumber: number,
+    pageSize: number,
+): Promise<PagedResponse<ReservationListingDto>> {
+    return getUserReservationPage(
+        `/api/reservation/user/${encodeURIComponent(userId)}`,
+        pageNumber,
+        pageSize,
+    );
 }
 
 export async function cancelReservationAdmin(id: string): Promise<Reserva> {

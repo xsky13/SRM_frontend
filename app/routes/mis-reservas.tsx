@@ -1,29 +1,20 @@
 import { Link, useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import api from "~/utils/api";
+import { getUserReservations } from "~/utils/api";
 import LoadingState from "~/components/LoadingState";
+import PaginationControls from "~/components/PaginationControls";
 import { useAuthentication } from "~/components/NavegacionUsuario";
 import { ReservationState } from "~/types/Reserva";
 import { RESERVATION_STATE_LABEL } from "~/types/reservationState";
+import type { ReservationListingDto } from "~/types/ReservationDetail";
 import { formatDateOnly } from "~/utils/dateOnly";
 
 export function meta() {
   return [{ title: "Mis reservas | Reservas Moreno" }];
 }
 
-type ReservationListItem = {
-  id: string;
-  apartmentId: string;
-  apartmentName?: string;
-  apartmentLocation?: string;
-  checkInDate: string;
-  checkOutDate: string;
-  reservationState: ReservationState;
-  totalPrice?: number;
-  depositAmount?: number;
-  fullAmount?: number;
-};
+const RESERVATIONS_PAGE_SIZE = 10;
 
 function formatDate(value: string) {
   return formatDateOnly(value, {
@@ -41,14 +32,20 @@ export default function MisReservasPage() {
   const authQuery = useAuthentication();
   const navigate = useNavigate();
   const [reservationFilter, setReservationFilter] = useState<"upcoming" | "past">("upcoming");
+  const [pageNumber, setPageNumber] = useState(1);
 
-  const reservasQuery = useQuery<ReservationListItem[]>({
-    queryKey: ["my-reservations"],
+  const reservasQuery = useQuery({
+    queryKey: ["my-reservations", authQuery.data?.id, reservationFilter, pageNumber],
     queryFn: async () => {
-      const { data } = await api.get(
-        "/api/reservation/user/" + authQuery.data?.id,
+      const userId = authQuery.data?.id;
+      if (!userId) throw new Error("No se pudo identificar al usuario.");
+
+      return getUserReservations(
+        userId,
+        reservationFilter === "upcoming" ? "future" : "past",
+        pageNumber,
+        RESERVATIONS_PAGE_SIZE,
       );
-      return Array.isArray(data) ? data : (data.reservations ?? []);
     },
     enabled: authQuery.data?.id != null,
     meta: { silent: true },
@@ -87,24 +84,16 @@ export default function MisReservasPage() {
   if (reservasQuery.isError) {
     return (
       <main className="min-h-screen bg-[#f6f4ee] p-8 text-[#202722]">
-        Ocurrio un error: {JSON.stringify(reservasQuery.error)}
+        No se pudieron cargar las reservas:{" "}
+        {reservasQuery.error instanceof Error
+          ? reservasQuery.error.message
+          : "Error desconocido"}
       </main>
     );
   }
 
-  const reservas = reservasQuery.data ?? [];
-  const todayKey = (() => {
-    const today = new Date();
-    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-  })();
-  const upcomingReservations = reservas.filter(
-    (reserva) => reserva.checkOutDate.slice(0, 10) >= todayKey,
-  );
-  const pastReservations = reservas.filter(
-    (reserva) => reserva.checkOutDate.slice(0, 10) < todayKey,
-  );
-  const visibleReservations =
-    reservationFilter === "upcoming" ? upcomingReservations : pastReservations;
+  const reservationsPage = reservasQuery.data;
+  const visibleReservations: ReservationListingDto[] = reservationsPage.data;
 
   return (
     <main className="min-h-screen bg-[#f6f4ee] text-[#202722]">
@@ -119,70 +108,70 @@ export default function MisReservasPage() {
             </h1>
           </div>
           <p className="text-sm text-[#68716a]">
-            {reservas.length} reserva{reservas.length === 1 ? "" : "s"}
+            {reservationsPage.totalRecords} reserva{reservationsPage.totalRecords === 1 ? "" : "s"}
           </p>
         </div>
 
-        {reservas.length === 0 ? (
-          <div className="rounded-md border border-dashed border-[#c8c2b8] bg-[#fffdf9] p-8 text-center text-[#68716a]">
-            Todavía no tenés reservas creadas.
-          </div>
-        ) : (
-          <>
-            <div
-              className="mb-5 flex gap-2 border-b border-[#d7d1c7]"
-              role="tablist"
-              aria-label="Filtrar reservas por fecha"
-            >
-              <button
-                type="button"
-                role="tab"
-                id="upcoming-reservations-tab"
-                aria-selected={reservationFilter === "upcoming"}
-                aria-controls="reservations-panel"
-                onClick={() => setReservationFilter("upcoming")}
-                className={`border-b-2 px-4 py-3 text-sm font-semibold transition ${
-                  reservationFilter === "upcoming"
-                    ? "border-[#385347] text-[#385347]"
-                    : "border-transparent text-[#68716a] hover:text-[#385347]"
-                }`}
-              >
-                Próximas ({upcomingReservations.length})
-              </button>
-              <button
-                type="button"
-                role="tab"
-                id="past-reservations-tab"
-                aria-selected={reservationFilter === "past"}
-                aria-controls="reservations-panel"
-                onClick={() => setReservationFilter("past")}
-                className={`border-b-2 px-4 py-3 text-sm font-semibold transition ${
-                  reservationFilter === "past"
-                    ? "border-[#385347] text-[#385347]"
-                    : "border-transparent text-[#68716a] hover:text-[#385347]"
-                }`}
-              >
-                Pasadas ({pastReservations.length})
-              </button>
-            </div>
+        <div
+          className="mb-5 flex gap-2 border-b border-[#d7d1c7]"
+          role="tablist"
+          aria-label="Filtrar reservas por fecha"
+        >
+          <button
+            type="button"
+            role="tab"
+            id="upcoming-reservations-tab"
+            aria-selected={reservationFilter === "upcoming"}
+            aria-controls="reservations-panel"
+            onClick={() => {
+              setReservationFilter("upcoming");
+              setPageNumber(1);
+            }}
+            className={`border-b-2 px-4 py-3 text-sm font-semibold transition ${
+              reservationFilter === "upcoming"
+                ? "border-[#385347] text-[#385347]"
+                : "border-transparent text-[#68716a] hover:text-[#385347]"
+            }`}
+          >
+            Próximas
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="past-reservations-tab"
+            aria-selected={reservationFilter === "past"}
+            aria-controls="reservations-panel"
+            onClick={() => {
+              setReservationFilter("past");
+              setPageNumber(1);
+            }}
+            className={`border-b-2 px-4 py-3 text-sm font-semibold transition ${
+              reservationFilter === "past"
+                ? "border-[#385347] text-[#385347]"
+                : "border-transparent text-[#68716a] hover:text-[#385347]"
+            }`}
+          >
+            Pasadas
+          </button>
+        </div>
 
-            <div
-              id="reservations-panel"
-              role="tabpanel"
-              aria-labelledby={
-                reservationFilter === "upcoming"
-                  ? "upcoming-reservations-tab"
-                  : "past-reservations-tab"
-              }
-              className="space-y-4"
-            >
-              {visibleReservations.length === 0 ? (
-                <div className="rounded-md border border-dashed border-[#c8c2b8] bg-[#fffdf9] p-8 text-center text-[#68716a]">
-                  {reservationFilter === "upcoming"
-                    ? "No tenés reservas próximas."
-                    : "No tenés reservas pasadas."}
-                </div>
-              ) : visibleReservations.map((reserva) => (
+        <div
+          id="reservations-panel"
+          role="tabpanel"
+          aria-labelledby={
+            reservationFilter === "upcoming"
+              ? "upcoming-reservations-tab"
+              : "past-reservations-tab"
+          }
+          className="space-y-4"
+        >
+          {visibleReservations.length === 0 ? (
+            <div className="rounded-md border border-dashed border-[#c8c2b8] bg-[#fffdf9] p-8 text-center text-[#68716a]">
+              {reservationFilter === "upcoming"
+                ? "No tenés reservas próximas."
+                : "No tenés reservas pasadas."}
+            </div>
+          ) : visibleReservations.map((reserva) => (
                 <article
                   key={reserva.id}
                   className="rounded-md border border-[#d7d1c7] bg-[#fffdf9] text-[#385347] p-5 shadow-sm transition hover:border-[#c8c2b8]"
@@ -236,8 +225,17 @@ export default function MisReservasPage() {
                 </div>*/}
                 </article>
               ))}
-            </div>
-          </>
+        </div>
+
+        {reservationsPage.totalRecords > 0 && (
+          <PaginationControls
+            currentPage={pageNumber}
+            totalPages={reservationsPage.totalPages}
+            summary={`Página ${reservationsPage.pageNumber} de ${reservationsPage.totalPages}`}
+            onPageChange={setPageNumber}
+            isDisabled={reservasQuery.isFetching}
+            ariaLabel="Paginación de mis reservas"
+          />
         )}
       </section>
     </main>

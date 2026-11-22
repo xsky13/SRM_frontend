@@ -67,3 +67,11 @@ export interface ReservationListingDto {
   apartmentName: string;
   reservationState: ReservationState;
 }
+
+export interface PagedResponse<T> {
+  data: T[];
+  pageNumber: number;
+  pageSize: number;
+  totalPages: number;
+  totalRecords: number;
+}
