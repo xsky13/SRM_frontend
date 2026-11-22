@@ -694,6 +694,11 @@ export default function AdminReservasPage() {
 											}
 											{
 												isReservationStartInFuture(reservation.checkInDate) ?
+													reservation.state == ReservationState.Cancelled ?
+													<em className="text-muted-foreground text-xs">
+														Esta reserva ya esta cancelada.
+													</em>
+													:
 													<button
 														type="button"
 														onClick={() => setReservationToCancel(reservation)}
@@ -702,10 +707,10 @@ export default function AdminReservasPage() {
 									focus-visible:ring-[#e28b68]/50 focus-visible:ring-offset-2 active:scale-95"
 													>
 														Cancelar
-													</button>
+													</button> 
 													:
 													<em className="text-muted-foreground text-xs">
-														No se pueden cancelar reservas pasadas o que estan por comenzar {/* //TODO: right message?  */}
+														No se pueden cancelar reservas pasadas o que estan por comenzar. {/* //TODO: right message?  */}
 													</em>
 											}
 										</div>
