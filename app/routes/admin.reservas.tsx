@@ -254,8 +254,6 @@ export default function AdminReservasPage() {
 		queryFn: () => getAdminReservations(pageNumber, pageSize, apiDateFilter),
 		meta: { silent: true },
 	});
-	useEffect(() => console.log(reservationsQuery.data), [reservationsQuery.data]);
-	useEffect(() => console.log(reservationSearchQuery.data), [reservationSearchQuery.data])
 
 	const cancelMutation = useMutation({
 		mutationFn: cancelReservationAdmin,
@@ -302,7 +300,6 @@ export default function AdminReservasPage() {
 		? `Página ${paginationPage.pageNumber} de ${paginationPage.totalPages} · ${paginationPage.totalRecords} reservas`
 		: `Página ${pageNumber} de …`;
 
-	console.log(reservationsQuery.data)
 
 	const getReservationFullPrice = (checkInDate: string, checkOutDate: string, price: number) => {
 		const diff =
