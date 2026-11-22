@@ -172,6 +172,7 @@ export default function ApartmentForm({ initialData, isEditing }: ApartmentFormP
 			onSubmit={submit}
 			onFieldChange={updateField}
 			onLocationChange={updateLocation}
+			requestCurrentLocation={!isEditing}
 		>
 			<ImageGalleryManager
 				apartmentId={isEditing ? initialData?.id : undefined}

@@ -1,8 +1,9 @@
-import type { FormEvent, ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link } from "react-router";
 import { ArrowLeft } from "lucide-react";
 import { LocationPicker, type Coordinates } from "~/components/LocationPicker";
 import { resolveImageUrl } from "~/utils/api";
+import { useGeolocation } from "~/utils/useNavigation";
 
 export type ApartmentFormValues = {
 	name: string;
@@ -26,6 +27,7 @@ type ApartmentFormLayoutProps = {
 	isPending: boolean;
 	submitLabel: string;
 	pendingLabel: string;
+	requestCurrentLocation: boolean;
 	onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 	onFieldChange: (field: ApartmentFormField, value: string) => void;
 	onLocationChange: (coordinates: Coordinates) => void;
@@ -39,6 +41,7 @@ export default function ApartmentFormLayout({
 	isPending,
 	submitLabel,
 	pendingLabel,
+	requestCurrentLocation,
 	onSubmit,
 	onFieldChange,
 	onLocationChange,
@@ -46,7 +49,7 @@ export default function ApartmentFormLayout({
 }: ApartmentFormLayoutProps) {
 	const latitude = Number(values.latitude);
 	const longitude = Number(values.longitude);
-	const initialPosition =
+	const [initialPosition, setInitialPosition] = useState(() =>
 		values.latitude.trim() &&
 		values.longitude.trim() &&
 		Number.isFinite(latitude) &&
@@ -56,7 +59,22 @@ export default function ApartmentFormLayout({
 		longitude >= -180 &&
 		longitude <= 180
 			? { latitude, longitude }
-			: undefined;
+			: undefined,
+	);
+	const { location, error, loading, requestLocation } = useGeolocation();
+	const hasRequestedLocation = useRef(false);
+
+	useEffect(() => {
+		if (!requestCurrentLocation || hasRequestedLocation.current) return;
+		hasRequestedLocation.current = true;
+		requestLocation();
+	}, [requestCurrentLocation, requestLocation]);
+
+	useEffect(() => {
+		if (requestCurrentLocation && location) {
+			setInitialPosition(location);
+		}
+	}, [location, requestCurrentLocation]);
 
 	function field(name: ApartmentFormField, label: string, type = "text") {
 		return (
@@ -111,15 +129,33 @@ export default function ApartmentFormLayout({
 			</label>
 			{field("price", "Precio por día", "number")}
 			<div className="space-y-2">
-				<span className="block text-sm font-semibold text-[#385347]">Ubicación</span>
-				{field("location", "Dirección o zona")}
+				{/* <span className="block text-sm font-semibold text-[#385347]">Ubicación</span> */}
+				{field("location", "Dirección")}
 				<p className="text-xs text-[#68716a]">
-					Ingresá la dirección o zona y hacé clic en el mapa para fijar el punto exacto.
+					Hacé clic en el mapa para fijar el punto exacto.
 				</p>
 				<LocationPicker
 					initialPosition={initialPosition}
 					onChange={onLocationChange}
 				/>
+				{requestCurrentLocation && loading && (
+					<p className="text-sm text-[#68716a]" role="status">
+						Obteniendo tu ubicación para centrar el mapa...
+					</p>
+				)}
+				{requestCurrentLocation && error && (
+					<div className="flex flex-wrap items-center gap-2 text-xs text-[#b74f3d]" role="alert">
+						<span>No se pudo obtener tu ubicación: {error}</span>
+						<button
+							type="button"
+							onClick={requestLocation}
+							disabled={loading}
+							className="font-semibold underline disabled:cursor-not-allowed disabled:opacity-60"
+						>
+							Reintentar
+						</button>
+					</div>
+				)}
 				{submitted && errors.location && (
 					<span className="block text-xs text-[#b74f3d]">{errors.location}</span>
 				)}

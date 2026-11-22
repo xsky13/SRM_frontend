@@ -94,6 +94,7 @@ function isPendingForUser(day: Date, reservas: Reserva[]): boolean {
     const end = dateKey(parseDateOnly(reserva.checkOutDate));
     return (
       Number(reserva.reservationState) === ReservationState.NotConfirmed &&
+      current >= dateKey(new Date(Date.now())) &&
       current >= start &&
       current <= end
     );
