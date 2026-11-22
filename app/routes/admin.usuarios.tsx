@@ -181,36 +181,26 @@ export default function AdminUsuariosPage() {
   const isSearchActive = Boolean(appliedSearchType && searchQuery);
   const [searchInput, setSearchInput] = useState(searchQuery);
   const [reservationsUser, setReservationsUser] = useState<UserSearchDto | null>(null);
-  const usersQuery = useQuery<UserSearchDto[]>({
+  const usersQuery = useQuery({
     queryKey: ["admin-users", pageNumber, pageSize, appliedSearchType, searchQuery],
     queryFn: async () => {
       if (!isSearchActive) return getAdminUsers(pageNumber, pageSize);
-      if (appliedSearchType === "id") return [await getAdminUserById(searchQuery)];
+      if (appliedSearchType === "id") {
+        const user = await getAdminUserById(searchQuery);
+        return {
+          data: [user],
+          pageNumber: 1,
+          pageSize: 1,
+          totalPages: 1,
+          totalRecords: 1,
+        };
+      }
       return searchAdminUsers(pageNumber, pageSize, searchQuery);
     },
     meta: { silent: true },
   });
-  const users = usersQuery.data ?? [];
-  const nextUsersQuery = useQuery<UserSearchDto[]>({
-    queryKey: [
-      "admin-users",
-      pageNumber + 1,
-      pageSize,
-      appliedSearchType,
-      searchQuery,
-    ],
-    queryFn: async () => {
-      if (!isSearchActive) return getAdminUsers(pageNumber + 1, pageSize);
-      if (appliedSearchType === "id") return [await getAdminUserById(searchQuery)];
-      return searchAdminUsers(pageNumber + 1, pageSize, searchQuery);
-    },
-    enabled:
-      appliedSearchType !== "id" &&
-      users.length === pageSize &&
-      !usersQuery.isFetching &&
-      !usersQuery.isError,
-    meta: { silent: true },
-  });
+  const usersPage = usersQuery.data;
+  const users = usersPage?.data ?? [];
 
   useEffect(() => {
     setSearchInput(searchQuery);
@@ -415,44 +405,15 @@ export default function AdminUsuariosPage() {
         </table>
       </div>
 
-      {appliedSearchType !== "id" && (
-        <>
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-[#68716a]">
-            <span>Página {pageNumber}</span>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => updateSearchParameters({ page: String(pageNumber - 1) })}
-                disabled={pageNumber === 1 || usersQuery.isFetching}
-                className="rounded-md border border-[#d8d5ca] px-4 py-2 font-semibold transition hover:bg-[#edf2e8] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Anterior
-              </button>
-              <button
-                type="button"
-                onClick={() => updateSearchParameters({ page: String(pageNumber + 1) })}
-                disabled={
-                  users.length < pageSize ||
-                  nextUsersQuery.isPending ||
-                  nextUsersQuery.isFetching ||
-                  nextUsersQuery.data?.length === 0 ||
-                  usersQuery.isFetching
-                }
-                className="rounded-md border border-[#d8d5ca] px-4 py-2 font-semibold transition hover:bg-[#edf2e8] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Siguiente
-              </button>
-            </div>
-          </div>
-          {nextUsersQuery.isError && (
-            <p role="alert" className="mt-2 text-right text-xs text-red-700">
-              No se pudo verificar la página siguiente:{" "}
-              {nextUsersQuery.error instanceof Error
-                ? nextUsersQuery.error.message
-                : "Error desconocido"}
-            </p>
-          )}
-        </>
+      {usersPage && usersPage.totalRecords > 0 && (
+        <PaginationControls
+          currentPage={pageNumber}
+          totalPages={usersPage.totalPages}
+          summary={`Página ${usersPage.pageNumber} de ${usersPage.totalPages} · ${usersPage.totalRecords} usuarios en total`}
+          onPageChange={(page) => updateSearchParameters({ page: String(page) })}
+          isDisabled={usersQuery.isFetching}
+          ariaLabel="Paginación de usuarios"
+        />
       )}
       {reservationsUser && (
         <UserReservationsModal

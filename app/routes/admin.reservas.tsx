@@ -249,7 +249,7 @@ export default function AdminReservasPage() {
 		enabled: searchTarget !== null,
 		meta: { silent: true },
 	});
-	const reservationsQuery = useQuery<ReservationDetail[]>({
+	const reservationsQuery = useQuery<PagedResponse<ReservationDetail>>({
 		queryKey: ["admin-reservations", pageNumber, pageSize, apiDateFilter],
 		queryFn: () => getAdminReservations(pageNumber, pageSize, apiDateFilter),
 		meta: { silent: true },
@@ -269,7 +269,7 @@ export default function AdminReservasPage() {
 			toast.success("Reserva cancelada correctamente");
 		},
 	});
-	const reservations = reservationsQuery.data ?? [];
+	const reservations = reservationsQuery.data?.data ?? [];
 	const displayedReservations = searchTarget
 		? reservationSearchQuery.data?.data ?? []
 		: reservations;
@@ -294,31 +294,15 @@ export default function AdminReservasPage() {
 	const displayedReservationsQuery = searchTarget
 		? reservationSearchQuery
 		: reservationsQuery;
-	const canCheckNextReservationPage =
-		!searchTarget &&
-		reservations.length === pageSize &&
-		!reservationsQuery.isFetching &&
-		!reservationsQuery.isError;
-	const nextReservationsQuery = useQuery<ReservationDetail[]>({
-		queryKey: ["admin-reservations", pageNumber + 1, pageSize, apiDateFilter],
-		queryFn: () => getAdminReservations(pageNumber + 1, pageSize, apiDateFilter),
-		enabled: canCheckNextReservationPage,
-		meta: { silent: true },
-	});
-	const paginationTotalPages = searchTarget
-		? reservationSearchQuery.data?.totalPages ?? (searchTarget.type === "id" ? 1 : pageNumber)
-		: Math.max(
-			pageNumber,
-			!nextReservationsQuery.isFetching &&
-				!nextReservationsQuery.isError &&
-				nextReservationsQuery.data &&
-				nextReservationsQuery.data.length > 0
-				? pageNumber + 1
-				: pageNumber,
-		);
-	const paginationSummary = searchTarget && reservationSearchQuery.data
-		? `Página ${reservationSearchQuery.data.pageNumber} de ${reservationSearchQuery.data.totalPages} · ${reservationSearchQuery.data.totalRecords} reservas`
-		: `Página ${pageNumber}`;
+	const paginationPage = searchTarget
+		? reservationSearchQuery.data
+		: reservationsQuery.data;
+	const paginationTotalPages = paginationPage?.totalPages ?? 0;
+	const paginationSummary = paginationPage
+		? `Página ${paginationPage.pageNumber} de ${paginationPage.totalPages} · ${paginationPage.totalRecords} reservas`
+		: `Página ${pageNumber} de …`;
+
+	console.log(reservationsQuery.data)
 
 	const getReservationFullPrice = (checkInDate: string, checkOutDate: string, price: number) => {
 		const diff =
@@ -826,15 +810,6 @@ export default function AdminReservasPage() {
 						: "Paginación de todas las reservas"
 				}
 			/>
-			{!searchTarget && nextReservationsQuery.isError && (
-				<p role="alert" className="mt-2 text-right text-xs text-red-700">
-					No se pudo verificar la página siguiente:{" "}
-					{nextReservationsQuery.error instanceof Error
-						? nextReservationsQuery.error.message
-						: "Error desconocido"}
-				</p>
-			)}
-
 			<CreateReservationModal
 				isOpen={isCreateModalOpen}
 				onClose={() => setIsCreateModalOpen(false)}

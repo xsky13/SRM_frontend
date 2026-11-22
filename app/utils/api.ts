@@ -5,7 +5,7 @@ import type { ApartmentCreateInput, DepartamentoData, ApartmentWriteInput } from
 import type { ImageData } from '~/types/images';
 import type { Reserva } from '~/types/Reserva';
 import type { PagedResponse, ReservationDetail, ReservationListingDto } from '~/types/ReservationDetail';
-import type { User, UserSearchDto } from '~/types/User';
+import type { UserSearchDto } from '~/types/User';
 
 export interface AdminCreateReservationInput {
     apartmentId: string;
@@ -162,17 +162,12 @@ export async function getAdminReservations(
     pageNumber: number,
     pageSize: number,
     dateFilter: AdminReservationDateFilter = AdminReservationDateFilter.None,
-): Promise<ReservationDetail[]> {
-    const { data } = await api.get<ReservationDetail[] | { reservations: ReservationDetail[] }>('/api/reservation', {
-        params: { PageNumber: pageNumber, PageSize: pageSize, DateFilter: dateFilter },
+): Promise<PagedResponse<ReservationDetail>> {
+    return getPagedResponse<ReservationDetail>('/api/reservation', {
+        PageNumber: pageNumber,
+        PageSize: pageSize,
+        DateFilter: dateFilter,
     });
-    const reservations = Array.isArray(data) ? data : data.reservations;
-
-    if (!Array.isArray(reservations)) {
-        throw new Error('La respuesta del servidor no contiene una lista de reservas');
-    }
-
-    return reservations;
 }
 
 export async function getAdminReservationById(id: string): Promise<ReservationDetail> {
@@ -206,16 +201,14 @@ export async function getAdminReservationsByApartment(
     );
 }
 
-export async function getAdminUsers(pageNumber: number, pageSize: number): Promise<User[]> {
-    const { data } = await api.get<User[]>('/api/user/list', {
-        params: { PageNumber: pageNumber, PageSize: pageSize },
+export async function getAdminUsers(
+    pageNumber: number,
+    pageSize: number,
+): Promise<PagedResponse<UserSearchDto>> {
+    return getPagedResponse<UserSearchDto>('/api/user/list', {
+        PageNumber: pageNumber,
+        PageSize: pageSize,
     });
-
-    if (!Array.isArray(data)) {
-        throw new Error('La respuesta del servidor no contiene una lista de usuarios');
-    }
-
-    return data;
 }
 
 export async function getAdminUserById(id: string): Promise<UserSearchDto> {
@@ -229,16 +222,12 @@ export async function searchAdminUsers(
     pageNumber: number,
     pageSize: number,
     query: string,
-): Promise<UserSearchDto[]> {
-    const { data } = await api.get<UserSearchDto[]>('/api/user/search', {
-        params: { PageNumber: pageNumber, PageSize: pageSize, query },
+): Promise<PagedResponse<UserSearchDto>> {
+    return getPagedResponse<UserSearchDto>('/api/user/search', {
+        PageNumber: pageNumber,
+        PageSize: pageSize,
+        query,
     });
-
-    if (!Array.isArray(data)) {
-        throw new Error('La respuesta del servidor no contiene una lista de usuarios');
-    }
-
-    return data;
 }
 
 function isPagedResponse<T>(value: unknown): value is PagedResponse<T> {
@@ -260,14 +249,14 @@ function isPagedResponse<T>(value: unknown): value is PagedResponse<T> {
 
 async function getPagedResponse<T>(
     endpoint: string,
-    params: Record<string, number>,
+    params: Record<string, string | number>,
 ): Promise<PagedResponse<T>> {
     const { data } = await api.get<unknown>(endpoint, {
         params,
     });
 
     if (!isPagedResponse<T>(data)) {
-        throw new Error('La respuesta del servidor no contiene una página válida de reservas');
+        throw new Error('La respuesta del servidor no contiene una página válida');
     }
 
     return data;

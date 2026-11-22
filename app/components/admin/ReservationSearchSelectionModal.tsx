@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import LoadingState from "~/components/LoadingState";
+import PaginationControls from "~/components/PaginationControls";
 import type { DepartamentoData } from "~/models/Departamento";
 import { getAdminUsers, getApartments, searchAdminUsers } from "~/utils/api";
 
-const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+const PAGE_SIZE_OPTIONS = [5, 10, 15];
 
 type ReservationSearchSelectionModalProps = {
   isOpen: boolean;
@@ -42,7 +43,8 @@ export default function ReservationSearchSelectionModal({
 
   if (!isOpen) return null;
 
-  const users = usersQuery.data ?? [];
+  const usersPage = usersQuery.data;
+  const users = usersPage?.data ?? [];
   const normalizedApartmentFilter = apartmentFilter.trim().toLocaleLowerCase();
   const apartments = (apartmentsQuery.data ?? []).filter((apartment) =>
     `${apartment.name} ${apartment.location}`
@@ -190,27 +192,16 @@ export default function ReservationSearchSelectionModal({
               </table>
             </div>
 
-            <div className="mt-3 flex items-center justify-between gap-3 text-sm text-[#68716a]">
-              <span>Página {pageNumber}</span>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPageNumber((current) => current - 1)}
-                  disabled={pageNumber === 1 || usersQuery.isFetching}
-                  className="rounded-md border border-[#d8d5ca] px-3 py-1.5 font-semibold hover:bg-[#edf2e8] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Anterior
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPageNumber((current) => current + 1)}
-                  disabled={users.length < pageSize || usersQuery.isFetching}
-                  className="rounded-md border border-[#d8d5ca] px-3 py-1.5 font-semibold hover:bg-[#edf2e8] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Siguiente
-                </button>
-              </div>
-            </div>
+            {usersPage && usersPage.totalRecords > 0 && (
+              <PaginationControls
+                currentPage={pageNumber}
+                totalPages={usersPage.totalPages}
+                summary={`Página ${usersPage.pageNumber} de ${usersPage.totalPages} · ${usersPage.totalRecords} usuarios en total`}
+                onPageChange={setPageNumber}
+                isDisabled={usersQuery.isFetching}
+                ariaLabel="Paginación del selector de usuarios"
+              />
+            )}
           </>
         ) : (
           <>
