@@ -13,6 +13,7 @@ import CreateReservationModal from "~/components/admin/CreateReservationModal";
 import ReservationSearchSelectionModal from "~/components/admin/ReservationSearchSelectionModal";
 import {
 	cancelReservationAdmin,
+	AdminReservationDateFilter,
 	getAdminReservationById,
 	getAdminReservations,
 	getAdminReservationsByApartment,
@@ -38,6 +39,7 @@ type ReservationSearchTarget = {
 };
 
 type ReservationStateFilter = "all" | "confirmed" | "not-confirmed" | "cancelled";
+type ReservationDateFilter = "all" | "past" | "future";
 
 function formatDate(value: string) {
 	return formatDateOnly(value, {
@@ -108,20 +110,36 @@ function isReservationSearchType(value: string | null): value is ReservationSear
 	return value === "id" || value === "user" || value === "apartment";
 }
 
+function isReservationDateFilter(value: string | null): value is ReservationDateFilter {
+	return value === "all" || value === "past" || value === "future";
+}
+
+function getApiDateFilter(filter: ReservationDateFilter): AdminReservationDateFilter {
+	switch (filter) {
+		case "past":
+			return AdminReservationDateFilter.Past;
+		case "future":
+			return AdminReservationDateFilter.Future;
+		default:
+			return AdminReservationDateFilter.None;
+	}
+}
+
 function getReservationPage(
 	target: ReservationSearchTarget | null,
 	pageNumber: number,
 	pageSize: number,
+	dateFilter: AdminReservationDateFilter,
 ): Promise<ReservationDetail[]> {
-	if (!target) return getAdminReservations(pageNumber, pageSize);
+	if (!target) return getAdminReservations(pageNumber, pageSize, dateFilter);
 
 	switch (target.type) {
 		case "id":
 			return getAdminReservationById(target.id).then((reservation) => [reservation]);
 		case "user":
-			return getAdminReservationsByUser(target.id, pageNumber, pageSize);
+			return getAdminReservationsByUser(target.id, pageNumber, pageSize, dateFilter);
 		case "apartment":
-			return getAdminReservationsByApartment(target.id, pageNumber, pageSize);
+			return getAdminReservationsByApartment(target.id, pageNumber, pageSize, dateFilter);
 	}
 }
 
@@ -132,6 +150,9 @@ export default function AdminReservasPage() {
 	const pageNumber = Number.isSafeInteger(pageParam) && pageParam > 0 ? pageParam : 1;
 	const pageSizeParam = Number(searchParams.get("pageSize"));
 	const pageSize = PAGE_SIZE_OPTIONS.includes(pageSizeParam) ? pageSizeParam : 10;
+	const dateFilterParam = searchParams.get("dateFilter");
+	const dateFilter = isReservationDateFilter(dateFilterParam) ? dateFilterParam : "all";
+	const apiDateFilter = getApiDateFilter(dateFilter);
 	const filterTypeParam = searchParams.get("filterType");
 	const filterId = searchParams.get("filterId");
 	const filterLabel = searchParams.get("filterLabel");
@@ -153,20 +174,21 @@ export default function AdminReservasPage() {
 	const [isSelectionModalOpen, setIsSelectionModalOpen] = useState(false);
 	const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 	const [stateFilter, setStateFilter] = useState<ReservationStateFilter>("all");
+
 	const [selectedReservation, setSelectedReservation] = useState<ReservationDetail | null>(null);
 	const [reservationToCancel, setReservationToCancel] = useState<ReservationDetail | null>(null);
 	function updateSearchParameters(
-		updates: Record<string, string | null>,
+		updates: Record<string, string | number | null | undefined>,
 		replace = false,
 	) {
 		setSearchParams(
 			(current) => {
 				const next = new URLSearchParams(current);
 				for (const [key, value] of Object.entries(updates)) {
-					if (value === null) {
+					if (value == null) {
 						next.delete(key);
 					} else {
-						next.set(key, value);
+						next.set(key, String(value));
 					}
 				}
 				return next;
@@ -176,6 +198,26 @@ export default function AdminReservasPage() {
 
 		setStateFilter("all");
 	}
+
+	const updateDateFilter = (filter: ReservationDateFilter) => {
+		updateSearchParameters({
+			page: "1",
+			dateFilter: filter === "all" ? null : filter,
+		});
+	}
+
+	useEffect(() => {
+		if (!searchParams.has("pageSize") || PAGE_SIZE_OPTIONS.includes(pageSizeParam)) return;
+
+		setSearchParams(
+			(current) => {
+				const next = new URLSearchParams(current);
+				next.delete("pageSize");
+				return next;
+			},
+			{ replace: true },
+		);
+	}, [pageSizeParam, searchParams, setSearchParams]);
 
 	useEffect(() => {
 		setReservationIdInput(searchTarget?.type === "id" ? searchTarget.id : "");
@@ -188,14 +230,15 @@ export default function AdminReservasPage() {
 			searchTarget?.id,
 			pageNumber,
 			pageSize,
+			apiDateFilter,
 		],
-		queryFn: () => getReservationPage(searchTarget, pageNumber, pageSize),
+		queryFn: () => getReservationPage(searchTarget, pageNumber, pageSize, apiDateFilter),
 		enabled: searchTarget !== null,
 		meta: { silent: true },
 	});
 	const reservationsQuery = useQuery<ReservationDetail[]>({
-		queryKey: ["admin-reservations", pageNumber, pageSize],
-		queryFn: () => getAdminReservations(pageNumber, pageSize),
+		queryKey: ["admin-reservations", pageNumber, pageSize, apiDateFilter],
+		queryFn: () => getAdminReservations(pageNumber, pageSize, apiDateFilter),
 		meta: { silent: true },
 	});
 	useEffect(() => console.log(reservationsQuery.data), [reservationsQuery.data]);
@@ -251,9 +294,10 @@ export default function AdminReservasPage() {
 				searchTarget.id,
 				pageNumber + 1,
 				pageSize,
+				apiDateFilter,
 			]
-			: ["admin-reservations", pageNumber + 1, pageSize],
-		queryFn: () => getReservationPage(searchTarget, pageNumber + 1, pageSize),
+			: ["admin-reservations", pageNumber + 1, pageSize, apiDateFilter],
+		queryFn: () => getReservationPage(searchTarget, pageNumber + 1, pageSize, apiDateFilter),
 		enabled: canCheckNextReservationPage,
 		meta: { silent: true },
 	});
@@ -392,6 +436,7 @@ export default function AdminReservasPage() {
 					</button>
 				)}
 			</form>
+
 			<fieldset className="mb-5">
 				<legend className="mb-2 text-sm font-semibold text-[#385347]">
 					Filtrar por estado en página actual
@@ -420,6 +465,35 @@ export default function AdminReservasPage() {
 					))}
 				</div>
 			</fieldset>
+
+			<fieldset className="mb-5">
+				<legend className="mb-2 text-sm font-semibold text-[#385347]">
+					Filtrar por fecha
+				</legend>
+				<div className="flex flex-wrap gap-x-5 gap-y-2">
+					{([
+						["all", "Todas"],
+						["past", "Pasadas"],
+						["future", "Próximas"],
+					] as const).map(([value, label]) => (
+						<label
+							key={value}
+							className="inline-flex cursor-pointer items-center gap-2 text-sm text-[#424a44]"
+						>
+							<input
+								type="radio"
+								name="reservation-date-filter"
+								value={value}
+								checked={dateFilter === value}
+								onChange={() => updateDateFilter(value)}
+								className="accent-[#385347] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#385347]"
+							/>
+							{label}
+						</label>
+					))}
+				</div>
+			</fieldset>
+
 			<em className="mb-3 inline-block text-muted-foreground text-sm">Desplazese hacia la derecha en la tabla para ver acciones y mas resultados</em>
 			{searchTarget && (
 				<p className="mb-3 text-sm text-[#68716a]">
@@ -695,19 +769,19 @@ export default function AdminReservasPage() {
 											{
 												isReservationStartInFuture(reservation.checkInDate) ?
 													reservation.state == ReservationState.Cancelled ?
-													<em className="text-muted-foreground text-xs">
-														Esta reserva ya esta cancelada.
-													</em>
-													:
-													<button
-														type="button"
-														onClick={() => setReservationToCancel(reservation)}
-														className="rounded-lg bg-[#e28b68] px-4 py-1.5 text-sm font-semibold text-white shadow-sm
+														<em className="text-muted-foreground text-xs">
+															Esta reserva ya esta cancelada.
+														</em>
+														:
+														<button
+															type="button"
+															onClick={() => setReservationToCancel(reservation)}
+															className="rounded-lg bg-[#e28b68] px-4 py-1.5 text-sm font-semibold text-white shadow-sm
 									transition hover:bg-[#d47b58] focus:outline-none focus-visible:ring-2
 									focus-visible:ring-[#e28b68]/50 focus-visible:ring-offset-2 active:scale-95"
-													>
-														Cancelar
-													</button> 
+														>
+															Cancelar
+														</button>
 													:
 													<em className="text-muted-foreground text-xs">
 														No se pueden cancelar reservas pasadas o que estan por comenzar. {/* //TODO: right message?  */}

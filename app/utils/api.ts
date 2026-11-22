@@ -28,6 +28,12 @@ export interface UpdateUserInput {
     email: string;
 }
 
+export enum AdminReservationDateFilter {
+    None = 1,
+    Past = 2,
+    Future = 3,
+}
+
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL,
     timeout: 10000,
@@ -152,9 +158,13 @@ export async function createAdminReservation(
     await api.post('/api/reservation/admin_create', reservation);
 }
 
-export async function getAdminReservations(pageNumber: number, pageSize: number): Promise<ReservationDetail[]> {
+export async function getAdminReservations(
+    pageNumber: number,
+    pageSize: number,
+    dateFilter: AdminReservationDateFilter = AdminReservationDateFilter.None,
+): Promise<ReservationDetail[]> {
     const { data } = await api.get<ReservationDetail[] | { reservations: ReservationDetail[] }>('/api/reservation', {
-        params: { PageNumber: pageNumber, PageSize: pageSize },
+        params: { PageNumber: pageNumber, PageSize: pageSize, DateFilter: dateFilter },
     });
     const reservations = Array.isArray(data) ? data : data.reservations;
 
@@ -176,10 +186,11 @@ export async function getAdminReservationsByUser(
     userId: string,
     pageNumber: number,
     pageSize: number,
+    dateFilter: AdminReservationDateFilter = AdminReservationDateFilter.None,
 ): Promise<ReservationDetail[]> {
     const { data } = await api.get<ReservationDetail[]>(
         `/api/reservation/admin/user/${encodeURIComponent(userId)}`,
-        { params: { PageNumber: pageNumber, PageSize: pageSize } },
+        { params: { PageNumber: pageNumber, PageSize: pageSize, DateFilter: dateFilter } },
     );
 
     if (!Array.isArray(data)) {
@@ -193,10 +204,11 @@ export async function getAdminReservationsByApartment(
     apartmentId: string,
     pageNumber: number,
     pageSize: number,
+    dateFilter: AdminReservationDateFilter = AdminReservationDateFilter.None,
 ): Promise<ReservationDetail[]> {
     const { data } = await api.get<ReservationDetail[]>(
         `/api/reservation/admin/apartment/${encodeURIComponent(apartmentId)}`,
-        { params: { PageNumber: pageNumber, PageSize: pageSize } },
+        { params: { PageNumber: pageNumber, PageSize: pageSize, DateFilter: dateFilter } },
     );
 
     if (!Array.isArray(data)) {
