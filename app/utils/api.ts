@@ -247,7 +247,7 @@ function isPagedResponse<T>(value: unknown): value is PagedResponse<T> {
     );
 }
 
-async function getPagedResponse<T>(
+export async function getPagedResponse<T>(
     endpoint: string,
     params: Record<string, string | number>,
 ): Promise<PagedResponse<T>> {
