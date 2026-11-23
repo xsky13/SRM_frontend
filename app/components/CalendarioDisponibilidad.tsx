@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { ReservationState, type Reserva } from "~/types/Reserva";
-import api from "~/utils/api";
+import api, { getAdminUserReservations } from "~/utils/api";
 import {
   differenceInCalendarDays,
   parseDateOnly,
@@ -144,16 +144,9 @@ export default function CalendarioDisponibilidad({
   onClose,
 }: CalendarioDisponibilidadProps) {
   const navigate = useNavigate();
-  const userReservationsQuery = useQuery<Reserva[]>({
-    queryKey: ["my-reservations", userId],
-    queryFn: async () => {
-      const { data } = await api.get(`/api/reservation/user/${userId}`);
-      const reservations = Array.isArray(data) ? data : data?.reservations;
-      if (!Array.isArray(reservations)) {
-        throw new Error("La respuesta de reservas del usuario no tiene un formato válido.");
-      }
-      return reservations;
-    },
+  const userReservationsQuery = useQuery({
+    queryKey: ["my-reservations", userId, 1, 100],
+    queryFn: async () => (await getAdminUserReservations(userId!, 1, 100)).data, // doesnt need the user to be admin, it just fetches the users reservations
     enabled: Boolean(userId),
     meta: { errorMessage: "No pudimos verificar tus reservas pendientes." },
   });

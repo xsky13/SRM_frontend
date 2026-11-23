@@ -13,6 +13,7 @@ import {
   searchAdminUsers,
 } from "~/utils/api";
 import { formatDateOnly } from "~/utils/dateOnly";
+import { XIcon } from "lucide-react";
 
 export function meta() {
   return [{ title: "Usuarios | Administración | Reservas Moreno" }];
@@ -68,21 +69,21 @@ function UserReservationsModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="admin-user-reservations-title"
-        className="flex max-h-[90vh] w-full max-w-5xl flex-col rounded-xl bg-[#fffdf9] p-6 shadow-xl"
+        className="flex max-h-[90vh] w-full max-w-5xl flex-col rounded-xl bg-[#fffdf9] p-6 shadow-xl relative"
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 id="admin-user-reservations-title" className="text-xl font-semibold text-[#202722]">
-              Reservas de {user.name} {user.lastName}
+            <h2 id="admin-user-reservations-title" className="text-xl font-semibold text-[#202722] flex items-center flex-wrap">
+              Reservas de&nbsp; <span className="inline-block w-80 sm:w-96 md:w-[40rem] overflow-hidden text-ellipsis text-nowrap">{user.name} {user.lastName}</span>
             </h2>
             <p className="mt-1 text-sm text-[#68716a]">{user.email}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-[#d8d5ca] px-3 py-1.5 text-sm font-semibold text-[#385347] transition hover:bg-[#edf2e8]"
+            className="absolute top-4 right-4 rounded-md border border-[#d8d5ca] px-3 py-1.5 text-sm font-semibold text-[#385347] transition hover:bg-[#edf2e8]"
           >
-            Cerrar
+            <XIcon size={17} />
           </button>
         </div>
 
