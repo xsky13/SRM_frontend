@@ -32,9 +32,6 @@ export default function CancelReservationModal({
 				<h2 id="cancel-reservation-title" className="text-xl font-semibold text-[#202722]">
 					Cancelar Reserva
 				</h2>
-				<p className="mt-3 text-sm leading-6 text-[#505a53]">
-					¿Estás seguro de que deseas cancelar esta reserva? Esta acción es irreversible!
-				</p>
 				<div className="border border-[#e0ded5] bg-[#F6F4EE] rounded-md px-3 py-2.5 my-3">
 					<p className=" text-sm text-[#68716a]">
 						Reserva <span className="font-medium text-[#202722]">{reservation?.apartment?.name ?? <em>Departamento no disponible</em>}</span>
@@ -53,6 +50,9 @@ export default function CancelReservationModal({
 						{reservation.appUser?.email}
 					</div>
 				</div>
+				<p className="mt-3 leading-6 ">
+					¿Estás seguro de que deseas cancelar esta reserva? Esta acción es irreversible!
+				</p>
 				<div className="mt-6 flex justify-end gap-3">
 					<button
 						type="button"
@@ -62,18 +62,18 @@ export default function CancelReservationModal({
                        transition hover:bg-[#f1efe9] focus:outline-none focus-visible:ring-2
                        focus-visible:ring-[#385347]/40 disabled:cursor-not-allowed disabled:opacity-60"
 					>
-						Cancelar
+						No, volver atras
 					</button>
 					<button
 						type="button"
 						onClick={onConfirm}
 						disabled={isPending}
-						className="rounded-lg bg-[#e28b68] px-4 py-2 text-sm font-semibold text-white
-                       transition hover:bg-[#d47b58] focus:outline-none focus-visible:ring-2
-                       focus-visible:ring-[#e28b68]/50 focus-visible:ring-offset-2
+						className="rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white
+                       transition hover:bg-red-800 focus:outline-none focus-visible:ring-2
+                       focus-visible:ring-red-800/50 focus-visible:ring-offset-2
                        disabled:cursor-not-allowed disabled:opacity-60"
 					>
-						{isPending ? "Cancelando..." : "Eliminar"}
+						{isPending ? "Cancelando..." : "Cancelar reserva"}
 					</button>
 				</div>
 			</section>

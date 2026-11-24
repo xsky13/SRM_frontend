@@ -31,6 +31,7 @@ export interface ApartmentListingDto {
   coverImgUrl: string;
   location: string;
   price: number;
+  isDeleted?: boolean;
 }
 
 export interface UserListingDto {

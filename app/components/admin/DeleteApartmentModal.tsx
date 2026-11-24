@@ -112,12 +112,12 @@ export default function DeleteApartmentModal({
           <button
             type="button"
             onClick={() => {
-              if (!cannotConfirmDelete) onConfirm();
+              if (!cannotConfirmDelete) if (confirm("¿Cancelar reserva?"))  onConfirm();
             }}
             disabled={cannotConfirmDelete}
-            className="rounded-lg bg-[#e28b68] px-4 py-2 text-sm font-semibold text-white
-                       transition hover:bg-[#d47b58] focus:outline-none focus-visible:ring-2
-                       focus-visible:ring-[#e28b68]/50 focus-visible:ring-offset-2
+            className="rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white
+                       transition not-[:disabled]:hover:bg-red-800 focus:outline-none focus-visible:ring-2
+                       focus-visible:ring-red-700/50 focus-visible:ring-offset-2
                        disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isPending ? "Eliminando..." : "Eliminar"}

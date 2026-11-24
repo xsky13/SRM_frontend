@@ -204,7 +204,7 @@ export default function EditAccountRoute() {
 								authQuery.data.usertype != UserType.Admin &&
 								<>
 									<section className="mt-10 border-t border-[#e0ded5] pt-6">
-										<h3 className="text-lg font-semibold text-[#b74f3d]">Eliminar cuenta</h3>
+										<h3 className="text-lg font-semibold text-red-800">Eliminar cuenta</h3>
 										<p className="mt-2 text-sm leading-6 text-[#68716a]">
 											Esta acción es permanente y no se puede deshacer. Se eliminará tu cuenta y
 											cerrarás tu sesión.
@@ -213,7 +213,7 @@ export default function EditAccountRoute() {
 											type="button"
 											onClick={() => setIsDeleteConfirmOpen(true)}
 											disabled={mutation.isPending || deleteMutation.isPending}
-											className="mt-4 rounded-md border border-[#b74f3d] px-4 py-2 text-sm font-semibold text-[#b74f3d] transition hover:bg-[#b74f3d] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+											className="mt-4 rounded-md border px-4 py-2 text-sm font-semibold bg-red-700 border-red-700 transition hover:bg-red-800 text-white disabled:cursor-not-allowed disabled:opacity-60"
 										>
 											Eliminar cuenta
 										</button>
@@ -244,9 +244,9 @@ export default function EditAccountRoute() {
 													</button>
 													<button
 														type="button"
-														onClick={() => deleteMutation.mutate()}
+														onClick={() => { if (confirm("¿Eliminar cuenta?")) deleteMutation.mutate() }}
 														disabled={deleteMutation.isPending}
-														className="rounded-md border border-[#b74f3d] bg-[#b74f3d] px-5 py-2.5 text-sm font-semibold text-white transition hover:border-[#963e31] hover:bg-[#963e31] disabled:cursor-not-allowed disabled:opacity-60"
+														className="rounded-md border border-red-700 bg-red-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:border-red-800 hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60"
 													>
 														{deleteMutation.isPending ? "Eliminando..." : "Sí, eliminar cuenta"}
 													</button>

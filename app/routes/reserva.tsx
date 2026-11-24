@@ -92,16 +92,13 @@ function getReservationStateLabel(state?: ReservationState) {
 function getReservationStateClass(state?: ReservationState) {
 	switch (state) {
 		case ReservationState.ConfirmedPaymentComplete:
-			return "border-emerald-200 bg-emerald-50 text-emerald-800";
+			return "border-blue-200 bg-blue-50 text-emerald-800";
 		case ReservationState.ConfirmedPaymentIncomplete:
-		case ReservationState.PaymentPending:
-			return "border-amber-200 bg-amber-50 text-amber-800";
+			return "border-blue-200 bg-blue-50 text-emerald-800";
 		case ReservationState.Cancelled:
-			return "border-rose-200 bg-rose-50 text-rose-800";
-		case ReservationState.NotConfirmed:
-			return "border-sky-200 bg-sky-50 text-sky-800";
+			return "border-red-200 bg-red-50 text-red-800";
 		default:
-			return "border-[#d7d1c7] bg-[#f0efe9] text-[#385347]";
+			return "bg-[#edf2e8] text-[#385347] border-[#d7ded1]";
 	}
 }
 
@@ -433,8 +430,8 @@ export default function ReservaPage() {
 		);
 	}
 
-	// to check if user can edit reservation
-	const allowedEditTime = new Date(reservation.checkInDate).getTime() - 60 * 60 * 1000;
+	// to check if user can edit reservation 
+	const allowedEditTime = new Date(reservation.checkInDate).getTime() - 24 * 60 * 60 * 1000; // ! added -24
 
 	return (
 		<main className="min-h-screen bg-[#f6f4ee] text-[#202722]">

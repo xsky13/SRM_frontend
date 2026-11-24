@@ -313,6 +313,17 @@ export default function AdminReservasPage() {
 		return price * diff;
 	}
 
+	const statusColors = (state: ReservationState) => {
+		switch (state) {
+			case ReservationState.ConfirmedPaymentComplete || ReservationState.ConfirmedPaymentComplete:
+				return "bg-blue-50 text-blue-800 border border-blue-100";
+			case ReservationState.Cancelled:
+				return "bg-red-50 text-red-800 border border-red-100"
+			default:
+				return "bg-[#edf2e8] text-[#385347]";
+		}
+	}
+
 
 	return (
 		<section>
@@ -577,7 +588,7 @@ export default function AdminReservasPage() {
 										</p>
 									</td>
 									<td className="px-5 py-4">
-										{reservation.apartment ? (
+										{(reservation.apartment && !reservation.apartment.isDeleted) ? (
 											<div className="flex min-w-52 items-center gap-3">
 												{reservation.apartment.coverImgUrl ? (
 													<img
@@ -610,6 +621,9 @@ export default function AdminReservasPage() {
 												<p className="font-medium text-[#68716a]">Departamento no disponible</p>
 												<p className="mt-1 break-all font-mono text-xs text-[#68716a]">
 													{reservation.apartmentId}
+												</p>
+												<p className="mt-1 break-all font-mono text-xs text-[#68716a]">
+													Este departamento probablemente fue eliminado
 												</p>
 											</div>
 										)}
@@ -676,6 +690,9 @@ export default function AdminReservasPage() {
 												<p className="mt-1 break-all font-mono text-xs text-[#68716a]">
 													Id de usuario: <strong>{reservation.appUserId}</strong>
 												</p>
+												<p className="mt-1 break-all font-mono text-xs text-[#68716a]">
+													Este usuario probablemente fue eliminado.
+												</p>
 											</div>
 										)}
 									</td>
@@ -737,54 +754,66 @@ export default function AdminReservasPage() {
 										</div>
 									</td>
 									<td className="px-5 py-4">
-										<span className="inline-flex whitespace-nowrap rounded-full bg-[#edf2e8] px-2.5 py-1 text-xs font-semibold text-[#385347]">
+										<span className={statusColors(reservation.state) + " inline-flex whitespace-nowrap rounded-full bg-[#edf2e8] text-[#385347] px-2.5 py-1 text-xs font-semibold"}>
 											{getReservationStateLabel(reservation.state)}
 										</span>
 									</td>
 									<td className="px-5 py-4">
 										<div className="flex flex-wrap gap-2">
 											{
-												(() => {
-													switch (reservation.state) {
-														case ReservationState.Cancelled:
-															return <em className="text-xs text-muted-foreground mt-3 inline-block">Esta reserva esta cancelada. No puede agregar pagos.</em>
-														case ReservationState.ConfirmedPaymentComplete:
-															return <em className="text-xs text-muted-foreground mt-3 inline-block">Esta reserva tiene sus pagos completos. No puede agregar pagos.</em>
-														case ReservationState.PaymentPending:
-															return <em className="text-xs text-muted-foreground mt-3 inline-block">Esta reserva tiene un pago pendiente. No puede agregar pagos.</em>
-														default:
-															return <button
-																type="button"
-																onClick={() => setSelectedReservation(reservation)}
-																className="rounded-lg bg-[#385347] px-4 py-1.5 text-sm font-semibold text-white shadow-sm
+												// check if reservation has any deleted parents
+												reservation.apartment?.isDeleted || reservation.appUser?.isDeleted ?
+													<em className="text-xs text-muted-foreground mt-3 inline-block">El apartamento o el usuario al que pertenecía esta reserva ya no existe. No puede modificarla.</em>
+													:
+													// check if reservation is in the past
+													new Date(reservation.checkOutDate).getTime() < Date.now() ?
+													<em className="text-xs text-muted-foreground mt-3 inline-block">Esta reserva ya terminó. No puede modificarla.</em>
+													:
+													<>
+														{
+															(() => {
+																switch (reservation.state) {
+																	case ReservationState.Cancelled:
+																		return <em className="text-xs text-muted-foreground mt-3 inline-block">Esta reserva esta cancelada. No puede agregar pagos.</em>
+																	case ReservationState.ConfirmedPaymentComplete:
+																		return <em className="text-xs text-muted-foreground mt-3 inline-block">Esta reserva tiene sus pagos completos. No puede agregar pagos.</em>
+																	case ReservationState.PaymentPending:
+																		return <em className="text-xs text-muted-foreground mt-3 inline-block">Esta reserva tiene un pago pendiente. No puede agregar pagos.</em>
+																	default:
+																		return <button
+																			type="button"
+																			onClick={() => setSelectedReservation(reservation)}
+																			className="rounded-lg bg-[#385347] px-4 py-1.5 text-sm font-semibold text-white shadow-sm
                                    transition hover:bg-[#2c4238] focus:outline-none focus-visible:ring-2
                                    focus-visible:ring-[#385347]/50 focus-visible:ring-offset-2 active:scale-95"
-															>
-																Registrar Pago
-															</button>
-													}
-												})()
-											}
-											{
-												isReservationStartInFuture(reservation.checkInDate) ?
-													reservation.state == ReservationState.Cancelled ?
-														<em className="text-muted-foreground text-xs">
-															Esta reserva ya esta cancelada.
-														</em>
-														:
-														<button
-															type="button"
-															onClick={() => setReservationToCancel(reservation)}
-															className="rounded-lg bg-[#e28b68] px-4 py-1.5 text-sm font-semibold text-white shadow-sm
-									transition hover:bg-[#d47b58] focus:outline-none focus-visible:ring-2
-									focus-visible:ring-[#e28b68]/50 focus-visible:ring-offset-2 active:scale-95"
-														>
-															Cancelar
-														</button>
-													:
-													<em className="text-muted-foreground text-xs">
-														No se pueden cancelar reservas pasadas o que estan por comenzar. {/* //TODO: right message?  */}
-													</em>
+																		>
+																			Registrar Pago
+																		</button>
+																}
+															})()
+														}
+														{
+															isReservationStartInFuture(reservation.checkInDate) ?
+																reservation.state == ReservationState.Cancelled ?
+																	<em className="text-muted-foreground text-xs">
+																		Esta reserva ya esta cancelada.
+																	</em>
+																	:
+																	<button
+																		type="button"
+																		onClick={() => setReservationToCancel(reservation)}
+																		className="rounded-lg bg-red-700 px-4 py-1.5 text-sm font-semibold text-white shadow-sm
+									transition hover:bg-red-800 focus:outline-none focus-visible:ring-2
+									focus-visible:ring-red-800/50 focus-visible:ring-offset-2 active:scale-95"
+																	>
+																		Cancelar
+																	</button>
+																:
+																<em className="text-muted-foreground text-xs">
+																	No se pueden cancelar reservas pasadas o que estan por comenzar. {/* //TODO: right message?  */}
+																</em>
+														}
+													</>
 											}
 										</div>
 									</td>
@@ -835,7 +864,7 @@ export default function AdminReservasPage() {
 				isOpen={reservationToCancel !== null}
 				onClose={() => setReservationToCancel(null)}
 				onConfirm={() => {
-					if (reservationToCancel) cancelMutation.mutate(reservationToCancel.reservationId);
+					if (confirm("¿Cancelar reserva?")) if (reservationToCancel) cancelMutation.mutate(reservationToCancel.reservationId);
 				}}
 				reservation={reservationToCancel}
 				isPending={cancelMutation.isPending}
