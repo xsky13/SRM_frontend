@@ -433,6 +433,8 @@ export default function ReservaPage() {
 	// to check if user can edit reservation 
 	const allowedEditTime = new Date(reservation.checkInDate).getTime() - 24 * 60 * 60 * 1000; // ! added -24
 
+	const isInPast = new Date(reservation.checkOutDate).getTime() < Date.now() + 24 * 60 * 60 * 1000; // ! el usuario puede pagar hasta 24 horas despues 
+
 	return (
 		<main className="min-h-screen bg-[#f6f4ee] text-[#202722]">
 			<section className="mx-auto max-w-7xl px-5 py-8 md:px-8">
@@ -502,32 +504,39 @@ export default function ReservaPage() {
 							</p>
 						</div>
 					</div>
+				) : isInPast ? (
+					<div className="mt-8 italic text-muted-foreground">
+						No se pueden agregar pagos a una reserva pasada
+					</div>
 				) : canPayDeposit || canPayFull || canPayRest ? (
-					<div className="mt-8 grid gap-8 md:grid-cols-2">
-						{canPayDeposit &&
-							renderPaymentOptionCard({
-								title: "Pagar seña",
-								description:
-									"Confirmar la reserva pagando un porcentaje ahora, y pagar el resto más tarde",
-								option: "deposit",
-								amount: deposit,
-							})}
-						{canPayFull &&
-							renderPaymentOptionCard({
-								title: "Pagar reserva completa",
-								description: "Asegurar la reserva pagando el monto total ahora",
-								option: "full",
+					<>
+						<p className="text-muted-foreground text-sm mt-5">Si prefiere hacer un pago en efectivo o persona, contáctese con el administrador.</p>
+						<div className="mt-3 grid gap-8 md:grid-cols-2">
+							{canPayDeposit &&
+								renderPaymentOptionCard({
+									title: "Pagar seña",
+									description:
+										"Confirmar la reserva pagando un porcentaje ahora, y pagar el resto más tarde",
+									option: "deposit",
+									amount: deposit,
+								})}
+							{canPayFull &&
+								renderPaymentOptionCard({
+									title: "Pagar reserva completa",
+									description: "Asegurar la reserva pagando el monto total ahora",
+									option: "full",
+									amount: total,
+								})}
+							{canPayRest && renderPaymentOptionCard({
+								title: "Pagar resto",
+								description: "Completar el pago pendiente de la reserva",
+								option: "rest",
 								amount: total,
 							})}
-						{canPayRest && renderPaymentOptionCard({
-							title: "Pagar resto",
-							description: "Completar el pago pendiente de la reserva",
-							option: "rest",
-							amount: total,
-						})}
-					</div>
+						</div>
+					</>
 				) : (
-					<div className="mt-8 rounded-md border border-dashed border-[#c8c2b8] bg-[#fffdf9] p-6 text-sm text-[#68716a]">
+					<div className="mt-8 italic text-muted-foreground">
 						No hay forma de pago disponible para esta reserva.
 					</div>
 				)}
@@ -538,7 +547,7 @@ export default function ReservaPage() {
 				)}
 				<div className="mt-6 flex justify-end gap-3">
 					{
-						reservation.state != ReservationState.Cancelled && Date.now() < allowedEditTime  &&
+						reservation.state != ReservationState.Cancelled && Date.now() < allowedEditTime &&
 						<button
 							type="button"
 							onClick={() => navigate(`/reservas/${id}/modificar`)}

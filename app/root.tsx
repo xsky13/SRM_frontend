@@ -7,10 +7,10 @@ import {
 	ScrollRestoration,
 } from "react-router";
 import {
-    MutationCache,
-    QueryCache,
-  QueryClient,
-  QueryClientProvider,
+	MutationCache,
+	QueryCache,
+	QueryClient,
+	QueryClientProvider,
 } from '@tanstack/react-query'
 import { toast, Toaster } from 'sonner';
 
@@ -19,7 +19,7 @@ import "./app.css";
 import { ApiError } from "./types/ApiError";
 import AppLoadingIndicator from "./components/AppLoadingIndicator";
 import NavegacionUsuario from "./components/NavegacionUsuario";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 export const links: Route.LinksFunction = () => [
 	{ rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -35,45 +35,45 @@ export const links: Route.LinksFunction = () => [
 ];
 
 const queryClient = new QueryClient({
-    queryCache: new QueryCache({
-        onError: (error, query) => {
-            if (query.meta?.silent) return; // si la query ya define un onError, salir
-            const customMessage = query.meta?.errorMessage as string | undefined;
-            const message = customMessage ?? (error instanceof ApiError ? error.message : 'Error al cargar los datos');
+	queryCache: new QueryCache({
+		onError: (error, query) => {
+			if (query.meta?.silent) return; // si la query ya define un onError, salir
+			const customMessage = query.meta?.errorMessage as string | undefined;
+			const message = customMessage ?? (error instanceof ApiError ? error.message : 'Error al cargar los datos');
 			toast.error(message)
-        },
-    }),
-    mutationCache: new MutationCache({
-        onError: (error, _vars, _ctx, mutation) => {
-            if (mutation.meta?.silent) return; // si la mutacion ya define un onError, salir
-            const message = error instanceof ApiError ? error.message : 'Error al cargar los datos';
+		},
+	}),
+	mutationCache: new MutationCache({
+		onError: (error, _vars, _ctx, mutation) => {
+			if (mutation.meta?.silent) return; // si la mutacion ya define un onError, salir
+			const message = error instanceof ApiError ? error.message : 'Error al cargar los datos';
 			toast.error(message)
-        }
-    }),
-    defaultOptions: {
-        queries: {
-            staleTime: 30_000,
-            refetchOnWindowFocus: false,
-            retry: (failureCount, error) => {
-                // no reintentar errores de negocio
-                if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
-                    return false;
-                }
-                return failureCount < 2;
-            }
-        },
-        mutations: { retry: false }
-    }
+		}
+	}),
+	defaultOptions: {
+		queries: {
+			staleTime: 30_000,
+			refetchOnWindowFocus: false,
+			retry: (failureCount, error) => {
+				// no reintentar errores de negocio
+				if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
+					return false;
+				}
+				return failureCount < 2;
+			}
+		},
+		mutations: { retry: false }
+	}
 })
 
 export function Layout({ children }: { children: React.ReactNode }) {
-    useEffect(() => {
-        const handleUnauthorized = () => {
-            queryClient.setQueryData(["auth-user"], null);
-        };
-        window.addEventListener('auth:unauthorized', handleUnauthorized);
-        return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
-    }, []);
+	useEffect(() => {
+		const handleUnauthorized = () => {
+			queryClient.setQueryData(["auth-user"], null);
+		};
+		window.addEventListener('auth:unauthorized', handleUnauthorized);
+		return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
+	}, []);
 
 	return (
 		<html lang="en">
@@ -84,10 +84,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
 				<Links />
 			</head>
 			<body>
-                <QueryClientProvider client={queryClient}>
-                    {children}
-    				<ScrollRestoration />
-                    <Scripts />
+				<QueryClientProvider client={queryClient}>
+					{children}
+					<ScrollRestoration />
+					<Scripts />
 					<Toaster />
 				</QueryClientProvider>
 			</body>
@@ -99,12 +99,10 @@ export default function App() {
 	return (
 		<>
 			<AppLoadingIndicator />
-			<div className="fixed w-full z-[1500]">
+			<div className="sticky w-full z-1500">
 				<NavegacionUsuario />
 			</div>
-			<div className="pt-20">
-				<Outlet />
-			</div>
+			<Outlet />
 		</>
 	);
 }
@@ -123,9 +121,9 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 	} else if (import.meta.env.DEV && error && error instanceof Error) {
 		details = error.message;
 		stack = error.stack;
-    }
+	}
 
-    // useEffect(() => document.title = "Error", []);
+	// useEffect(() => document.title = "Error", []);
 
 	return (
 		<main className="pt-16 p-4 container mx-auto">
