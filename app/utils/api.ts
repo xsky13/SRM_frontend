@@ -163,12 +163,14 @@ export async function getAdminReservations(
     pageSize: number,
     dateFilter: AdminReservationDateFilter = AdminReservationDateFilter.None,
     state?: ReservationState,
+    includeDeleted = false,
 ): Promise<PagedResponse<ReservationDetail>> {
     return getPagedResponse<ReservationDetail>('/api/reservation', {
         PageNumber: pageNumber,
         PageSize: pageSize,
         DateFilter: dateFilter,
         ...(state === undefined ? {} : { State: state }),
+        IncludeDeleted: includeDeleted,
     });
 }
 
@@ -185,6 +187,7 @@ export async function getAdminReservationsByUser(
     pageSize: number,
     dateFilter: AdminReservationDateFilter = AdminReservationDateFilter.None,
     state?: ReservationState,
+    includeDeleted = false,
 ): Promise<PagedResponse<ReservationDetail>> {
     return getPagedResponse<ReservationDetail>(
         `/api/reservation/admin/user/${encodeURIComponent(userId)}`,
@@ -193,6 +196,7 @@ export async function getAdminReservationsByUser(
             PageSize: pageSize,
             DateFilter: dateFilter,
             ...(state === undefined ? {} : { State: state }),
+            IncludeDeleted: includeDeleted,
         },
     );
 }
@@ -203,6 +207,7 @@ export async function getAdminReservationsByApartment(
     pageSize: number,
     dateFilter: AdminReservationDateFilter = AdminReservationDateFilter.None,
     state?: ReservationState,
+    includeDeleted = false,
 ): Promise<PagedResponse<ReservationDetail>> {
     return getPagedResponse<ReservationDetail>(
         `/api/reservation/admin/apartment/${encodeURIComponent(apartmentId)}`,
@@ -211,6 +216,7 @@ export async function getAdminReservationsByApartment(
             PageSize: pageSize,
             DateFilter: dateFilter,
             ...(state === undefined ? {} : { State: state }),
+            IncludeDeleted: includeDeleted,
         },
     );
 }
@@ -263,7 +269,7 @@ function isPagedResponse<T>(value: unknown): value is PagedResponse<T> {
 
 export async function getPagedResponse<T>(
     endpoint: string,
-    params: Record<string, string | number>,
+    params: Record<string, string | number | boolean>,
 ): Promise<PagedResponse<T>> {
     const { data } = await api.get<unknown>(endpoint, {
         params,

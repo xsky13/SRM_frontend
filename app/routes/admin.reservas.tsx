@@ -150,6 +150,7 @@ function getReservationPage(
 	pageSize: number,
 	dateFilter: AdminReservationDateFilter,
 	stateFilter: ReservationStateFilter,
+	includeDeleted: boolean,
 ): Promise<PagedResponse<ReservationDetail>> {
 	switch (target.type) {
 		case "id":
@@ -167,6 +168,7 @@ function getReservationPage(
 				pageSize,
 				dateFilter,
 				stateFilter === "all" ? undefined : stateFilter,
+				includeDeleted,
 			);
 		case "apartment":
 			return getAdminReservationsByApartment(
@@ -175,6 +177,7 @@ function getReservationPage(
 				pageSize,
 				dateFilter,
 				stateFilter === "all" ? undefined : stateFilter,
+				includeDeleted,
 			);
 	}
 }
@@ -207,6 +210,15 @@ export default function AdminReservasPage() {
 	const stateFilter = searchTarget?.type === "id"
 		? "all"
 		: getReservationStateFilter(searchParams.get("state"));
+	const includeDeleted = searchTarget?.type !== "id" &&
+		searchParams.get("includeDeleted") === "true";
+	const hasActiveFilters =
+		Boolean(searchTarget) ||
+		searchTypeParam !== null ||
+		dateFilter !== "all" ||
+		stateFilter !== "all" ||
+		includeDeleted ||
+		pageNumber > 1;
 	const [reservationIdInput, setReservationIdInput] = useState(
 		searchTarget?.type === "id" ? searchTarget.id : "",
 	);
@@ -268,22 +280,31 @@ export default function AdminReservasPage() {
 			pageSize,
 			apiDateFilter,
 			stateFilter,
+			includeDeleted,
 		],
 		queryFn: () => {
 			if (!searchTarget) throw new Error("No se indicó el filtro de búsqueda de reservas.");
-			return getReservationPage(searchTarget, pageNumber, pageSize, apiDateFilter, stateFilter);
+			return getReservationPage(
+				searchTarget,
+				pageNumber,
+				pageSize,
+				apiDateFilter,
+				stateFilter,
+				includeDeleted,
+			);
 		},
 		enabled: searchTarget !== null,
 		meta: { silent: true },
 	});
 	const reservationsQuery = useQuery<PagedResponse<ReservationDetail>>({
-		queryKey: ["admin-reservations", pageNumber, pageSize, apiDateFilter, stateFilter],
+		queryKey: ["admin-reservations", pageNumber, pageSize, apiDateFilter, stateFilter, includeDeleted],
 		queryFn: () =>
 			getAdminReservations(
 				pageNumber,
 				pageSize,
 				apiDateFilter,
 				stateFilter === "all" ? undefined : stateFilter,
+				includeDeleted,
 			),
 		meta: { silent: true },
 	});
@@ -396,6 +417,7 @@ export default function AdminReservasPage() {
 							filterId: reservationId,
 							filterLabel: reservationId,
 							state: null,
+							includeDeleted: null,
 						});
 						return;
 					}
@@ -537,15 +559,54 @@ export default function AdminReservasPage() {
 				</div>
 			</fieldset>
 
-			<em className="mb-3 inline-block text-muted-foreground text-sm">Desplazese hacia la derecha en la tabla para ver acciones y mas resultados</em>
+			{searchTarget?.type !== "id" && (
+				<label className="mb-3 inline-flex cursor-pointer items-center gap-2 text-sm text-[#424a44]">
+					<input
+						type="checkbox"
+						checked={includeDeleted}
+						onChange={(event) =>
+							updateSearchParameters({
+								page: "1",
+								includeDeleted: event.target.checked ? "true" : null,
+							})
+						}
+						className="accent-[#385347] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#385347]"
+					/>
+					Mostrar reservas con elementos eliminados
+				</label>
+			)}
+
+
+			<div className="flex flex-col-reverse sm:flex-row gap-y-2 justify-between items-stretch sm:items-center mb-3">
+				<em className="block text-muted-foreground text-sm">Desplazese hacia la derecha en la tabla para ver acciones y mas resultados</em>
+				<button
+					type="button"
+					disabled={!hasActiveFilters}
+					onClick={() =>
+						updateSearchParameters({
+							page: "1",
+							searchType: null,
+							filterType: null,
+							filterId: null,
+							filterLabel: null,
+							dateFilter: null,
+							state: null,
+							includeDeleted: null,
+						})
+					}
+					className="rounded-md border border-[#d8d5ca] px-4 py-2 text-sm font-semibold text-[#385347] transition hover:bg-[#edf2e8] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#385347]"
+				>
+					Limpiar todos los filtros
+				</button>
+			</div>
+
 			{searchTarget && (
-				<p className="mb-3 text-sm text-primary font-medium">
+				<p className="text-sm text-primary font-medium mb-3">
 					{searchTarget.type === "id"
 						? `Reserva ID: ${searchTarget.label}`
 						: `${searchTarget.type === "user" ? "Usuario" : "Departamento seleccionado"}: ${searchTarget.label}`}
 				</p>
 			)}
-
 			<div className="overflow-x-auto rounded-md border border-[#e0ded5] bg-[#fffdf9]">
 				<table className="w-full min-w-[1180px] border-collapse text-left text-sm">
 					<thead className="bg-[#edf2e8] text-[#385347]">
@@ -597,140 +658,140 @@ export default function AdminReservasPage() {
 							</tr>
 						) : (
 							<>
-							{activeReservations.map((reservation) => (
-								<tr key={reservation.reservationId} className="align-center">
-									{/* <td className="max-w-36 px-5 py-4">
+								{activeReservations.map((reservation) => (
+									<tr key={reservation.reservationId} className="align-center">
+										{/* <td className="max-w-36 px-5 py-4">
                     <span className="block break-all font-mono text-xs text-[#68716a]">
                       {reservation.reservationId}
                     </span>
                   </td> */}
-									<td className="whitespace-nowrap px-5 py-4">
-										<p className="font-medium">{formatDate(reservation.checkInDate)}</p>
-										<p className="mt-1 text-xs text-[#68716a]">
-											hasta {formatDate(reservation.checkOutDate)}
-										</p>
-										<p className="mt-3 text-xs text-[#68716a] italic">
-											Creada el {formatDate(reservation.createdAt)}
-										</p>
-									</td>
-									<td className="px-5 py-4">
-										{(reservation.apartment && !reservation.apartment.isDeleted) ? (
-											<div className="flex min-w-52 items-center gap-3">
-												{reservation.apartment.coverImgUrl ? (
-													<img
-														src={resolveImageUrl(reservation.apartment.coverImgUrl)}
-														alt=""
-														className="h-14 w-16 shrink-0 rounded object-cover"
-													/>
-												) : (
-													<div
-														aria-hidden="true"
-														className="flex h-14 w-16 shrink-0 items-center justify-center rounded bg-[#edf2e8] text-xs text-[#68716a]"
-													>
-														Sin foto
+										<td className="whitespace-nowrap px-5 py-4">
+											<p className="font-medium">{formatDate(reservation.checkInDate)}</p>
+											<p className="mt-1 text-xs text-[#68716a]">
+												hasta {formatDate(reservation.checkOutDate)}
+											</p>
+											<p className="mt-3 text-xs text-[#68716a] italic">
+												Creada el {formatDate(reservation.createdAt)}
+											</p>
+										</td>
+										<td className="px-5 py-4">
+											{(reservation.apartment && !reservation.apartment.isDeleted) ? (
+												<div className="flex min-w-52 items-center gap-3">
+													{reservation.apartment.coverImgUrl ? (
+														<img
+															src={resolveImageUrl(reservation.apartment.coverImgUrl)}
+															alt=""
+															className="h-14 w-16 shrink-0 rounded object-cover"
+														/>
+													) : (
+														<div
+															aria-hidden="true"
+															className="flex h-14 w-16 shrink-0 items-center justify-center rounded bg-[#edf2e8] text-xs text-[#68716a]"
+														>
+															Sin foto
+														</div>
+													)}
+													<div>
+														<p className="font-semibold text-[#385347]">
+															{reservation.apartment.name}
+														</p>
+														<p className="mt-1 text-xs text-[#68716a]">
+															{reservation.apartment.location}
+														</p>
+														<p className="mt-1 text-xs text-[#68716a]">
+															{formatCurrency(reservation.apartment.price)} / noche
+														</p>
 													</div>
-												)}
-												<div>
-													<p className="font-semibold text-[#385347]">
-														{reservation.apartment.name}
+												</div>
+											) : (
+												<div className="min-w-52">
+													<p className="font-medium text-[#68716a]">Departamento no disponible</p>
+													<p className="mt-1 break-all font-mono text-xs text-[#68716a]">
+														{reservation.apartmentId}
 													</p>
-													<p className="mt-1 text-xs text-[#68716a]">
-														{reservation.apartment.location}
-													</p>
-													<p className="mt-1 text-xs text-[#68716a]">
-														{formatCurrency(reservation.apartment.price)} / noche
+													<p className="mt-1 break-all font-mono text-xs text-[#68716a]">
+														Este departamento probablemente fue eliminado
 													</p>
 												</div>
-											</div>
-										) : (
-											<div className="min-w-52">
-												<p className="font-medium text-[#68716a]">Departamento no disponible</p>
-												<p className="mt-1 break-all font-mono text-xs text-[#68716a]">
-													{reservation.apartmentId}
+											)}
+										</td>
+										<td className="px-5 py-4">
+											{(reservation.appUser && !reservation.appUser.isDeleted) ? (
+												<div className="min-w-44">
+													<p className="text-[#385347]">
+														{
+															reservation.appUser.usertype == UserType.Guest ?
+																<i>Usuario Guest</i>
+																:
+																<span className="font-semibold">
+																	{reservation.appUser.firstName ?? reservation.appUser.name}{" "}
+																	{reservation.appUser.lastName}
+																</span>
+														}
+													</p>
+													<details className="mt-1">
+														<summary className="cursor-pointer text-xs font-medium text-[#385347] underline decoration-[#d3d0c6] underline-offset-2">
+															Ver detalles
+														</summary>
+														<dl className="mt-2 space-y-1.5 text-xs">
+															<div>
+																<dt className="inline font-medium text-[#424a44]">Email: </dt>
+																<dd className="inline">
+																	<a
+																		href={`mailto:${reservation.appUser.email}`}
+																		className="text-[#68716a] underline decoration-[#d3d0c6] underline-offset-2"
+																	>
+																		{reservation.appUser.email}
+																	</a>
+																</dd>
+															</div>
+															<div>
+																<dt className="inline font-medium text-[#424a44]">Teléfono: </dt>
+																<dd className="inline">
+																	<a
+																		href={`tel:${reservation.appUser.telefono}`}
+																		className="text-[#68716a] underline decoration-[#d3d0c6] underline-offset-2"
+																	>
+																		{reservation.appUser.telefono}
+																	</a>
+																</dd>
+															</div>
+															<div className="break-all">
+																<dt className="inline font-medium text-[#424a44]">ID: </dt>
+																<dd className="inline font-mono text-[#68716a]">
+																	{reservation.appUser.id}
+																</dd>
+															</div>
+															<div>
+																<dt className="inline font-medium text-[#424a44]">Tipo: </dt>
+																<dd className="inline text-[#68716a]">
+																	{getUserTypeLabel(reservation.appUser.usertype)}
+																</dd>
+															</div>
+														</dl>
+													</details>
+												</div>
+											) : (
+												<div className="min-w-44">
+													<p className="font-medium text-[#68716a]">Usuario no disponible</p>
+													<p className="mt-1 break-all font-mono text-xs text-[#68716a]">
+														Id de usuario: <strong>{reservation.appUserId}</strong>
+													</p>
+													<p className="mt-1 break-all font-mono text-xs text-[#68716a]">
+														Este usuario probablemente fue eliminado.
+													</p>
+												</div>
+											)}
+										</td>
+										<td className="px-5 py-4">
+											<div className="min-w-48">
+												<p className="font-semibold text-[#385347]">
+													{formatCurrency(getPaymentsTotal(reservation.payments))}
+													<span className="ml-1 font-normal text-[#68716a]">
+														pagado de {formatCurrency(getReservationFullPrice(reservation.checkInDate, reservation.checkOutDate, reservation.apartment?.price ?? 0))}
+													</span>
 												</p>
-												<p className="mt-1 break-all font-mono text-xs text-[#68716a]">
-													Este departamento probablemente fue eliminado
-												</p>
-											</div>
-										)}
-									</td>
-									<td className="px-5 py-4">
-										{(reservation.appUser && !reservation.appUser.isDeleted) ? (
-											<div className="min-w-44">
-												<p className="text-[#385347]">
-													{
-														reservation.appUser.usertype == UserType.Guest ?
-															<i>Usuario Guest</i>
-															:
-															<span className="font-semibold">
-																{reservation.appUser.firstName ?? reservation.appUser.name}{" "}
-																{reservation.appUser.lastName}
-															</span>
-													}
-												</p>
-												<details className="mt-1">
-													<summary className="cursor-pointer text-xs font-medium text-[#385347] underline decoration-[#d3d0c6] underline-offset-2">
-														Ver detalles
-													</summary>
-													<dl className="mt-2 space-y-1.5 text-xs">
-														<div>
-															<dt className="inline font-medium text-[#424a44]">Email: </dt>
-															<dd className="inline">
-																<a
-																	href={`mailto:${reservation.appUser.email}`}
-																	className="text-[#68716a] underline decoration-[#d3d0c6] underline-offset-2"
-																>
-																	{reservation.appUser.email}
-																</a>
-															</dd>
-														</div>
-														<div>
-															<dt className="inline font-medium text-[#424a44]">Teléfono: </dt>
-															<dd className="inline">
-																<a
-																	href={`tel:${reservation.appUser.telefono}`}
-																	className="text-[#68716a] underline decoration-[#d3d0c6] underline-offset-2"
-																>
-																	{reservation.appUser.telefono}
-																</a>
-															</dd>
-														</div>
-														<div className="break-all">
-															<dt className="inline font-medium text-[#424a44]">ID: </dt>
-															<dd className="inline font-mono text-[#68716a]">
-																{reservation.appUser.id}
-															</dd>
-														</div>
-														<div>
-															<dt className="inline font-medium text-[#424a44]">Tipo: </dt>
-															<dd className="inline text-[#68716a]">
-																{getUserTypeLabel(reservation.appUser.usertype)}
-															</dd>
-														</div>
-													</dl>
-												</details>
-											</div>
-										) : (
-											<div className="min-w-44">
-												<p className="font-medium text-[#68716a]">Usuario no disponible</p>
-												<p className="mt-1 break-all font-mono text-xs text-[#68716a]">
-													Id de usuario: <strong>{reservation.appUserId}</strong>
-												</p>
-												<p className="mt-1 break-all font-mono text-xs text-[#68716a]">
-													Este usuario probablemente fue eliminado.
-												</p>
-											</div>
-										)}
-									</td>
-									<td className="px-5 py-4">
-										<div className="min-w-48">
-											<p className="font-semibold text-[#385347]">
-												{formatCurrency(getPaymentsTotal(reservation.payments))}
-												<span className="ml-1 font-normal text-[#68716a]">
-													pagado de {formatCurrency(getReservationFullPrice(reservation.checkInDate, reservation.checkOutDate, reservation.apartment?.price ?? 0))}
-												</span>
-											</p>
-											{/* {getPendingRefunds(reservation.payments).length > 0 && (
+												{/* {getPendingRefunds(reservation.payments).length > 0 && (
                         <p
                           role="status"
                           className="mt-2 inline-flex rounded-full bg-[#fff0e8] px-2.5 py-1 text-xs font-semibold text-[#a13c22]"
@@ -744,153 +805,153 @@ export default function AdminReservasPage() {
                           )}
                         </p>
                       )} */}
-											{reservation.payments.length > 0 ? (
-												<details className="mt-2">
-													<summary className="cursor-pointer text-xs font-medium text-[#385347] underline decoration-[#d3d0c6] underline-offset-2">
-														Ver {reservation.payments.length}{" "}
-														{reservation.payments.length === 1 ? "pago" : "pagos"}
-													</summary>
-													<ul className="mt-2 space-y-2">
-														{reservation.payments.map((payment) => (
-															<li
-																key={payment.id}
-																className="rounded border border-[#ece7df] bg-white px-2.5 py-2 text-xs"
-															>
-																<div className="flex items-center justify-between gap-3">
-																	<span className="font-semibold text-[#202722]">
-																		{formatCurrency(payment.amount)}
-																	</span>
-																	<span className="text-[#68716a]">
-																		Estado {getPaymentStatusLabel(payment.paymentStatus)}
-																	</span>
-																</div>
-																<p className="mt-1 text-[#68716a]">
-																	{formatPaymentDate(payment.paymentDate)} ·{" "}
-																	{payment.isManual ? "Manual" : "En línea"}
-																	{payment.isSign ? " · Seña" : ""}
-																	{payment.isRefund ? " · Reembolso" : ""}
-																</p>
-															</li>
-														))}
-													</ul>
-												</details>
-											) : (
-												<p className="mt-1 text-xs text-[#68716a]">Sin pagos registrados</p>
-											)}
-										</div>
-									</td>
-									<td className="px-5 py-4">
-										<span className={statusColors(reservation.state) + " inline-flex whitespace-nowrap rounded-full bg-[#edf2e8] text-[#385347] px-2.5 py-1 text-xs font-semibold"}>
-											{getReservationStateLabel(reservation.state)}
-										</span>
-									</td>
-									<td className="px-5 py-4">
-										<div className="flex flex-wrap gap-2">
-											{
-												// check if reservation has any deleted parents
-												reservation.apartment?.isDeleted || reservation.appUser?.isDeleted ?
-													<em className="text-xs text-muted-foreground mt-3 inline-block">El apartamento o el usuario al que pertenecía esta reserva ya no existe. No puede modificarla.</em>
-													:
-													// check if reservation is in the past
-													new Date(reservation.checkOutDate).getTime() < Date.now() ?
-													<em className="text-xs text-muted-foreground mt-3 inline-block">Esta reserva ya terminó. No puede modificarla.</em>
-													:
-													<>
-														{
-															(() => {
-																switch (reservation.state) {
-																	case ReservationState.Cancelled:
-																		return <em className="text-xs text-muted-foreground mt-3 inline-block">Esta reserva esta cancelada. No puede agregar pagos.</em>
-																	case ReservationState.ConfirmedPaymentComplete:
-																		return <em className="text-xs text-muted-foreground mt-3 inline-block">Esta reserva tiene sus pagos completos. No puede agregar pagos.</em>
-																	case ReservationState.PaymentPending:
-																		return <em className="text-xs text-muted-foreground mt-3 inline-block">Esta reserva tiene un pago pendiente. No puede agregar pagos.</em>
-																	default:
-																		return <button
-																			type="button"
-																			onClick={() => setSelectedReservation(reservation)}
-																			className="rounded-lg bg-[#385347] px-4 py-1.5 text-sm font-semibold text-white shadow-sm
+												{reservation.payments.length > 0 ? (
+													<details className="mt-2">
+														<summary className="cursor-pointer text-xs font-medium text-[#385347] underline decoration-[#d3d0c6] underline-offset-2">
+															Ver {reservation.payments.length}{" "}
+															{reservation.payments.length === 1 ? "pago" : "pagos"}
+														</summary>
+														<ul className="mt-2 space-y-2">
+															{reservation.payments.map((payment) => (
+																<li
+																	key={payment.id}
+																	className="rounded border border-[#ece7df] bg-white px-2.5 py-2 text-xs"
+																>
+																	<div className="flex items-center justify-between gap-3">
+																		<span className="font-semibold text-[#202722]">
+																			{formatCurrency(payment.amount)}
+																		</span>
+																		<span className="text-[#68716a]">
+																			Estado {getPaymentStatusLabel(payment.paymentStatus)}
+																		</span>
+																	</div>
+																	<p className="mt-1 text-[#68716a]">
+																		{formatPaymentDate(payment.paymentDate)} ·{" "}
+																		{payment.isManual ? "Manual" : "En línea"}
+																		{payment.isSign ? " · Seña" : ""}
+																		{payment.isRefund ? " · Reembolso" : ""}
+																	</p>
+																</li>
+															))}
+														</ul>
+													</details>
+												) : (
+													<p className="mt-1 text-xs text-[#68716a]">Sin pagos registrados</p>
+												)}
+											</div>
+										</td>
+										<td className="px-5 py-4">
+											<span className={statusColors(reservation.state) + " inline-flex whitespace-nowrap rounded-full bg-[#edf2e8] text-[#385347] px-2.5 py-1 text-xs font-semibold"}>
+												{getReservationStateLabel(reservation.state)}
+											</span>
+										</td>
+										<td className="px-5 py-4">
+											<div className="flex flex-wrap gap-2">
+												{
+													// check if reservation has any deleted parents
+													reservation.apartment?.isDeleted || reservation.appUser?.isDeleted ?
+														<em className="text-xs text-muted-foreground mt-3 inline-block">El apartamento o el usuario al que pertenecía esta reserva ya no existe. No puede modificarla.</em>
+														:
+														// check if reservation is in the past
+														new Date(reservation.checkOutDate).getTime() < Date.now() ?
+															<em className="text-xs text-muted-foreground mt-3 inline-block">Esta reserva ya terminó. No puede modificarla.</em>
+															:
+															<>
+																{
+																	(() => {
+																		switch (reservation.state) {
+																			case ReservationState.Cancelled:
+																				return <em className="text-xs text-muted-foreground mt-3 inline-block">Esta reserva esta cancelada. No puede agregar pagos.</em>
+																			case ReservationState.ConfirmedPaymentComplete:
+																				return <em className="text-xs text-muted-foreground mt-3 inline-block">Esta reserva tiene sus pagos completos. No puede agregar pagos.</em>
+																			case ReservationState.PaymentPending:
+																				return <em className="text-xs text-muted-foreground mt-3 inline-block">Esta reserva tiene un pago pendiente. No puede agregar pagos.</em>
+																			default:
+																				return <button
+																					type="button"
+																					onClick={() => setSelectedReservation(reservation)}
+																					className="rounded-lg bg-[#385347] px-4 py-1.5 text-sm font-semibold text-white shadow-sm
                                    transition hover:bg-[#2c4238] focus:outline-none focus-visible:ring-2
                                    focus-visible:ring-[#385347]/50 focus-visible:ring-offset-2 active:scale-95"
-																		>
-																			Registrar Pago
-																		</button>
+																				>
+																					Registrar Pago
+																				</button>
+																		}
+																	})()
 																}
-															})()
-														}
-														{
-															isReservationStartInFuture(reservation.checkInDate) ?
-																reservation.state == ReservationState.Cancelled ?
-																	<em className="text-muted-foreground text-xs">
-																		Esta reserva ya esta cancelada.
-																	</em>
-																	:
-																	<button
-																		type="button"
-																		onClick={() => setReservationToCancel(reservation)}
-																		className="rounded-lg bg-red-700 px-4 py-1.5 text-sm font-semibold text-white shadow-sm
+																{
+																	isReservationStartInFuture(reservation.checkInDate) ?
+																		reservation.state == ReservationState.Cancelled ?
+																			<em className="text-muted-foreground text-xs">
+																				Esta reserva ya esta cancelada.
+																			</em>
+																			:
+																			<button
+																				type="button"
+																				onClick={() => setReservationToCancel(reservation)}
+																				className="rounded-lg bg-red-700 px-4 py-1.5 text-sm font-semibold text-white shadow-sm
 									transition hover:bg-red-800 focus:outline-none focus-visible:ring-2
 									focus-visible:ring-red-800/50 focus-visible:ring-offset-2 active:scale-95"
-																	>
-																		Cancelar
-																	</button>
-																:
-																<em className="text-muted-foreground text-xs">
-																	No se pueden cancelar reservas pasadas o que estan por comenzar. {/* //TODO: right message?  */}
-																</em>
-														}
-													</>
-											}
-										</div>
-									</td>
-								</tr>
-							))}
-							{deletedReservations.length > 0 && (
-								<tr>
-									<td colSpan={6} className="bg-[#f2f0ea] px-4 py-3">
-										<details>
-											<summary className="cursor-pointer text-sm font-medium">
-												Reservas asociadas a elementos eliminados ({deletedReservations.length}) — solo como referencia
-											</summary>
-											<div className="mt-3 border-t border-[#e5e2da] pt-3">
-												<p className="mb-2 text-xs leading-relaxed">
-													El departamento o el usuario asociado ya no está disponible. Estas reservas se muestran solo como referencia y no tienen acciones disponibles.
-												</p>
-												<div className="divide-y divide-[#e5e2da]">
-													{deletedReservations.map((reservation) => (
-														<div
-															key={reservation.reservationId}
-															className="flex flex-wrap items-start justify-between gap-3 py-2 text-sm first:pt-0 last:pb-0"
-														>
-															<div>
-																<p className="font-medium">
-																	{reservation.apartment?.isDeleted
-																		? "Departamento eliminado"
-																		: reservation.apartment?.name ?? "Departamento no disponible"}
-																</p>
-																<p className="mt-1 text-xs text-muted-foreground">
-																	{reservation.appUser?.isDeleted
-																		? "Usuario eliminado"
-																		: reservation.appUser?.usertype === UserType.Guest
-																			? "Usuario Guest"
-																			: `${reservation.appUser?.firstName ?? reservation.appUser?.name ?? "Usuario no disponible"} ${reservation.appUser?.lastName ?? ""}`}
-																</p>
-																<p className="mt-1 text-xs text-[#858980]">
-																	{formatDate(reservation.checkInDate)} —{" "}
-																	{formatDate(reservation.checkOutDate)}
-																</p>
-															</div>
-															<span className="rounded-full border border-[#e5e2da] px-2.5 py-1 text-xs">
-																{getReservationStateLabel(reservation.state)}
-															</span>
-														</div>
-													))}
-												</div>
+																			>
+																				Cancelar
+																			</button>
+																		:
+																		<em className="text-muted-foreground text-xs">
+																			No se pueden cancelar reservas pasadas o que estan por comenzar. {/* //TODO: right message?  */}
+																		</em>
+																}
+															</>
+												}
 											</div>
-										</details>
-									</td>
-								</tr>
-							)}
+										</td>
+									</tr>
+								))}
+								{deletedReservations.length > 0 && (
+									<tr>
+										<td colSpan={6} className="bg-[#f2f0ea] px-4 py-3">
+											<details>
+												<summary className="cursor-pointer text-sm font-medium">
+													Reservas asociadas a elementos eliminados ({deletedReservations.length}) — solo como referencia
+												</summary>
+												<div className="mt-3 border-t border-[#e5e2da] pt-3">
+													<p className="mb-2 text-xs leading-relaxed">
+														El departamento o el usuario asociado ya no está disponible. Estas reservas se muestran solo como referencia y no tienen acciones disponibles.
+													</p>
+													<div className="divide-y divide-[#e5e2da]">
+														{deletedReservations.map((reservation) => (
+															<div
+																key={reservation.reservationId}
+																className="flex flex-wrap items-start justify-between gap-3 py-2 text-sm first:pt-0 last:pb-0"
+															>
+																<div>
+																	<p className="font-medium">
+																		{reservation.apartment?.isDeleted
+																			? "Departamento eliminado"
+																			: reservation.apartment?.name ?? "Departamento no disponible"}
+																	</p>
+																	<p className="mt-1 text-xs text-muted-foreground">
+																		{reservation.appUser?.isDeleted
+																			? "Usuario eliminado"
+																			: reservation.appUser?.usertype === UserType.Guest
+																				? "Usuario Guest"
+																				: `${reservation.appUser?.firstName ?? reservation.appUser?.name ?? "Usuario no disponible"} ${reservation.appUser?.lastName ?? ""}`}
+																	</p>
+																	<p className="mt-1 text-xs text-[#858980]">
+																		{formatDate(reservation.checkInDate)} —{" "}
+																		{formatDate(reservation.checkOutDate)}
+																	</p>
+																</div>
+																<span className="rounded-full border border-[#e5e2da] px-2.5 py-1 text-xs">
+																	{getReservationStateLabel(reservation.state)}
+																</span>
+															</div>
+														))}
+													</div>
+												</div>
+											</details>
+										</td>
+									</tr>
+								)}
 							</>
 						)}
 					</tbody>

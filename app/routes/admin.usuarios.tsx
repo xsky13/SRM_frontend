@@ -87,8 +87,8 @@ function UserReservationsModal({
 					</button>
 				</div>
 
-				<div className="flex justify-between items-center mt-5">
-					<p className="text-muted-foreground text-sm">Se muestran las reservas próximas del usuario</p>
+				<div className="flex flex-col sm:flex-row justify-between gap-y-2 sm:items-center mt-5">
+					<p className="text-gray-900 text-sm">Se muestran las reservas próximas del usuario</p>
 					<label className="flex items-center gap-2 text-sm text-[#68716a]">
 						Filas por página
 						<select
