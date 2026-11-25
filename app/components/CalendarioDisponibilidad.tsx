@@ -554,7 +554,7 @@ export default function CalendarioDisponibilidad({
 
             <p className="mt-3 font-medium text-sm text-muted-foreground" aria-live="polite">
               {rangeStart && !rangeEnd
-                ? "Entrada seleccionada. Ahora seleccioná hasta qué noche querés quedarte. Podés seleccionar la misma fecha para reservar una sola noche."
+                ? "Entrada seleccionada. Ahora seleccioná hasta qué noche querés quedarte. Podés seleccionar la misma fecha para reservar una sola noche. La salida será al día siguiente."
                 : rangeStart && rangeEnd
                   ? "Hacé clic en otra fecha para iniciar una nueva selección."
                   : "Hacé clic en la fecha de entrada y luego en la fecha de salida."}

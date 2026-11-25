@@ -532,7 +532,7 @@ export default function MisReservasModificarPage() {
 							{!rangeStart
 								? "Elegí el primer día de estadía."
 								: !rangeEnd
-									? "Ahora elegí el último día de estadía. La salida será al día siguiente."
+									? "Entrada seleccionada. Ahora seleccioná hasta qué noche querés quedarte. Podés seleccionar la misma fecha para reservar una sola noche. La salida será al día siguiente."
 									: "Para empezar una nueva selección, elegí otra fecha."}
 						</p>
 

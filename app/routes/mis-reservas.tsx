@@ -48,6 +48,17 @@ export default function MisReservasPage() {
 	const pageParam = Number(searchParams.get("page"));
 	const pageNumber = Number.isSafeInteger(pageParam) && pageParam > 0 ? pageParam : 1;
 
+	const statusColors = (state: ReservationState) => {
+		switch (state) {
+			case ReservationState.ConfirmedPaymentComplete || ReservationState.ConfirmedPaymentComplete:
+				return "bg-blue-50 text-blue-800 border border-blue-100";
+			case ReservationState.Cancelled:
+				return "bg-red-50 text-red-800 border border-red-100"
+			default:
+				return "bg-[#edf2e8] text-[#385347] border border-[#d7d1c7]";
+		}
+	}
+
 	const reservasQuery = useQuery({
 		queryKey: ["my-reservations", authQuery.data?.id, reservationFilter, reservationStateFilter, pageNumber],
 		queryFn: async () => {
@@ -246,7 +257,7 @@ export default function MisReservasPage() {
 								</div>
 
 								<div className="flex flex-col items-start gap-2 md:items-end">
-									<span className="rounded-full border border-[#d7d1c7] bg-[#edf2e8] px-2.5 py-1 text-xs font-semibold text-[#385347]">
+									<span className={statusColors(reserva.reservationState) + " rounded-full  px-2.5 py-1 text-xs font-semibold "}>
 										{getReservationStateLabel(reserva.reservationState)}
 									</span>
 									<button

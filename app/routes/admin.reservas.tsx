@@ -660,11 +660,6 @@ export default function AdminReservasPage() {
 							<>
 								{activeReservations.map((reservation) => (
 									<tr key={reservation.reservationId} className="align-center">
-										{/* <td className="max-w-36 px-5 py-4">
-                    <span className="block break-all font-mono text-xs text-[#68716a]">
-                      {reservation.reservationId}
-                    </span>
-                  </td> */}
 										<td className="whitespace-nowrap px-5 py-4">
 											<p className="font-medium">{formatDate(reservation.checkInDate)}</p>
 											<p className="mt-1 text-xs text-[#68716a]">
