@@ -533,10 +533,10 @@ export default function AdminReservasPage() {
 
 			<em className="mb-3 inline-block text-muted-foreground text-sm">Desplazese hacia la derecha en la tabla para ver acciones y mas resultados</em>
 			{searchTarget && (
-				<p className="mb-3 text-sm text-[#68716a]">
+				<p className="mb-3 text-sm text-primary font-medium">
 					{searchTarget.type === "id"
 						? `Reserva ID: ${searchTarget.label}`
-						: `${searchTarget.type === "user" ? "Usuario" : "Departamento"}: ${searchTarget.label}`}
+						: `${searchTarget.type === "user" ? "Usuario" : "Departamento seleccionado"}: ${searchTarget.label}`}
 				</p>
 			)}
 
