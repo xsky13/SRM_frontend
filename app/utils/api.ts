@@ -274,6 +274,7 @@ export async function getUserReservations(
     );
 }
 
+/** //! RETURNS FUTURE USER RESERVATIONS */
 export async function getAdminUserReservations(
     userId: string,
     pageNumber: number,
