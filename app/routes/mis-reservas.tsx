@@ -14,6 +14,12 @@ export function meta() {
 }
 
 const RESERVATIONS_PAGE_SIZE = 10;
+const RESERVATION_STATE_FILTERS = [
+	ReservationState.NotConfirmed,
+	ReservationState.ConfirmedPaymentIncomplete,
+	ReservationState.ConfirmedPaymentComplete,
+	ReservationState.Cancelled,
+] as const;
 
 function formatDate(value: string) {
 	return formatDateOnly(value, {
@@ -27,16 +33,23 @@ function getReservationStateLabel(state: ReservationState) {
 	return RESERVATION_STATE_LABEL[state] ?? "Desconocido";
 }
 
+function getReservationStateFilter(value: string | null): ReservationState | null {
+	if (value === null) return null;
+	const state = Number(value);
+	return RESERVATION_STATE_FILTERS.find((validState) => validState === state) ?? null;
+}
+
 export default function MisReservasPage() {
 	const authQuery = useAuthentication();
 	const navigate = useNavigate();
 	const [searchParams, setSearchParams] = useSearchParams();
 	const reservationFilter = searchParams.get("filter") === "past" ? "past" : "upcoming";
+	const reservationStateFilter = getReservationStateFilter(searchParams.get("state"));
 	const pageParam = Number(searchParams.get("page"));
 	const pageNumber = Number.isSafeInteger(pageParam) && pageParam > 0 ? pageParam : 1;
 
 	const reservasQuery = useQuery({
-		queryKey: ["my-reservations", authQuery.data?.id, reservationFilter, pageNumber],
+		queryKey: ["my-reservations", authQuery.data?.id, reservationFilter, reservationStateFilter, pageNumber],
 		queryFn: async () => {
 			const userId = authQuery.data?.id;
 			if (!userId) throw new Error("No se pudo identificar al usuario.");
@@ -46,6 +59,7 @@ export default function MisReservasPage() {
 				reservationFilter === "upcoming" ? "future" : "past",
 				pageNumber,
 				RESERVATIONS_PAGE_SIZE,
+				reservationStateFilter ?? undefined,
 			);
 		},
 		enabled: authQuery.data?.id != null,
@@ -173,11 +187,43 @@ export default function MisReservasPage() {
 					}
 					className="space-y-4"
 				>
+					<div className="flex justify-end">
+						<label className="flex items-center gap-2 text-sm text-[#68716a]">
+							Estado
+							<select
+								value={reservationStateFilter ?? "all"}
+								onChange={(event) => {
+									const value = event.target.value;
+									setSearchParams((current) => {
+										const next = new URLSearchParams(current);
+										if (value === "all") {
+											next.delete("state");
+										} else {
+											next.set("state", value);
+										}
+										next.set("page", "1");
+										return next;
+									});
+								}}
+								className="rounded-md border border-[#d8d5ca] bg-[#fffdf9] px-3 py-2 text-[#202722]"
+							>
+								<option value="all">Todos los estados</option>
+								{RESERVATION_STATE_FILTERS.map((state) => (
+									<option key={state} value={state}>
+										{getReservationStateLabel(state)}
+									</option>
+								))}
+							</select>
+						</label>
+					</div>
+
 					{visibleReservations.length === 0 ? (
 						<div className="rounded-md border border-dashed border-[#c8c2b8] bg-[#fffdf9] p-8 text-center text-[#68716a]">
-							{reservationFilter === "upcoming"
-								? "No hay reservas próximas."
-								: "No hay reservas pasadas."}
+							{reservationStateFilter === null
+								? reservationFilter === "upcoming"
+									? "No hay reservas próximas."
+									: "No hay reservas pasadas."
+								: `No hay reservas con estado ${getReservationStateLabel(reservationStateFilter)} en este período.`}
 						</div>
 					) : visibleReservations.map((reserva) => (
 						<article

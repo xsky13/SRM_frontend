@@ -3,7 +3,7 @@ import { ApiError } from '~/types/ApiError';
 import { beginTrackedRequest } from '~/utils/requestProgress';
 import type { ApartmentCreateInput, DepartamentoData, ApartmentWriteInput } from '~/models/Departamento';
 import type { ImageData } from '~/types/images';
-import type { Reserva } from '~/types/Reserva';
+import type { Reserva, ReservationState } from '~/types/Reserva';
 import type { PagedResponse, ReservationDetail, ReservationListingDto } from '~/types/ReservationDetail';
 import type { UserSearchDto } from '~/types/User';
 
@@ -267,10 +267,15 @@ export async function getUserReservations(
     period: 'future' | 'past',
     pageNumber: number,
     pageSize: number,
+    state?: ReservationState,
 ): Promise<PagedResponse<ReservationListingDto>> {
     return getPagedResponse<ReservationListingDto>(
         `/api/reservation/user/${encodeURIComponent(userId)}/${period}`,
-        { PageNumber: pageNumber, PageSize: pageSize },
+        {
+            PageNumber: pageNumber,
+            PageSize: pageSize,
+            ...(state === undefined ? {} : { State: state }),
+        },
     );
 }
 
