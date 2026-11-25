@@ -1,6 +1,5 @@
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
 import { getUserReservations } from "~/utils/api";
 import LoadingState from "~/components/LoadingState";
 import PaginationControls from "~/components/PaginationControls";
@@ -31,8 +30,10 @@ function getReservationStateLabel(state: ReservationState) {
 export default function MisReservasPage() {
   const authQuery = useAuthentication();
   const navigate = useNavigate();
-  const [reservationFilter, setReservationFilter] = useState<"upcoming" | "past">("upcoming");
-  const [pageNumber, setPageNumber] = useState(1);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const reservationFilter = searchParams.get("filter") === "past" ? "past" : "upcoming";
+  const pageParam = Number(searchParams.get("page"));
+  const pageNumber = Number.isSafeInteger(pageParam) && pageParam > 0 ? pageParam : 1;
 
   const reservasQuery = useQuery({
     queryKey: ["my-reservations", authQuery.data?.id, reservationFilter, pageNumber],
@@ -124,8 +125,12 @@ export default function MisReservasPage() {
             aria-selected={reservationFilter === "upcoming"}
             aria-controls="reservations-panel"
             onClick={() => {
-              setReservationFilter("upcoming");
-              setPageNumber(1);
+              setSearchParams((current) => {
+                const next = new URLSearchParams(current);
+                next.set("filter", "upcoming");
+                next.set("page", "1");
+                return next;
+              });
             }}
             className={`border-b-2 px-4 py-3 text-sm font-semibold transition ${
               reservationFilter === "upcoming"
@@ -142,8 +147,12 @@ export default function MisReservasPage() {
             aria-selected={reservationFilter === "past"}
             aria-controls="reservations-panel"
             onClick={() => {
-              setReservationFilter("past");
-              setPageNumber(1);
+              setSearchParams((current) => {
+                const next = new URLSearchParams(current);
+                next.set("filter", "past");
+                next.set("page", "1");
+                return next;
+              });
             }}
             className={`border-b-2 px-4 py-3 text-sm font-semibold transition ${
               reservationFilter === "past"
@@ -232,7 +241,13 @@ export default function MisReservasPage() {
             currentPage={pageNumber}
             totalPages={reservationsPage.totalPages}
             summary={`Página ${reservationsPage.pageNumber} de ${reservationsPage.totalPages}`}
-            onPageChange={setPageNumber}
+            onPageChange={(page) => {
+              setSearchParams((current) => {
+                const next = new URLSearchParams(current);
+                next.set("page", String(page));
+                return next;
+              });
+            }}
             isDisabled={reservasQuery.isFetching}
             ariaLabel="Paginación de mis reservas"
           />
