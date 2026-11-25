@@ -67,6 +67,8 @@ export interface ReservationListingDto {
   apartmentId: string;
   apartmentName: string;
   reservationState: ReservationState;
+
+  isDeleted?: boolean;
 }
 
 export interface PagedResponse<T> {
