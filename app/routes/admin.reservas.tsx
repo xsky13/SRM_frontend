@@ -304,6 +304,12 @@ export default function AdminReservasPage() {
 	const displayedReservations = searchTarget
 		? reservationSearchQuery.data?.data ?? []
 		: reservations;
+	const deletedReservations = displayedReservations.filter(
+		(reservation) => reservation.apartment?.isDeleted || reservation.appUser?.isDeleted,
+	);
+	const activeReservations = displayedReservations.filter(
+		(reservation) => !reservation.apartment?.isDeleted && !reservation.appUser?.isDeleted,
+	);
 	const displayedReservationsQuery = searchTarget
 		? reservationSearchQuery
 		: reservationsQuery;
@@ -590,7 +596,8 @@ export default function AdminReservasPage() {
 								</td>
 							</tr>
 						) : (
-							displayedReservations.map((reservation) => (
+							<>
+							{activeReservations.map((reservation) => (
 								<tr key={reservation.reservationId} className="align-center">
 									{/* <td className="max-w-36 px-5 py-4">
                     <span className="block break-all font-mono text-xs text-[#68716a]">
@@ -837,7 +844,54 @@ export default function AdminReservasPage() {
 										</div>
 									</td>
 								</tr>
-							))
+							))}
+							{deletedReservations.length > 0 && (
+								<tr>
+									<td colSpan={6} className="bg-[#f2f0ea] px-4 py-3">
+										<details>
+											<summary className="cursor-pointer text-sm font-medium">
+												Reservas asociadas a elementos eliminados ({deletedReservations.length}) — solo como referencia
+											</summary>
+											<div className="mt-3 border-t border-[#e5e2da] pt-3">
+												<p className="mb-2 text-xs leading-relaxed">
+													El departamento o el usuario asociado ya no está disponible. Estas reservas se muestran solo como referencia y no tienen acciones disponibles.
+												</p>
+												<div className="divide-y divide-[#e5e2da]">
+													{deletedReservations.map((reservation) => (
+														<div
+															key={reservation.reservationId}
+															className="flex flex-wrap items-start justify-between gap-3 py-2 text-sm first:pt-0 last:pb-0"
+														>
+															<div>
+																<p className="font-medium">
+																	{reservation.apartment?.isDeleted
+																		? "Departamento eliminado"
+																		: reservation.apartment?.name ?? "Departamento no disponible"}
+																</p>
+																<p className="mt-1 text-xs text-muted-foreground">
+																	{reservation.appUser?.isDeleted
+																		? "Usuario eliminado"
+																		: reservation.appUser?.usertype === UserType.Guest
+																			? "Usuario Guest"
+																			: `${reservation.appUser?.firstName ?? reservation.appUser?.name ?? "Usuario no disponible"} ${reservation.appUser?.lastName ?? ""}`}
+																</p>
+																<p className="mt-1 text-xs text-[#858980]">
+																	{formatDate(reservation.checkInDate)} —{" "}
+																	{formatDate(reservation.checkOutDate)}
+																</p>
+															</div>
+															<span className="rounded-full border border-[#e5e2da] px-2.5 py-1 text-xs">
+																{getReservationStateLabel(reservation.state)}
+															</span>
+														</div>
+													))}
+												</div>
+											</div>
+										</details>
+									</td>
+								</tr>
+							)}
+							</>
 						)}
 					</tbody>
 				</table>
