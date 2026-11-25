@@ -162,11 +162,13 @@ export async function getAdminReservations(
     pageNumber: number,
     pageSize: number,
     dateFilter: AdminReservationDateFilter = AdminReservationDateFilter.None,
+    state?: ReservationState,
 ): Promise<PagedResponse<ReservationDetail>> {
     return getPagedResponse<ReservationDetail>('/api/reservation', {
         PageNumber: pageNumber,
         PageSize: pageSize,
         DateFilter: dateFilter,
+        ...(state === undefined ? {} : { State: state }),
     });
 }
 
@@ -182,10 +184,16 @@ export async function getAdminReservationsByUser(
     pageNumber: number,
     pageSize: number,
     dateFilter: AdminReservationDateFilter = AdminReservationDateFilter.None,
+    state?: ReservationState,
 ): Promise<PagedResponse<ReservationDetail>> {
     return getPagedResponse<ReservationDetail>(
         `/api/reservation/admin/user/${encodeURIComponent(userId)}`,
-        { PageNumber: pageNumber, PageSize: pageSize, DateFilter: dateFilter },
+        {
+            PageNumber: pageNumber,
+            PageSize: pageSize,
+            DateFilter: dateFilter,
+            ...(state === undefined ? {} : { State: state }),
+        },
     );
 }
 
@@ -194,10 +202,16 @@ export async function getAdminReservationsByApartment(
     pageNumber: number,
     pageSize: number,
     dateFilter: AdminReservationDateFilter = AdminReservationDateFilter.None,
+    state?: ReservationState,
 ): Promise<PagedResponse<ReservationDetail>> {
     return getPagedResponse<ReservationDetail>(
         `/api/reservation/admin/apartment/${encodeURIComponent(apartmentId)}`,
-        { PageNumber: pageNumber, PageSize: pageSize, DateFilter: dateFilter },
+        {
+            PageNumber: pageNumber,
+            PageSize: pageSize,
+            DateFilter: dateFilter,
+            ...(state === undefined ? {} : { State: state }),
+        },
     );
 }
 
